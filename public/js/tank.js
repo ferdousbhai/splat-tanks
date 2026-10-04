@@ -1,7 +1,8 @@
 // A tank: its numbers (level, upgrades) and its Blender model, tinted in the player's colour.
 import * as THREE from 'three'
 import { scene, models } from './world.js'
-import { BASE, TANK_RADIUS, emptyLoadout, statsFor, tierFor } from './config.js'
+import { BASE, emptyLoadout, statsFor, tierFor } from './config.js'
+import { emojiTexture } from './fx.js'
 
 /** Yaw (three.js rotation.y) that faces direction (dx, dz); models face -Z. */
 export const yawOf = (dx, dz) => Math.atan2(-dx, -dz)
@@ -17,7 +18,6 @@ function fallbackTank(tier) {
   const root = new THREE.Group()
   const s = 0.9 + tier * 0.1
   const tint = new THREE.MeshStandardMaterial({ color: '#fff', name: 'tint' })
-  tint.name = 'tint'
   const dark = new THREE.MeshStandardMaterial({ color: '#333' })
   const hull = new THREE.Group()
   hull.name = 'hull'
@@ -74,20 +74,6 @@ function labelTexture(text, sub, color) {
   return t
 }
 
-let crownTex = null
-function crownTexture() {
-  if (crownTex) return crownTex
-  const c = document.createElement('canvas')
-  c.width = c.height = 128
-  const g = c.getContext('2d')
-  g.font = '100px serif'
-  g.textAlign = 'center'
-  g.textBaseline = 'middle'
-  g.fillText('👑', 64, 72)
-  crownTex = new THREE.CanvasTexture(c)
-  return crownTex
-}
-
 export class Tank {
   constructor({ id, name, color, slot = 0, bot = false, local = false }) {
     Object.assign(this, { id, name, color, slot, bot, local })
@@ -120,12 +106,13 @@ export class Tank {
     scene.add(this.root)
     this.body = new THREE.Group() // tilts on acceleration
     this.root.add(this.body)
+    this.baseColor = new THREE.Color(color)
     this.tintMat = new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.15 })
 
     this.label = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true }))
     this.label.renderOrder = 10
     this.label.scale.set(4.4, 1.1, 1)
-    this.crown = new THREE.Sprite(new THREE.SpriteMaterial({ map: crownTexture(), depthTest: false, transparent: true }))
+    this.crown = new THREE.Sprite(new THREE.SpriteMaterial({ map: emojiTexture('👑'), depthTest: false, transparent: true }))
     this.crown.scale.setScalar(1.4)
     this.crown.renderOrder = 12
     this.crown.visible = false
@@ -147,8 +134,7 @@ export class Tank {
   }
 
   setModel() {
-    const tier = tierFor(this.level).tier
-    this.tier = tier
+    const tier = (this.tier = this.stats.tier)
     if (this.model) this.body.remove(this.model)
     const src = models.tanks[tier] ?? fallbackTank(tier)
     this.model = src.clone(true)
@@ -170,25 +156,23 @@ export class Tank {
   }
 
   refreshLabel() {
+    const sub = `Lv ${this.level} ${tierFor(this.level).name}`
+    const key = `${this.name}|${sub}`
+    if (key === this.labelKey) return
+    this.labelKey = key
     this.label.material.map?.dispose()
-    this.label.material.map = labelTexture(this.name, `Lv ${this.level} ${tierFor(this.level).name}`, this.color)
+    this.label.material.map = labelTexture(this.name, sub, this.color)
     this.label.material.needsUpdate = true
   }
 
-  /** World positions and directions of the muzzles. */
+  /** World positions of the muzzles. */
   muzzles() {
     this.root.updateMatrixWorld(true)
-    const d = dirOf(this.turretYaw)
-    return this.muzzleNodes.map((m) => {
-      const p = new THREE.Vector3()
-      m.getWorldPosition(p)
-      return { x: p.x, y: p.y, z: p.z, dx: d.x, dz: d.z }
-    })
+    return this.muzzleNodes.map((m) => m.getWorldPosition(new THREE.Vector3()))
   }
 
-  /** Steers toward a move direction (twin-stick style) and returns the desired velocity. */
+  /** Steers toward a move direction (twin-stick style) and eases the velocity toward it. */
   drive(mx, mz, dt) {
-    const now = performance.now()
     const len = Math.hypot(mx, mz)
     let speed = 0
     if (len > 0.1) {
@@ -203,11 +187,11 @@ export class Tank {
       const align = Math.max(0.25, Math.cos(angleDiff(this.heading, goal)))
       speed = this.stats.speed * Math.min(1, len) * align * (back ? -0.75 : 1)
     }
-    if (now < this.boostUntil) speed = this.stats.speed * BASE.boostSpeed * (speed < 0 ? -1 : 1)
+    if (this.boosting) speed = this.stats.speed * BASE.boostSpeed * (speed < 0 ? -1 : 1)
     const f = dirOf(this.heading)
     const tx = f.x * speed
     const tz = f.z * speed
-    const k = Math.min(1, dt * (now < this.boostUntil ? 10 : 7))
+    const k = Math.min(1, dt * (this.boosting ? 10 : 7))
     const ax = (tx - this.vel.x) * k
     const az = (tz - this.vel.z) * k
     this.vel.x += ax
@@ -261,7 +245,7 @@ export class Tank {
     this.tintMat.emissive.setRGB(this.flash * 0.5, this.flash * 0.5, this.flash * 0.5)
     // A splash turns the tank the splasher's colour, and it wears off over a couple of seconds.
     this.paintT = Math.max(0, this.paintT - dt * 0.5)
-    this.tintMat.color.set(this.color).lerp(this.paintColor, Math.min(1, this.paintT * 1.4) * 0.75)
+    this.tintMat.color.copy(this.baseColor).lerp(this.paintColor, Math.min(1, this.paintT * 1.4) * 0.75)
     // A happy wobble after a splash.
     this.body.rotation.z = Math.sin(now / 45) * this.flash * 0.12
 
@@ -276,7 +260,9 @@ export class Tank {
   dispose() {
     scene.remove(this.root, this.label, this.crown)
     this.label.material.map?.dispose()
+    this.label.material.dispose()
+    this.crown.material.dispose()
+    this.tintMat.dispose()
   }
 }
 
-export { TANK_RADIUS }

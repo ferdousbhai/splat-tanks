@@ -10,7 +10,7 @@ export const MATCH = {
 // Tiers grow your tank at these levels. Each one has its own Blender model.
 export const TIERS = [
   { tier: 1, name: 'Squirter', level: 1, splat: 1, speed: 1.08, reload: 1 },
-  { tier: 2, name: 'Splasher', level: 4, splat: 1.12, speed: 1.04, reload: 0.95, perk: '🎈 Paint balloons! (E / right-click)' },
+  { tier: 2, name: 'Splasher', level: 4, splat: 1.12, speed: 1.04, reload: 0.95, perk: '🎈 Paint balloons!' },
   { tier: 3, name: 'Roller', level: 8, splat: 1.24, speed: 1.0, reload: 0.95, perk: '🖌️ Zoom paints a giant stripe!' },
   { tier: 4, name: 'Titan', level: 12, splat: 1.36, speed: 0.98, reload: 0.9, perk: '🌈 Two paint squirters!' },
 ]
@@ -81,10 +81,14 @@ export const PICKUPS = {
 }
 
 export const COLORS = ['#ff3b3b', '#2f8cff', '#22c55e', '#ffb703', '#b14cff', '#ff6ec7', '#00d1c1', '#ff7a1a']
+/** Names and colours arrive from other devices: keep names short and colours in our palette (paint slots and models need one). */
+export const safeName = (n) => String(n).slice(0, 24)
+export const safeColor = (c) => (COLORS.includes(c) ? c : COLORS[0])
 
 const ADJ = ['Happy', 'Bouncy', 'Sparkly', 'Zippy', 'Giggly', 'Sunny', 'Fuzzy', 'Silly', 'Jolly', 'Bubbly', 'Wiggly', 'Cosmic', 'Rainbow', 'Speedy', 'Snuggly', 'Twinkly', 'Dizzy', 'Puffy']
 const NOUN = ['Panda', 'Bunny', 'Puppy', 'Kitten', 'Duckling', 'Penguin', 'Otter', 'Koala', 'Llama', 'Turtle', 'Hippo', 'Dino', 'Unicorn', 'Potato', 'Taco', 'Muffin', 'Pickle', 'Owl']
-export const randomName = (rnd = Math.random) => `${ADJ[Math.floor(rnd() * ADJ.length)]} ${NOUN[Math.floor(rnd() * NOUN.length)]}`
+const pick = (list) => list[Math.floor(Math.random() * list.length)]
+export const randomName = () => `${pick(ADJ)} ${pick(NOUN)}`
 
 // chase: how often a bot squirts at a nearby tank instead of painting the floor.
 export const BOT_LEVELS = {

@@ -12,14 +12,16 @@ const grid = new Uint8Array(CELLS) // 0 = bare floor, otherwise the painter's sl
 const counts = new Uint32Array(256)
 const colors = new Map() // slot -> colour, kept after a player leaves so their paint stays
 
-const SIZE = 1024
+const SIZE = 512
 const K = SIZE / N // canvas pixels per metre
 export const canvas = document.createElement('canvas')
 canvas.width = canvas.height = SIZE
 const g = canvas.getContext('2d')
 const tex = new THREE.CanvasTexture(canvas)
 tex.colorSpace = THREE.SRGBColorSpace
-tex.anisotropy = 4
+// Re-uploaded ~10 times a second, so skip rebuilding mipmaps each time.
+tex.generateMipmaps = false
+tex.minFilter = THREE.LinearFilter
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(N, N),
   new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.35, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
@@ -76,12 +78,9 @@ export function paint(x, z, r, slot) {
 }
 
 export const cellsOf = (slot) => counts[slot]
-export const painted = () => CELLS - countBare()
-function countBare() {
-  let n = 0
-  for (let i = 0; i < CELLS; i++) if (!grid[i]) n++
-  return n
-}
+/** Most paint first, then highest level: the leaderboard and the final medals. */
+export const byPaint = (a, b) => cellsOf(b.slot) - cellsOf(a.slot) || b.level - a.level
+export const painted = () => counts.reduce((a, b) => a + b, 0)
 
 export function resetPaint() {
   grid.fill(0)
@@ -131,10 +130,13 @@ export function decodePaint(data) {
 }
 
 let lastUpload = 0
+/** Bumped each time the picture is uploaded, so the minimap knows when to redraw it. */
+export let paintVersion = 0
 /** Uploads the canvas to the GPU at most ~10 times a second. */
 export function updatePaint(now) {
   if (!dirty || now - lastUpload < 90) return
   lastUpload = now
   dirty = false
   tex.needsUpdate = true
+  paintVersion++
 }

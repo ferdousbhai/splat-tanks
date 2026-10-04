@@ -33,7 +33,7 @@ sun.shadow.normalBias = 0.04
 scene.add(sun)
 scene.add(sun.target)
 
-export function resize() {
+function resize() {
   renderer.setSize(innerWidth, innerHeight)
   camera.aspect = innerWidth / innerHeight
   // Show more of the arena on portrait phones.
@@ -113,22 +113,15 @@ async function loadGlb(url) {
 
 export async function loadModels(onProgress) {
   const [tanks, arena] = await Promise.all([loadGlb('./models/tanks.glb').finally(() => onProgress?.(0.5)), loadGlb('./models/arena.glb').finally(() => onProgress?.(1))])
-  for (const t of [1, 2, 3, 4]) {
-    const node = tanks?.scene.getObjectByName(`tank_${t}`)
-    if (node) {
-      node.position.set(0, 0, 0)
-      models.tanks[t] = node
-    }
+  const take = (gltf, name, into, key) => {
+    const node = gltf?.scene.getObjectByName(name)
+    if (!node) return
+    node.position.set(0, 0, 0)
+    node.traverse(prepMesh)
+    into[key] = node
   }
-  for (const name of ['crate', 'wall', 'rock', 'barrel', 'tree', 'tower', 'tires', 'pad']) {
-    const node = arena?.scene.getObjectByName(name)
-    if (node) {
-      node.position.set(0, 0, 0)
-      models.props[name] = node
-    }
-  }
-  for (const root of Object.values(models.props)) root.traverse(prepMesh)
-  for (const root of Object.values(models.tanks)) root.traverse(prepMesh)
+  for (const t of [1, 2, 3, 4]) take(tanks, `tank_${t}`, models.tanks, t)
+  for (const name of ['crate', 'wall', 'rock', 'barrel', 'tree', 'tower', 'tires', 'pad']) take(arena, name, models.props, name)
 }
 
 function prepMesh(o) {
@@ -166,7 +159,9 @@ function fallbackProp(name) {
   return g
 }
 
-export const prop = (name) => (models.props[name] ?? (models.props[name] = fallbackProp(name))).clone()
+/** A prop's source model, or a simple stand-in when it didn't load. */
+const propSource = (name) => (models.props[name] ??= fallbackProp(name))
+const prop = (name) => propSource(name).clone()
 
 // --- Layout -----------------------------------------------------------------------------
 
@@ -216,18 +211,15 @@ export function buildArena(seed) {
       const mirrored = [[x, z], [-x, z], [x, -z], [-x, -z]]
       if (mirrored.every(([mx, mz]) => fits(mx, mz, rad))) {
         for (const [mx, mz] of mirrored) blocked.push({ x: mx, z: mz, r: rad + 2.6 })
-        const item = { name, x, z, rot: extra.rot ?? Math.floor(r() * 4) * (Math.PI / 2), ...extra }
-        quad.push(item)
-        return item
+        quad.push({ name, x, z, rot: extra.rot ?? Math.floor(r() * 4) * (Math.PI / 2), ...extra })
+        return
       }
     }
-    return null
   }
   for (let i = 0; i < 3; i++) {
     // L-shaped cover from two or three wall blocks.
     const horiz = r() < 0.5
-    const w = tryPlace('wallset', 6, { rot: horiz ? 0 : Math.PI / 2, len: 2 + Math.floor(r() * 2), hook: r() < 0.6 })
-    if (!w) continue
+    tryPlace('wallset', 6, { rot: horiz ? 0 : Math.PI / 2, len: 2 + Math.floor(r() * 2), hook: r() < 0.6 })
   }
   for (let i = 0; i < 2; i++) tryPlace('crates', 2.6, { count: 2 + Math.floor(r() * 3) })
   for (let i = 0; i < 2; i++) tryPlace('rock', 1.8)
@@ -266,14 +258,14 @@ export function buildArena(seed) {
     }
   }
 
-  // Border walls.
+  // Border walls: just for looks, since movement and blobs are clamped to the arena.
   const n = Math.ceil((ARENA * 2) / 4)
   for (let i = 0; i < n; i++) {
     const p = -ARENA + 2 + i * 4
-    placed.push({ name: 'wall', x: p, z: -ARENA - 0.5, rot: 0, border: true })
-    placed.push({ name: 'wall', x: p, z: ARENA + 0.5, rot: Math.PI, border: true })
-    placed.push({ name: 'wall', x: -ARENA - 0.5, z: p, rot: Math.PI / 2, border: true })
-    placed.push({ name: 'wall', x: ARENA + 0.5, z: p, rot: -Math.PI / 2, border: true })
+    placed.push({ name: 'wall', x: p, z: -ARENA - 0.5, rot: 0, edge: true })
+    placed.push({ name: 'wall', x: p, z: ARENA + 0.5, rot: Math.PI, edge: true })
+    placed.push({ name: 'wall', x: -ARENA - 0.5, z: p, rot: Math.PI / 2, edge: true })
+    placed.push({ name: 'wall', x: ARENA + 0.5, z: p, rot: -Math.PI / 2, edge: true })
   }
   // Scenery outside the arena.
   for (let i = 0; i < 70; i++) {
@@ -299,7 +291,8 @@ export function buildArena(seed) {
       continue
     }
     statics.push(p)
-    if (p.decor) continue
+    // Scenery is out of reach, and the border walls sit outside the ARENA clamp in pushOut/shellObstacle.
+    if (p.decor || p.edge) continue
     const swap = Math.abs(Math.sin(p.rot)) > 0.5
     if (p.name === 'wall') colliders.boxes.push({ x: p.x, z: p.z, hx: swap ? 0.55 : 2.05, hz: swap ? 2.05 : 0.55 })
     else if (p.name === 'crate') colliders.boxes.push({ x: p.x, z: p.z, hx: 1.02, hz: 1.02 })
@@ -323,7 +316,7 @@ function bake(list) {
   const byMat = new Map()
   const tmp = new THREE.Object3D()
   for (const p of list) {
-    const src = models.props[p.name] ?? (models.props[p.name] = fallbackProp(p.name))
+    const src = propSource(p.name)
     tmp.position.set(p.x, 0, p.z)
     tmp.rotation.set(0, p.rot, 0)
     tmp.scale.setScalar(p.scale ?? 1)
@@ -457,9 +450,9 @@ export function lineOfSight(ax, az, bx, bz) {
   return true
 }
 
-export function freeSpot(r = Math.random) {
+export function freeSpot() {
   for (let i = 0; i < 60; i++) {
-    const p = { x: (r() * 2 - 1) * (ARENA - 4), z: (r() * 2 - 1) * (ARENA - 4) }
+    const p = { x: (Math.random() * 2 - 1) * (ARENA - 4), z: (Math.random() * 2 - 1) * (ARENA - 4) }
     const q = { ...p }
     if (!pushOut(q, 2.2)) return p
   }

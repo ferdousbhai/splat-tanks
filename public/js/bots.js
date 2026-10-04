@@ -1,12 +1,12 @@
 // Computer tanks, run by the host. They roam to bare floor, squirt paint, now and then splash a
 // nearby tank, grab pickups and pick upgrades.
-import { BOT_LEVELS, UPGRADES, ARENA } from './config.js'
+import { BOT_LEVELS, ARENA } from './config.js'
 import { lineOfSight, pushOut, freeSpot } from './world.js'
 import { yawOf, angleDiff } from './tank.js'
 
 const PRIORITY = ['big', 'reload', 'wide', 'multi', 'speed', 'velocity', 'ricochet']
 
-export function botPickUpgrade(tank, options, difficulty) {
+export function botPickUpgrade(options, difficulty) {
   const smart = BOT_LEVELS[difficulty].upgradeSmart
   if (Math.random() < smart) return options.slice().sort((a, b) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b))[0]
   return options[Math.floor(Math.random() * options.length)]
@@ -95,4 +95,3 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt) {
   return out
 }
 
-export const allUpgradeKeys = Object.keys(UPGRADES)

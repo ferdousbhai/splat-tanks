@@ -51,8 +51,11 @@
 </div>
 
 <div id="hud" class="hidden">
-  <canvas id="minimap" width="150" height="150"></canvas>
-  <div id="feed"></div>
+  <div class="hud-left">
+    <canvas id="minimap" width="150" height="150"></canvas>
+    <button id="music" class="corner-btn" title="Music (M)">🎵</button>
+    <div id="feed"></div>
+  </div>
   <div class="top-center">
     <div id="timer" class="pill">3:00</div>
     <div id="goal" class="pill small">🎨 Paint the floor!</div>
@@ -89,12 +92,11 @@
     <button id="btn-boost" class="touch-btn">⚡</button>
     <button id="btn-mega" class="touch-btn mega">🎈</button>
   </div>
-  <button id="music" class="corner-btn" title="Music (M)">🎵</button>
   <div id="crosshair"></div>
 </div>
 
 <div id="end" class="screen hidden">
-  <div id="end-title" class="logo small">🎉 Great painting!</div>
+  <div class="logo small">🎉 Great painting!</div>
   <div id="end-sub" class="tagline"></div>
   <div id="results" class="panel"></div>
   <button id="again" class="big-go">🔁 Play again</button>

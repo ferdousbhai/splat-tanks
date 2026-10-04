@@ -8,6 +8,9 @@ const ball = new THREE.IcosahedronGeometry(1, 1)
 const ringGeo = new THREE.RingGeometry(0.8, 1, 32)
 ringGeo.rotateX(-Math.PI / 2)
 
+// Every effect mesh lives under one group; spent ones are hidden and pooled rather than removed from the scene.
+const fxRoot = new THREE.Group()
+scene.add(fxRoot)
 const pools = new Map()
 function mesh(geo, color, opacity = 1, additive = false) {
   const key = `${geo.uuid}|${color}|${additive}`
@@ -18,11 +21,11 @@ function mesh(geo, color, opacity = 1, additive = false) {
   m.visible = true
   m.scale.setScalar(1)
   m.rotation.set(0, 0, 0)
-  scene.add(m)
+  if (!m.parent) fxRoot.add(m)
   return m
 }
 function release(m) {
-  scene.remove(m)
+  m.visible = false
   if (!pools.has(m.userData.key)) pools.set(m.userData.key, [])
   pools.get(m.userData.key).push(m)
 }
@@ -121,7 +124,8 @@ export function updateFx(dt) {
     const k = p.t / p.life
     if (k >= 1) {
       release(p.m)
-      particles.splice(i, 1)
+      particles[i] = particles[particles.length - 1] // swap-remove: the last one was already updated
+      particles.pop()
       continue
     }
     p.vy -= p.g * dt
@@ -142,6 +146,33 @@ export function updateFx(dt) {
     if (p.fade) p.m.material.opacity = p.base * (1 - k)
   }
   shake.amount = Math.max(0, shake.amount - dt * 2.2)
+}
+
+/** A cached emoji sprite texture, optionally on a coloured token (so it still reads where emoji fonts are missing). */
+const emojiCache = new Map()
+export function emojiTexture(emoji, token = null) {
+  const key = `${emoji}|${token}`
+  if (emojiCache.has(key)) return emojiCache.get(key)
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const g = c.getContext('2d')
+  if (token) {
+    g.fillStyle = token
+    g.beginPath()
+    g.arc(64, 64, 58, 0, Math.PI * 2)
+    g.fill()
+    g.lineWidth = 8
+    g.strokeStyle = '#fff'
+    g.stroke()
+  }
+  g.font = token ? '72px serif' : '100px serif'
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.fillText(emoji, 64, token ? 70 : 72)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  emojiCache.set(key, t)
+  return t
 }
 
 // --- Floating text (Splat!, +XP) as DOM elements over the canvas ---------------------

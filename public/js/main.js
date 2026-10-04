@@ -5,22 +5,23 @@
 // levels, pickups, paint buckets and the bots, and tells everyone what happened.
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
-import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, TIERS, emptyLoadout, xpToNext, randomName } from './config.js'
+import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
 import { renderer, scene, camera, sun, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
-import { Tank, yawOf, angleDiff } from './tank.js'
+import { Tank, yawOf, dirOf, angleDiff } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
-import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, addShake, shake } from './fx.js'
-import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, painted, CELLS } from './paint.js'
+import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, addShake, shake, emojiTexture } from './fx.js'
+import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey } from './input.js'
 import { unlockAudio, sound, announce, toggleMusic, musicIntensity } from './audio.js'
 import * as hud from './hud.js'
+import { $ } from './hud.js'
 
-const $ = (id) => document.getElementById(id)
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on)
 const now = () => performance.now()
 const r1 = (v) => Math.round(v * 10) / 10
 const r2 = (v) => Math.round(v * 100) / 100
+const r5 = (v) => Math.round(v * 1e5) / 1e5
 
 const game = {
   phase: 'loading',
@@ -49,18 +50,12 @@ const game = {
 }
 const isHost = () => game.hostId === game.selfId
 const tankList = () => [...game.tanks.values()]
-const bySlot = (slot) => tankList().find((t) => t.slot === slot)
 
 // --- Networking --------------------------------------------------------------------------
 
-function send(msg, to) {
-  if (!game.room || game.room.solo) return
-  game.room.send(msg, to ? { to } : {})
-}
-function sendFast(msg) {
-  if (!game.room || game.room.solo) return
-  game.room.send(msg, { fast: true })
-}
+// The ?solo room's send() does nothing, so these need no solo check.
+const send = (msg, to) => game.room?.send(msg, to ? { to } : {})
+const sendFast = (msg) => game.room?.send(msg, { fast: true })
 /** Host: tell everyone, and apply it here too. */
 function broadcast(msg) {
   send(msg)
@@ -112,17 +107,18 @@ function handle(msg, from) {
   const t = game.tanks.get(msg.i)
   switch (msg.t) {
     case 'hello': {
-      game.humans.set(from, { name: String(msg.name).slice(0, 24), color: msg.color })
+      const h = { name: safeName(msg.name), color: safeColor(msg.color) }
+      game.humans.set(from, h)
       if (msg.host) game.hostId = from
       const existing = game.tanks.get(from)
-      if (existing && existing.name !== msg.name) {
-        existing.name = String(msg.name).slice(0, 24)
+      if (existing && existing.name !== h.name) {
+        existing.name = h.name
         existing.refreshLabel()
       }
       // Someone joined mid-game: the host gives them a tank (and a slot for their paint).
       if (game.phase === 'battle' && !existing && isHost()) {
         flushPaint()
-        broadcast({ t: 'add', e: { i: from, n: msg.name, c: msg.color, s: nextSlot() } })
+        broadcast({ t: 'add', e: { i: from, n: h.name, c: h.color, s: nextSlot() } })
         send(snapshot(), from)
         game.tanks.get(from).respawnAt = now() + 800
       }
@@ -135,19 +131,8 @@ function handle(msg, from) {
     case 'start':
       startBattle(msg)
       break
-    case 'p': {
-      if (!t || t.local) return
-      t.target = { x: msg.x, z: msg.z, h: msg.h, ty: msg.y, vx: msg.vx, vz: msg.vz, t: now() }
-      if (msg.b) t.boostUntil = now() + 120
-      break
-    }
     case 'pb':
-      for (const [i, x, z, h, y, vx, vz, b] of msg.a) {
-        const bt = game.tanks.get(i)
-        if (!bt || bt.local) continue
-        bt.target = { x, z, h, ty: y, vx, vz, t: now() }
-        if (b) bt.boostUntil = now() + 120
-      }
+      for (const [i, ...pose] of msg.a) setPose(game.tanks.get(i), ...pose)
       break
     case 'f': {
       const owner = game.tanks.get(msg.o)
@@ -197,18 +182,29 @@ function handle(msg, from) {
     case 'bx':
       onBucket(msg)
       break
-    case 'bu': {
-      const b = barrels[msg.i]
-      if (b) {
-        b.alive = true
-        b.mesh.visible = true
-      }
+    case 'bu':
+      setBarrel(barrels[msg.i], true)
       break
-    }
     case 'end':
       onEnd(msg)
       break
   }
+}
+
+/** A tank's position on the wire: [id, x, z, heading, turret, vx, vz, boosting]. */
+const poseOf = (t) => [t.id, r2(t.pos.x), r2(t.pos.z), r2(t.heading), r2(t.turretYaw), r2(t.vel.x), r2(t.vel.z), t.boosting ? 1 : 0]
+
+/** The latest position of a tank another device drives; follow() glides toward it. */
+function setPose(t, x, z, h, ty, vx, vz, boosting) {
+  if (!t || t.local) return
+  t.target = { x, z, h, ty, vx, vz, t: now() }
+  if (boosting) t.boostUntil = now() + 120
+}
+
+function setBarrel(b, alive) {
+  if (!b) return
+  b.alive = alive
+  b.mesh.visible = alive
 }
 
 // --- Match setup -------------------------------------------------------------------------
@@ -219,11 +215,11 @@ function nextSlot() {
 
 function addTank(e) {
   if (game.tanks.has(e.i)) return game.tanks.get(e.i)
-  const t = new Tank({ id: e.i, name: e.n, color: e.c, slot: e.s, bot: !!e.b, local: e.i === game.selfId || (!!e.b && isHost()) })
+  const t = new Tank({ id: e.i, name: safeName(e.n), color: safeColor(e.c), slot: e.s, bot: !!e.b, local: e.i === game.selfId || (!!e.b && isHost()) })
   setSlotColor(t.slot, t.color)
   game.tanks.set(e.i, t)
   if (e.lv) {
-    t.level = e.lv
+    t.level = toLevel(e.lv)
     t.upgrades = { ...emptyLoadout(), ...e.u }
     t.recompute()
   }
@@ -286,7 +282,7 @@ function hostStartMatch() {
 }
 
 function startBattle(msg) {
-  for (const t of game.tanks.values()) t.dispose()
+  for (const t of [...game.tanks.values(), ...demoTanks.splice(0)]) t.dispose()
   game.tanks.clear()
   game.brains.clear()
   game.me = null
@@ -297,13 +293,7 @@ function startBattle(msg) {
     hud.resetMinimap()
     makePads()
   }
-  msg.barrels.forEach((a, i) => {
-    if (barrels[i]) {
-      barrels[i].alive = !!a
-      barrels[i].mesh.visible = !!a
-    }
-  })
-  if (!msg.barrels.length) for (const b of barrels) ((b.alive = true), (b.mesh.visible = true))
+  barrels.forEach((b, i) => setBarrel(b, msg.barrels.length ? !!msg.barrels[i] : true))
   game.pads.forEach((p, i) => setPad(i, msg.pads[i] ?? null))
   if (msg.paint) decodePaint(msg.paint)
   else resetPaint()
@@ -327,33 +317,14 @@ function startBattle(msg) {
 
 // --- Pickups -----------------------------------------------------------------------------
 
-const pickupTex = {}
-function emojiTexture(emoji) {
-  if (pickupTex[emoji]) return pickupTex[emoji]
-  const c = document.createElement('canvas')
-  c.width = c.height = 128
-  const g = c.getContext('2d')
-  // A coloured token under the emoji, so it still reads where emoji fonts are missing.
-  const kind = Object.values(PICKUPS).find((p) => p.icon === emoji)
-  g.fillStyle = kind?.color ?? '#fff'
-  g.beginPath()
-  g.arc(64, 64, 58, 0, Math.PI * 2)
-  g.fill()
-  g.lineWidth = 8
-  g.strokeStyle = '#fff'
-  g.stroke()
-  g.font = '72px serif'
-  g.textAlign = 'center'
-  g.textBaseline = 'middle'
-  g.fillText(emoji, 64, 70)
-  const t = new THREE.CanvasTexture(c)
-  t.colorSpace = THREE.SRGBColorSpace
-  return (pickupTex[emoji] = t)
-}
 const glowGeo = new THREE.SphereGeometry(0.9, 16, 12)
 
 function makePads() {
-  for (const p of game.pads) scene.remove(p.group)
+  for (const p of game.pads) {
+    scene.remove(p.group)
+    p.sprite.material.dispose()
+    p.glow.material.dispose()
+  }
   game.pads = PADS.map(([x, z], i) => {
     const group = new THREE.Group()
     group.position.set(x, 0, z)
@@ -375,7 +346,7 @@ function setPad(i, kind) {
   p.kind = kind
   p.group.visible = !!kind
   if (kind) {
-    p.sprite.material.map = emojiTexture(PICKUPS[kind].icon)
+    p.sprite.material.map = emojiTexture(PICKUPS[kind].icon, PICKUPS[kind].color)
     p.sprite.material.needsUpdate = true
     p.glow.material.color.set(PICKUPS[kind].color)
   } else p.respawnAt = now() + 9000 + Math.random() * 7000
@@ -474,7 +445,7 @@ function endMatch() {
   if (game.match.over) return
   flushPaint()
   sendStats()
-  const sorted = tankList().sort((a, b) => cellsOf(b.slot) - cellsOf(a.slot) || b.level - a.level)
+  const sorted = tankList().sort(byPaint)
   broadcast({ t: 'end', a: sorted.map((t) => [t.id, t.level]) })
 }
 
@@ -520,17 +491,21 @@ function onBucket(msg) {
   const b = barrels[msg.i]
   const by = game.tanks.get(msg.by)
   if (!b) return
-  b.alive = false
-  b.mesh.visible = false
-  splash(b.x, b.z, 3, by?.color ?? '#ff6ec7')
-  confetti(b.x, b.z, [by?.color ?? '#ff6ec7', '#ffffff', '#ffd60a'])
+  const color = by?.color ?? '#ff6ec7'
+  setBarrel(b, false)
+  splash(b.x, b.z, 3, color)
+  confetti(b.x, b.z, [color, '#ffffff', '#ffd60a'])
   sound.splosh(hearing(b.x, b.z))
   addShake(0.2 * hearing(b.x, b.z))
   if (by === game.me) hud.subBanner('🪣 PAINT BUCKET!', 1200)
 }
 
+/** Levels arrive from the network: keep them whole and in range, since they index the tier and XP tables. */
+const toLevel = (lv) => Math.min(MAX_LEVEL, Math.max(1, Math.floor(lv) || 1))
+
 /** A tank's level changed (anywhere). Handles growing, the player's upgrade cards and bots' picks. */
 function setLevel(t, lv) {
+  lv = toLevel(lv)
   const oldTier = t.tier
   const up = lv > t.level
   t.level = lv
@@ -559,7 +534,7 @@ function setLevel(t, lv) {
     while (pendingPoints(t) > 0) {
       const opts = offerFor(t)
       if (!opts.length) break
-      t.upgrades[botPickUpgrade(t, opts, game.opts.difficulty)]++
+      t.upgrades[botPickUpgrade(opts, game.opts.difficulty)]++
     }
     t.recompute()
     send({ t: 'lo', i: t.id, u: t.upgrades })
@@ -601,9 +576,9 @@ function onEnd(msg) {
   announce("Time's up! Great painting!")
   setTimeout(() => {
     game.phase = 'end'
-    hud.results(sorted, game.me, Math.round((painted() / CELLS) * 100))
     show('hud', false)
     show('end')
+    hud.results(sorted, game.me, Math.round((painted() / CELLS) * 100))
     show('again', isHost())
     show('end-wait', !isHost())
     document.body.classList.remove('playing')
@@ -622,10 +597,8 @@ function fire(t, mega = false) {
   const from = mega ? [muzzles[0]] : muzzles
   for (const m of from) {
     for (const a of spread) {
-      const yaw = t.turretYaw + a
-      const dx = -Math.sin(yaw)
-      const dz = -Math.cos(yaw)
-      out.push([`${t.id}.${game.shotCount++}`, r2(m.x), r2(m.z), r2(dx * 1000) / 1000, r2(dz * 1000) / 1000])
+      const { x: dx, z: dz } = dirOf(t.turretYaw + a)
+      out.push([`${t.id}.${game.shotCount++}`, r2(m.x), r2(m.z), r5(dx), r5(dz)])
       muzzleFlash(m.x, m.y, m.z, dx, dz, t.color, mega)
     }
   }
@@ -679,11 +652,12 @@ function control(t, c, dt) {
 const ray = new THREE.Raycaster()
 const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.1)
 const aimPoint = new THREE.Vector3()
+const mouseNdc = new THREE.Vector2()
 
 function playerControls(me, dt) {
   const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing, boost: input.boost, mega: input.mega }
   if (input.mouse.active && !input.touch) {
-    ray.setFromCamera(new THREE.Vector2(input.mouse.x, input.mouse.y), camera)
+    ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
     if (ray.ray.intersectPlane(aimPlane, aimPoint)) c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   } else if (input.aimStick.active) {
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, yawOf(input.aimStick.x, input.aimStick.y)) * Math.min(1, dt * 18)
@@ -699,6 +673,8 @@ function playerControls(me, dt) {
 
 const camPos = new THREE.Vector3(0, 40, 40)
 const camTarget = new THREE.Vector3()
+const camWant = new THREE.Vector3() // scratch
+const demoTanks = [] // parked in the menu's arena until the first match
 let menuAngle = 0
 
 function updateCamera(dt) {
@@ -711,13 +687,13 @@ function updateCamera(dt) {
   const me = game.me
   if (me) {
     const look = me.alive ? 4 : 0
-    camTarget.lerp(new THREE.Vector3(me.pos.x - Math.sin(me.turretYaw) * look, 0, me.pos.z - Math.cos(me.turretYaw) * look), Math.min(1, dt * 5))
+    const d = dirOf(me.turretYaw)
+    camTarget.lerp(camWant.set(me.pos.x + d.x * look, 0, me.pos.z + d.z * look), Math.min(1, dt * 5))
   }
   const portrait = innerHeight > innerWidth
   const height = portrait ? 40 : 30
   const back = portrait ? 18 : 19
-  const want = new THREE.Vector3(camTarget.x, height, camTarget.z + back)
-  camPos.lerp(want, Math.min(1, dt * 6))
+  camPos.lerp(camWant.set(camTarget.x, height, camTarget.z + back), Math.min(1, dt * 6))
   camera.position.copy(camPos)
   const s = shake.amount * shake.amount
   camera.position.x += (Math.random() - 0.5) * s * 1.6
@@ -760,6 +736,7 @@ function battleStep(dt, n) {
   const m = game.match
   const me = game.me
   const live = n >= m.startAt && !m.over
+  const tanks = tankList()
 
   // Countdown.
   if (!live && !m.over) {
@@ -783,26 +760,24 @@ function battleStep(dt, n) {
     for (const t of game.tanks.values()) {
       if (!t.bot || !t.alive) continue
       const brain = game.brains.get(t.id) ?? game.brains.set(t.id, newBrain()).get(t.id)
-      control(t, botControls(t, brain, tankList(), game.pads, game.opts.difficulty, dt), dt)
+      control(t, botControls(t, brain, tanks, game.pads, game.opts.difficulty, dt), dt)
     }
   }
   for (const t of game.tanks.values()) if (!t.local) t.follow(dt)
 
   // Blobs: the host's copy decides where paint lands.
-  updateShells(dt, tankList(), {
-    tank: (s, t) => {
-      if (!isHost()) return
-      const by = game.tanks.get(s.owner)
-      if (s.mega) bigSplash(s.x, s.z, s.splat, by)
-      else splashTank(t, by, s.sid)
-    },
+  // A balloon bursts wherever it lands; a blob splashes the tank it hit, or paints the floor.
+  const landed = (s, t) => {
+    if (!isHost()) return
+    const by = game.tanks.get(s.owner)
+    if (s.mega) bigSplash(s.x, s.z, s.splat, by)
+    else if (t) splashTank(t, by, s.sid)
+    else hostPaint(s.x, s.z, s.splat, by)
+  }
+  updateShells(dt, tanks, {
+    tank: landed,
     barrel: (s, i) => isHost() && hostBucket(i, game.tanks.get(s.owner)),
-    land: (s) => {
-      if (!isHost()) return
-      const by = game.tanks.get(s.owner)
-      if (s.mega) bigSplash(s.x, s.z, s.splat, by)
-      else hostPaint(s.x, s.z, s.splat, by)
-    },
+    land: landed,
   }, hearing)
 
   if (isHost() && live) hostStep(dt, n)
@@ -811,32 +786,31 @@ function battleStep(dt, n) {
   // Upgrade cards.
   if (me) {
     if (input.pick && game.offer) pickUpgrade(game.offer[input.pick - 1])
-    if (pendingPoints(me) > 0 && !game.offer) game.offer = offerFor(me)
-    if (pendingPoints(me) <= 0) game.offer = null
-    hud.showUpgrades(game.offer, me.upgrades, pendingPoints(me), pickUpgrade)
+    const pending = pendingPoints(me)
+    game.offer = pending > 0 ? (game.offer ?? offerFor(me)) : null
+    hud.showUpgrades(game.offer, me.upgrades, pending, pickUpgrade)
   }
 
-  // Network: our tank, and the host's bots.
+  // Network: our tank, and on the host the bots too, in one batch.
   if (n - game.lastNet > 50) {
     game.lastNet = n
-    if (me?.alive) sendFast({ t: 'p', i: me.id, x: r2(me.pos.x), z: r2(me.pos.z), h: r2(me.heading), y: r2(me.turretYaw), vx: r2(me.vel.x), vz: r2(me.vel.z), b: me.boosting ? 1 : 0 })
-    if (isHost()) {
-      const a = tankList().filter((t) => t.bot && t.alive).map((t) => [t.id, r2(t.pos.x), r2(t.pos.z), r2(t.heading), r2(t.turretYaw), r2(t.vel.x), r2(t.vel.z), t.boosting ? 1 : 0])
-      if (a.length) sendFast({ t: 'pb', a })
-    }
+    const a = tanks.filter((t) => t.alive && (t === me || (t.bot && isHost()))).map(poseOf)
+    if (a.length) sendFast({ t: 'pb', a })
   }
   if (isHost() && ((game.statsDirty && n - game.lastStats > 150) || n - game.lastStats > 1000)) sendStats()
 
   // Visuals.
   dustT += dt
-  const sorted = hud.board(tankList(), me)
-  const leader = cellsOf(sorted[0]?.slot) > 0 ? sorted[0] : null
+  const sorted = hud.board(tanks, me)
+  const best = cellsOf(sorted[0]?.slot ?? 0)
+  const leader = best > 0 ? sorted[0] : null
   for (const t of game.tanks.values()) {
     t.render(dt, t === leader)
     if (!t.alive) continue
     const speed = Math.hypot(t.vel.x, t.vel.z)
-    if (t.boosting) boostTrail(t.pos.x + Math.sin(t.heading) * 1.4, t.pos.z + Math.cos(t.heading) * 1.4, t.color)
-    else if (speed > 3 && dustT > 0.08) dust(t.pos.x + Math.sin(t.heading) * 1.2, t.pos.z + Math.cos(t.heading) * 1.2, Math.min(1, speed / 10))
+    const fwd = dirOf(t.heading)
+    if (t.boosting) boostTrail(t.pos.x - fwd.x * 1.4, t.pos.z - fwd.z * 1.4, t.color)
+    else if (speed > 3 && dustT > 0.08) dust(t.pos.x - fwd.x * 1.2, t.pos.z - fwd.z * 1.2, Math.min(1, speed / 10))
   }
   if (dustT > 0.08) dustT = 0
   for (const p of game.pads) {
@@ -853,8 +827,8 @@ function battleStep(dt, n) {
     hud.subBanner('⏱️ 30 SECONDS LEFT!', 2000)
     announce('Thirty seconds!')
   }
-  if (me) hud.bars(me, cellsOf(sorted[0]?.slot ?? 0), n)
-  hud.minimap(tankList(), me, game.pads)
+  if (me) hud.bars(me, best, n)
+  hud.minimap(tanks, me, game.pads)
   const ch = $('crosshair')
   const showCross = input.mouse.active && !input.touch && me?.alive
   ch.style.display = showCross ? 'block' : 'none'
@@ -914,9 +888,7 @@ function renderMenu() {
     b.classList.toggle('on', c === game.myColor)
     b.addEventListener('click', () => {
       game.myColor = c
-      sound.click()
-      renderMenu()
-      hello()
+      menuChanged()
     })
     $('colors').appendChild(b)
   }
@@ -927,6 +899,13 @@ function renderMenu() {
   renderLobby()
 }
 
+/** The player changed their name or colour: show it and tell the room. */
+function menuChanged() {
+  sound.click()
+  renderMenu()
+  hello()
+}
+
 function renderLobby() {
   const box = $('lobby')
   if (!game.room || game.room.solo) {
@@ -934,41 +913,30 @@ function renderLobby() {
     return
   }
   const chips = [[game.selfId, { name: game.myName, color: game.myColor }], ...game.humans]
-  box.innerHTML = `<span class="label">Room ${hud.esc(game.room.code ?? '')}</span>` + chips.map(([id, h]) => `<span class="chip" style="border-color:${h.color}">${id === game.hostId ? '👑 ' : ''}${hud.esc(h.name)}${id === game.selfId ? ' (you)' : ''}</span>`).join('')
+  box.innerHTML = `<span class="label">Room ${hud.esc(game.room.code ?? '')}</span>` + chips.map(([id, h]) => `<span class="chip" style="border-color:${hud.esc(h.color)}">${id === game.hostId ? '👑 ' : ''}${hud.esc(h.name)}${id === game.selfId ? ' (you)' : ''}</span>`).join('')
 }
 
 function setupMenu() {
   $('reroll').addEventListener('click', () => {
-    unlockAudio()
     game.myName = randomName()
-    sound.click()
-    renderMenu()
-    hello()
+    menuChanged()
   })
   for (const seg of document.querySelectorAll('.seg')) {
     seg.addEventListener('click', (e) => {
       const b = e.target.closest('button')
       if (!b) return
-      unlockAudio()
       sound.click()
       seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b))
       const key = seg.dataset.opt
       game.opts[key] = key === 'difficulty' ? b.dataset.v : Number(b.dataset.v)
     })
   }
-  $('go').addEventListener('click', () => {
-    unlockAudio()
-    if (!isHost()) return
-    hostStartMatch()
-  })
-  $('again').addEventListener('click', () => {
-    unlockAudio()
-    if (isHost()) hostStartMatch()
-  })
-  $('music').addEventListener('click', () => {
-    $('music').classList.toggle('off', !toggleMusic())
-  })
-  onKey('KeyM', () => $('music').classList.toggle('off', !toggleMusic()))
+  const start = () => isHost() && hostStartMatch()
+  $('go').addEventListener('click', start)
+  $('again').addEventListener('click', start)
+  const flipMusic = () => $('music').classList.toggle('off', !toggleMusic())
+  $('music').addEventListener('click', flipMusic)
+  onKey('KeyM', flipMusic)
   // iOS Safari only unlocks audio from certain gestures, and the sticks cancel clicks.
   for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, { capture: true, passive: true })
 }
@@ -1001,8 +969,6 @@ async function boot() {
   const params = new URLSearchParams(location.search)
   const room = params.has('solo') ? { solo: true, selfId: 'solo', isHost: true, peers: [], on() {}, send() {} } : await joinRoom({ maxPlayers: 8 })
   setupRoom(room)
-  for (const t of demoTanks) t.dispose()
-  demoTanks.length = 0
   show('loading', false)
   game.phase = 'menu'
   renderMenu()
@@ -1010,7 +976,6 @@ async function boot() {
   if (params.has('autostart')) hostStartMatch()
   if (params.has('debug')) window.__tank = { game, hud, input, camera, addXp, setLevel, step: () => frame(), renderer }
 }
-const demoTanks = []
 
 boot().catch((e) => {
   console.error(e)

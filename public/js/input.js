@@ -33,9 +33,8 @@ addEventListener('keydown', (e) => {
   keys.add(e.code)
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.boost = true
   if (e.code === 'KeyE' || e.code === 'KeyQ') input.mega = true
-  if (e.code === 'Digit1') input.pick = 1
-  if (e.code === 'Digit2') input.pick = 2
-  if (e.code === 'Digit3') input.pick = 3
+  const digit = /^Digit([1-3])$/.exec(e.code)
+  if (digit) input.pick = Number(digit[1])
   handlers[e.code]?.()
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault()
   updateMoveFromKeys()
