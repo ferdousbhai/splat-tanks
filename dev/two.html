@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- Local multiplayer test: stands in for the BitGames page around two game frames and relays
+     their WebRTC signalling, like the store's lobby does. Serve the repo root and open /dev/two.html. -->
+<html>
+<head><meta charset="utf-8" /><title>Splat Tanks x2</title>
+<style>body{margin:0;display:flex;height:100vh;background:#000}iframe{flex:1;border:0;border-right:2px solid #333}</style>
+</head>
+<body>
+<iframe id="a" src="../public/index.html?debug"></iframe>
+<iframe id="b" src="../public/index.html?debug"></iframe>
+<script>
+const BRIDGE = 'bitgames-room-1'
+const frames = {}
+const members = [] // join order
+const hex = () => [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('')
+const to = (win, msg) => win.postMessage({ bridge: BRIDGE, ...msg }, '*')
+let joinDelay = 0
+addEventListener('message', (e) => {
+  const m = e.data
+  if (!m || m.bridge !== BRIDGE) return
+  const win = e.source
+  if (m.type === 'hello') to(win, { type: 'hello' })
+  else if (m.type === 'open') {
+    // Second frame joins a little later, as a real player would.
+    setTimeout(() => {
+      const id = hex()
+      frames[id] = win
+      win.__peerId = id
+      const isHost = members.length === 0
+      to(win, { type: 'ready', selfId: id, isHost, code: '🐶🐸🦊' })
+      to(win, { type: 'peers', peers: [...members] })
+      members.push(id)
+    }, joinDelay)
+    joinDelay += 1500
+  } else if (m.type === 'signal') {
+    const from = Object.keys(frames).find((k) => frames[k] === win)
+    if (frames[m.to]) to(frames[m.to], { type: 'signal', from, data: m.data })
+  }
+})
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Splat Tanks</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://bitgames.store/vendor/three/build/three.module.js",
+  "three/addons/": "https://bitgames.store/vendor/three/examples/jsm/"
+} }
+</script>
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="floaters"></div>
+
+<div id="loading" class="screen">
+  <div class="logo">SPLAT<b>TANKS</b></div>
+  <div class="loadbar"><i id="loadfill"></i></div>
+  <div id="loading-text" class="hint">Filling the paint pots…</div>
+</div>
+
+<div id="menu" class="screen hidden">
+  <div class="logo">SPLAT<b>TANKS</b></div>
+  <div class="tagline">🎨 Paint the floor your colour! Grow into a <b>TITAN</b>.</div>
+  <div class="panel">
+    <div class="row callsign">
+      <span class="label">😀 Name</span>
+      <span id="callsign" class="name"></span>
+      <button id="reroll" class="icon-btn" title="New name">🎲</button>
+    </div>
+    <div class="row">
+      <span class="label">🎨 Colour</span>
+      <div id="colors" class="colors"></div>
+    </div>
+    <div id="host-options">
+      <div class="row"><span class="label">🤖 Robots</span><div class="seg" data-opt="bots"><button data-v="0">0</button><button data-v="3">3</button><button data-v="5" class="on">5</button><button data-v="7">7</button></div></div>
+      <div class="row"><span class="label">🤖 Speed</span><div class="seg" data-opt="difficulty"><button data-v="easy" title="Slow">🐢</button><button data-v="normal" class="on" title="Medium">🐇</button><button data-v="hard" title="Fast">🚀</button></div></div>
+      <div class="row"><span class="label">⏱️ Time</span><div class="seg" data-opt="length"><button data-v="0">2 min</button><button data-v="1" class="on">3 min</button><button data-v="2">5 min</button></div></div>
+    </div>
+    <div id="lobby" class="lobby"></div>
+  </div>
+  <button id="go" class="big-go">🎨 PLAY!</button>
+  <div id="waiting-host" class="hint hidden">⏳ Waiting for the host to start…</div>
+  <div class="controls-help">
+    <span class="kbd-only"><b>WASD</b> drive · <b>Mouse</b> aim · <b>Click</b> squirt paint · <b>Space</b> zoom · <b>E / right-click</b> paint balloon · <b>1 2 3</b> upgrades · <b>M</b> music</span>
+    <span class="touch-only">🕹️ Left stick drives and paints · right stick aims · ⚡ zoom · 🎈 paint balloon</span>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <canvas id="minimap" width="150" height="150"></canvas>
+  <div id="feed"></div>
+  <div class="top-center">
+    <div id="timer" class="pill">3:00</div>
+    <div id="goal" class="pill small">🎨 Paint the floor!</div>
+  </div>
+  <div id="board"></div>
+
+  <div id="banner"></div>
+  <div id="subbanner"></div>
+
+  <div id="upgrades" class="hidden">
+    <div class="up-title">⬆️ LEVEL UP! Pick an upgrade <span id="up-count"></span></div>
+    <div id="up-cards"></div>
+  </div>
+
+  <div class="bottom">
+    <div class="levelrow">
+      <div id="lvl" class="lvl">1</div>
+      <div class="bars">
+        <div class="tiername"><span id="tiername">Squirter</span></div>
+        <div class="bar paint"><i id="paintfill"></i><span id="painttext">🎨 0%</span></div>
+        <div class="bar xp"><i id="xpfill"></i></div>
+      </div>
+      <div class="abilities">
+        <div id="ab-boost" class="ability"><span>⚡</span><i></i><small>SPACE</small></div>
+        <div id="ab-mega" class="ability locked"><span>🎈</span><i></i><small>E</small></div>
+      </div>
+    </div>
+    <div id="buffs"></div>
+  </div>
+
+  <div class="touch">
+    <div id="move-stick" class="stick"><div class="stick-base"><div class="stick-knob"></div></div></div>
+    <div id="aim-stick" class="stick aim"><div class="stick-base"><div class="stick-knob"></div></div></div>
+    <button id="btn-boost" class="touch-btn">⚡</button>
+    <button id="btn-mega" class="touch-btn mega">🎈</button>
+  </div>
+  <button id="music" class="corner-btn" title="Music (M)">🎵</button>
+  <div id="crosshair"></div>
+</div>
+
+<div id="end" class="screen hidden">
+  <div id="end-title" class="logo small">🎉 Great painting!</div>
+  <div id="end-sub" class="tagline"></div>
+  <div id="results" class="panel"></div>
+  <button id="again" class="big-go">🔁 Play again</button>
+  <div id="end-wait" class="hint hidden">⏳ Waiting for the host…</div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

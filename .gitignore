@@ -1,0 +1,4 @@
+node_modules/
+.cloudflare/
+.wrangler/
+public/bitgames.json

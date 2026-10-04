@@ -1,0 +1,9 @@
+# BitGames plays the game in a sandboxed frame with no origin of its own, and
+# This policy protects direct previews on your own Cloudflare version URL.
+# BitGames playback supplies its own stricter policy through the verified file
+# gateway. CORS also allows tools to inspect scripts and models in direct previews.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://bitgames.store/vendor/ https://bitgames-store.ferdousbd.workers.dev/vendor/ 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://bitgames.store/vendor/ https://bitgames-store.ferdousbd.workers.dev/vendor/ data: blob:; worker-src 'self' blob:; base-uri 'none'; form-action 'none'
+  Allow-CSP-From: *
+  Access-Control-Allow-Origin: *
+  X-Content-Type-Options: nosniff
