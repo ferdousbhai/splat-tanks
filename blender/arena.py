@@ -4,6 +4,9 @@ each standing on its own origin (base centre) at the world origin. 1 unit = 1 m.
 
   crate, wall, rock, barrel (paint bucket), tree, tower (giant paint pot), tires, pad
 
+The wall, rock and tires are Poly Haven models (CC0), decimated to game budgets; the rest are modelled
+here and textured with Poly Haven texture sets (see kit.SURF). Downloads are cached in blender/.polyhaven/.
+
 Run with:  blender --background --python arena.py
 """
 import math
@@ -20,9 +23,8 @@ from kit import TO_X, TO_Y, Part, cube, cyl, frustum, ico, lathe, prism, sphere,
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "models", "arena.glb")
 
-WOOD, WOOD_DARK = "#d39a55", "#8f5a2b"
-CONCRETE, CONCRETE_DARK = "#bdb8ae", "#7f7b74"
-YELLOW, BLACK = "#ffc61a", "#22242a"
+WOOD, WOOD_DARK = "#d9a066@planks", "#6e4a2e@planks"
+TIN, RIM = "metal:#f4f1ea@metal", "metal:#c9ccd2@metal"
 
 
 def crate():
@@ -39,68 +41,31 @@ def crate():
         p.add(cube((2.1, 0.08, 0.22), (0, s * 0.94, 1.0), (0, s * diag, 0)), WOOD_DARK)
         p.add(cube((0.08, 2.1, 0.22), (s * 0.94, 0, 1.0), (s * diag, 0, 0)), WOOD_DARK)
     p.add(cube((2.1, 0.22, 0.08), (0, 0, 1.94), (0, 0, diag)), WOOD_DARK)
-    for k in (-0.46, 0.0, 0.46):  # plank grooves
-        p.add(cube((1.86, 0.03, 0.03), (0, -0.93, 1 + k)), "#a8713a")
-        p.add(cube((0.03, 1.86, 0.03), (0.93, 0, 1 + k)), "#a8713a")
-        p.add(cube((0.03, 1.86, 0.03), (-0.93, 0, 1 + k)), "#a8713a")
-        p.add(cube((1.86, 0.03, 0.03), (0, 0.93, 1 + k)), "#a8713a")
     return p.build(smooth_angle=20)
 
 
 def wall():
+    """A 4 m concrete block wall with a chipped top."""
     p = Part("wall")
-    # front outline with a chipped top-right corner and a bite out of the top-left
+    blocks = "#ffffff@blocks"
     outline = [(-2, 0), (2, 0), (2, 1.2), (1.72, 1.42), (1.45, 1.6), (-0.9, 1.6), (-1.05, 1.42), (-1.35, 1.38), (-1.5, 1.6), (-2, 1.6)]
-    p.add(prism(outline, 1.0, (0, 0, 0)), CONCRETE)
-    p.add(cube((4.04, 1.04, 0.16), (0, 0, 0.08)), CONCRETE_DARK)  # footing
-    # block joints
-    for z in (0.55, 1.05):
-        for s in (-1, 1):
-            p.add(cube((3.98, 0.02, 0.035), (0, s * 0.505, z)), CONCRETE_DARK)
-    for x, z in ((-1.0, 0.3), (0.6, 0.3), (-0.2, 0.8), (1.3, 0.8), (-1.3, 1.3), (0.4, 1.3)):
-        for s in (-1, 1):
-            p.add(cube((0.035, 0.02, 0.46), (x, s * 0.505, z)), CONCRETE_DARK)
-    # hazard stripe band on both faces
-    for s in (-1, 1):
-        p.add(cube((4.0, 0.03, 0.3), (0, s * 0.51, 0.82)), YELLOW)
-        for k in range(10):
-            x = -1.8 + k * 0.4
-            p.add(prism([(-0.07, -0.15), (0.07, -0.15), (0.2, 0.15), (0.06, 0.15)], 0.035, (x, s * 0.515, 0.82)), BLACK)
-    # chips: darker exposed patches and rubble at the broken corner
+    p.add(prism(outline, 1.0, (0, 0, 0)), blocks)
+    p.add(cube((4.04, 1.06, 0.16), (0, 0, 0.08)), "#9a968e@blocks")  # footing
     rnd = random.Random(3)
-    for x, y, z in ((1.75, 0.5, 1.25), (-1.2, -0.5, 1.45), (-1.9, 0.5, 0.35), (0.9, -0.5, 0.25)):
-        p.add(kit.jitter(ico(0.13, (x, y, z), subd=1), 0.06, seed=rnd.randint(0, 99)), CONCRETE_DARK)
-    for x, y in ((1.7, 0.45), (1.88, -0.3)):
-        p.add(kit.jitter(ico(0.12, (x, y, 0.1), subd=1), 0.05, seed=int(x * 10)), CONCRETE)
-    # rebar poking out of the broken corner
-    for x, a in ((1.6, 0.35), (1.78, -0.25)):
-        p.add(cyl(0.025, 0.025, 0.4, (x, 0.15, 1.35), (0, a, 0), segs=5), "#9a4a2a")
+    for x, y in ((1.7, 0.45), (1.88, -0.3), (-1.8, 0.55)):  # rubble from the broken corners
+        p.add(kit.jitter(ico(0.12, (x, y, 0.1), subd=1), 0.05, seed=rnd.randint(0, 99)), blocks)
     return p.build(smooth_angle=20)
 
 
 def rock():
-    p = Part("rock")
-    moss = "#6fae4a"
-
-    def boulder(r, loc, scale, seed, color, mossy):
-        bm = ico(r, (0, 0, 0), scale, subd=1, jitter=0.3, seed=seed)
-        kit.jitter(bm, r * 0.12, seed)
-        kit.xf(bm, loc)
-        bmesh.ops.bisect_plane(bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces), plane_co=(0, 0, 0.02), plane_no=(0, 0, 1), clear_inner=True)
-        bm.normal_update()
-        p.add(bm, color, moss, (lambda f: f.normal.z > 0.82) if mossy else None)
-
-    boulder(1.0, (0.15, 0.05, 0.75), (1.3, 1.2, 1.3), 7, "#8e929c", True)
-    boulder(0.7, (-0.75, -0.6, 0.4), (1.1, 1.0, 1.0), 11, "#a3a7b0", True)
-    boulder(0.45, (0.8, -0.85, 0.22), (1.0, 1.1, 0.9), 5, "#7c808a", False)
-    boulder(0.35, (-0.9, 0.75, 0.15), (1.0, 1.0, 0.8), 3, "#8e929c", False)
-    return p.build(smooth_angle=5)
+    o = kit.import_model("boulder_01", "rock", tris=1400)
+    return kit.fit(o, height=2.0)
 
 
 def barrel():
     """A paint bucket (named barrel in the game): white tin, pink paint on top, drips down the side."""
     p = Part("barrel")
-    tin, rim, paint = "gloss:#f4f1ea", "metal:#c9ccd2", "gloss:#ff4fb8"
+    tin, rim, paint = TIN, RIM, "gloss:#ff4fb8"
     p.add(lathe([(0.5, 0), (0.54, 0.04), (0.6, 1.16), (0.62, 1.2)], 18, cap_top=False), tin)
     p.add(torus(0.61, 0.035, (0, 0, 1.2), segs=18, rsegs=6), rim)
     p.add(torus(0.53, 0.03, (0, 0, 0.04), segs=18, rsegs=6), rim)
@@ -122,19 +87,23 @@ def barrel():
 
 
 def tree():
+    """A leafy tree: a bark trunk with two boughs, and a canopy of lumpy leaf clusters."""
     p = Part("tree")
-    p.add(cyl(0.28, 0.2, 1.4, (0, 0, 0), segs=8), "#7a4a26")
-    tiers = [(1.05, 1.0, 1.7, "#2f8a3e"), (0.85, 2.0, 1.55, "#38a047"), (0.62, 2.95, 1.35, "#43b553"), (0.38, 3.85, 1.15, "#4fc45e")]
-    for k, (r, z, h, col) in enumerate(tiers):
-        p.add(lathe([(r, 0), (r * 0.98, 0.12), (0, h)], 8, (0, 0, z), phase=k * 0.4), col)
-        p.add(lathe([(r * 0.6, -0.1), (r, 0)], 8, (0, 0, z), phase=k * 0.4, cap_top=False), "#276f33")
-    return p.build(smooth_angle=10)
+    bark, leaves = "#ffffff@bark", "#8fd16a@leaves"
+    p.add(lathe([(0.34, 0), (0.26, 0.3), (0.2, 1.8), (0.15, 2.6)], 9, jitter=0.12, seed=4), bark)
+    for a, t in ((0.5, 0.7), (2.6, 0.6)):
+        p.add(cyl(0.1, 0.06, 1.3, (0, 0, 1.7), (t, 0, a), segs=6), bark)
+    rnd = random.Random(9)
+    clusters = [(0, 0, 3.4, 1.5), (0.9, 0.3, 2.9, 1.1), (-0.8, 0.5, 3.0, 1.1), (0.2, -0.9, 3.0, 1.1), (-0.3, 0.1, 4.2, 1.0)]
+    for x, y, z, r in clusters:
+        p.add(ico(r, (x, y, z), (1, 1, 0.85), subd=2, jitter=0.25, seed=rnd.randint(0, 999)), leaves)
+    return p.build(smooth_angle=60)
 
 
 def tower():
     """The centrepiece (named tower in the game): a giant paint pot with a brush, spilling every colour."""
     p = Part("tower")
-    tin, rim = "gloss:#f4f1ea", "metal:#c9ccd2"
+    tin, rim = TIN, RIM
     colours = ["#ff3b3b", "#ffb703", "#22c55e", "#2f8cff", "#b14cff", "#ff6ec7"]
     # the pot, with rainbow stripes
     p.add(lathe([(1.75, 0), (1.85, 0.1), (1.95, 2.3), (2.0, 2.4)], 28, cap_top=False), tin)
@@ -167,16 +136,24 @@ def tower():
 
 
 def tires():
-    p = Part("tires")
-    rubber, hub = "#26282e", "#45484f"
-    stack = [(0, 0, 0.27, 0.0), (0.12, -0.08, 0.77, 0.3), (-0.08, 0.1, 1.27, 0.7)]
-    for i, (x, y, z, a) in enumerate(stack):
-        p.add(torus(0.55, 0.25, (x, y, z), (0.03 * (i - 1), 0, a), segs=16, rsegs=8, scale=(1, 1, 1.0)), rubber)
-        p.add(torus(0.57, 0.03, (x, y, z + 0.235), (0.03 * (i - 1), 0, a), segs=16, rsegs=4), hub if i != 1 else YELLOW)
-        for k in range(8):  # tread blocks
-            t = k / 8 * math.tau + a
-            p.add(cube((0.06, 0.12, 0.34), (x + math.cos(t) * 0.78, y + math.sin(t) * 0.79, z), (0, 0, t)), "#1a1c20")
-    return p.build(smooth_angle=50)
+    """Three old tractor tyres in a wobbly stack."""
+    o = kit.import_model("old_tyre", "tires", tris=1200)
+    o.data.transform(kit.Matrix.Rotation(math.pi / 2, 4, "X"))  # the model stands on its tread
+    kit.fit(o, length=1.7)
+    me = o.data
+    h = max(v.co.z for v in me.vertices)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    stack = bmesh.new()
+    for i, (x, y, a, tilt) in enumerate(((0, 0, 0.0, 0.0), (0.1, -0.06, 0.7, 0.03), (-0.06, 0.08, 1.9, -0.04))):
+        layer = bm.copy()
+        kit.xf(layer, (x, y, i * h * 0.97), (tilt, 0, a))
+        tmp = bpy.data.meshes.new("tmp")
+        layer.to_mesh(tmp)
+        stack.from_mesh(tmp)
+        bpy.data.meshes.remove(tmp)
+    stack.to_mesh(me)
+    return o
 
 
 def pad():

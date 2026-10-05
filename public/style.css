@@ -119,6 +119,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 
 .corner-btn { width: 44px; height: 44px; border-radius: 12px; background: rgba(10, 14, 24, 0.6); font-size: 20px; }
 .corner-btn.off { opacity: 0.4; }
+.corner-btn.on { box-shadow: 0 0 0 3px var(--accent); }
+/* Driver's seat view: dark edges like looking out of a hatch. */
+#periscope { position: fixed; inset: 0; z-index: -1; pointer-events: none; display: none; background: radial-gradient(ellipse at 50% 45%, transparent 58%, rgba(10, 14, 24, 0.6) 100%); }
+body.seat #periscope { display: block; }
 /* Narrow or short screens: the goal pill would run under the leaderboard. */
 @media (max-width: 700px), (max-height: 520px) { #goal { display: none; } }
 

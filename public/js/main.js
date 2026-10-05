@@ -6,8 +6,8 @@
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
 import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
-import { renderer, scene, camera, sun, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
-import { Tank, yawOf, dirOf, angleDiff } from './tank.js'
+import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
+import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
 import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, addShake, shake, emojiTexture } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, CELLS } from './paint.js'
@@ -656,6 +656,7 @@ const mouseNdc = new THREE.Vector2()
 
 function playerControls(me, dt) {
   const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing, boost: input.boost, mega: input.mega }
+  if (firstPerson()) return seatControls(me, c, dt)
   if (input.mouse.active && !input.touch) {
     ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
     if (ray.ray.intersectPlane(aimPlane, aimPoint)) c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
@@ -669,6 +670,64 @@ function playerControls(me, dt) {
   return c
 }
 
+// --- Driver's seat view --------------------------------------------------------------------
+// The camera rides in the turret and looks where the paint squirts. Driving is relative to the view:
+// up drives where you look, left and right steer. The mouse looks around once the pointer is locked;
+// on touch the right stick turns the view.
+
+const VIEW_KEY = 'splat-tanks.view'
+const seat = { on: false, yaw: 0, pitch: 0 }
+try {
+  seat.on = localStorage.getItem(VIEW_KEY) === 'seat'
+} catch {}
+
+const firstPerson = () => seat.on && game.phase === 'battle' && game.me?.alive
+
+function setSeat(on) {
+  seat.on = on
+  try {
+    localStorage.setItem(VIEW_KEY, on ? 'seat' : 'top')
+  } catch {}
+  $('view').classList.toggle('on', on)
+  if (game.me) seat.yaw = game.me.turretYaw
+  seat.pitch = 0
+  if (!on && document.pointerLockElement) document.exitPointerLock()
+  if (game.phase === 'battle') {
+    const touch = input.touch || matchMedia('(any-pointer: coarse)').matches
+    hud.subBanner(on ? (touch ? "👀 Driver's seat! Right stick looks around" : "👀 Driver's seat! Click, then move the mouse to look") : '🗺️ Sky view', 2200)
+  }
+}
+
+function seatControls(me, c, dt) {
+  const look = input.look
+  seat.yaw -= look.dx * 0.0028
+  seat.pitch = Math.max(-0.35, Math.min(0.2, seat.pitch - look.dy * 0.002))
+  look.dx = look.dy = 0
+  if (input.aimStick.active) seat.yaw -= input.aimStick.x * 2.4 * dt
+  else if (input.touch && Math.hypot(input.moveX, input.moveZ) > 0.2) {
+    // Drive stick only: the view swings round behind the tank, so holding the stick to one side steers.
+    seat.yaw += angleDiff(seat.yaw, me.heading) * Math.min(1, dt * 2.5)
+    c.fire = true
+  }
+  const d = dirOf(seat.yaw)
+  const ahead = -input.moveZ
+  const right = input.moveX
+  c.mx = d.x * ahead - d.z * right
+  c.mz = d.z * ahead + d.x * right
+  c.aimYaw = seat.yaw
+  return c
+}
+
+const eye = new THREE.Vector3()
+let lens = ''
+function setLens(fov, near) {
+  if (lens === `${fov}|${near}|${camera.aspect}`) return
+  lens = `${fov}|${near}|${camera.aspect}`
+  camera.fov = fov
+  camera.near = near
+  camera.updateProjectionMatrix()
+}
+
 // --- Camera ------------------------------------------------------------------------------
 
 const camPos = new THREE.Vector3(0, 40, 40)
@@ -678,6 +737,16 @@ const demoTanks = [] // parked in the menu's arena until the first match
 let menuAngle = 0
 
 function updateCamera(dt) {
+  const portrait = innerHeight > innerWidth
+  const inside = firstPerson()
+  view.seat = !!inside
+  if (game.me && game.me.firstPerson !== inside) {
+    game.me.setFirstPerson(inside)
+    if (inside) seat.yaw = game.me.turretYaw
+  }
+  if (!inside && document.pointerLockElement) document.exitPointerLock()
+  setLens(inside ? (portrait ? 80 : 70) : portrait ? 62 : 45, inside ? 0.1 : 0.5)
+  if (inside) return seatCamera(dt)
   if (game.phase === 'menu' || game.phase === 'loading') {
     menuAngle += dt * 0.08
     camera.position.set(Math.sin(menuAngle) * 58, 34, Math.cos(menuAngle) * 58)
@@ -690,7 +759,6 @@ function updateCamera(dt) {
     const d = dirOf(me.turretYaw)
     camTarget.lerp(camWant.set(me.pos.x + d.x * look, 0, me.pos.z + d.z * look), Math.min(1, dt * 5))
   }
-  const portrait = innerHeight > innerWidth
   const height = portrait ? 40 : 30
   const back = portrait ? 18 : 19
   camPos.lerp(camWant.set(camTarget.x, height, camTarget.z + back), Math.min(1, dt * 6))
@@ -700,8 +768,31 @@ function updateCamera(dt) {
   camera.position.y += (Math.random() - 0.5) * s * 1.2
   camera.position.z += (Math.random() - 0.5) * s * 1.6
   camera.lookAt(camTarget.x, 0, camTarget.z)
-  sun.position.set(camTarget.x - 30, 60, camTarget.z + 25)
-  sun.target.position.set(camTarget.x, 0, camTarget.z)
+  followSun()
+}
+
+function seatCamera(dt) {
+  const me = game.me
+  const d = dirOf(me.turretYaw)
+  me.turret.getWorldPosition(eye)
+  eye.y += 0.75 + me.tier * 0.08
+  eye.x -= d.x * 0.15
+  eye.z -= d.z * 0.15
+  camera.position.copy(eye)
+  const s = shake.amount * shake.amount * 0.3
+  camera.position.x += (Math.random() - 0.5) * s
+  camera.position.y += (Math.random() - 0.5) * s
+  const p = seat.pitch - 0.06
+  camera.lookAt(eye.x + d.x * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z + d.z * Math.cos(p) * 10)
+  // Keep the top view ready to take over smoothly, and the shadows centred ahead of the tank.
+  camTarget.set(me.pos.x + d.x * 4, 0, me.pos.z + d.z * 4)
+  camPos.set(camTarget.x, 30, camTarget.z + 19)
+  followSun()
+}
+
+function followSun() {
+  sun.position.copy(sunDir).multiplyScalar(70).add(camTarget)
+  sun.target.position.copy(camTarget)
 }
 
 let crossTimer = null
@@ -789,6 +880,7 @@ function battleStep(dt, n) {
     const pending = pendingPoints(me)
     game.offer = pending > 0 ? (game.offer ?? offerFor(me)) : null
     hud.showUpgrades(game.offer, me.upgrades, pending, pickUpgrade)
+    if (game.offer && document.pointerLockElement) document.exitPointerLock() // free the cursor for the cards
   }
 
   // Network: our tank, and on the host the bots too, in one batch.
@@ -830,9 +922,12 @@ function battleStep(dt, n) {
   if (me) hud.bars(me, best, n)
   hud.minimap(tanks, me, game.pads)
   const ch = $('crosshair')
-  const showCross = input.mouse.active && !input.touch && me?.alive
+  const inside = firstPerson()
+  document.body.classList.toggle('seat', !!inside)
+  const showCross = inside || (input.mouse.active && !input.touch && me?.alive)
   ch.style.display = showCross ? 'block' : 'none'
-  if (showCross) ch.style.transform = `translate(${((input.mouse.x + 1) / 2) * innerWidth}px, ${((1 - input.mouse.y) / 2) * innerHeight}px)`
+  if (inside) ch.style.transform = `translate(${innerWidth / 2}px, ${innerHeight / 2}px)`
+  else if (showCross) ch.style.transform = `translate(${((input.mouse.x + 1) / 2) * innerWidth}px, ${((1 - input.mouse.y) / 2) * innerHeight}px)`
 }
 
 function hostStep(dt, n) {
@@ -937,6 +1032,13 @@ function setupMenu() {
   const flipMusic = () => $('music').classList.toggle('off', !toggleMusic())
   $('music').addEventListener('click', flipMusic)
   onKey('KeyM', flipMusic)
+  $('view').classList.toggle('on', seat.on)
+  $('view').addEventListener('click', () => setSeat(!seat.on))
+  onKey('KeyV', () => setSeat(!seat.on))
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    // Lock the pointer for mouse look, but not while the upgrade cards want clicking.
+    if (e.pointerType === 'mouse' && firstPerson() && !game.offer && !document.pointerLockElement) renderer.domElement.requestPointerLock()
+  })
   // iOS Safari only unlocks audio from certain gestures, and the sticks cancel clicks.
   for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, { capture: true, passive: true })
 }

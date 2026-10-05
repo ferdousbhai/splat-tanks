@@ -5,6 +5,9 @@ import { BASE, emptyLoadout, statsFor, tierFor } from './config.js'
 import { emojiTexture } from './fx.js'
 
 /** Yaw (three.js rotation.y) that faces direction (dx, dz); models face -Z. */
+/** The camera's view: in the driver's seat, labels keep one size on screen instead of filling it up close. */
+export const view = { seat: false }
+
 export const yawOf = (dx, dz) => Math.atan2(-dx, -dz)
 export const dirOf = (yaw) => ({ x: -Math.sin(yaw), z: -Math.cos(yaw) })
 export const angleDiff = (a, b) => {
@@ -100,6 +103,7 @@ export class Tank {
     this.recoil = 0
     this.tilt = 0
     this.tier = 0
+    this.firstPerson = false // seen from inside: the hull and turret are hidden, the barrels stay
 
     this.root = new THREE.Group()
     this.root.visible = false
@@ -141,7 +145,15 @@ export class Tank {
     this.model.traverse((o) => {
       if (!o.isMesh) return
       o.castShadow = true
-      const swap = (m) => (m.name === 'tint' ? this.tintMat : m)
+      const swap = (m) => {
+        if (m.name !== 'tint') return m
+        // Keep the model's painted-metal bumps and wear under the team colour.
+        if (m.normalMap && !this.tintMat.normalMap) {
+          Object.assign(this.tintMat, { normalMap: m.normalMap, roughnessMap: m.roughnessMap, roughness: 1 })
+          this.tintMat.needsUpdate = true
+        }
+        return this.tintMat
+      }
       o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material)
     })
     this.body.add(this.model)
@@ -151,8 +163,17 @@ export class Tank {
     for (const b of this.barrels) b.userData.rest ??= b.position.clone()
     this.muzzleNodes = ['muzzle', 'muzzle_L', 'muzzle_R'].map((n) => this.model.getObjectByName(n)).filter(Boolean)
     if (!this.muzzleNodes.length) this.muzzleNodes = [this.turret]
+    this.setFirstPerson(this.firstPerson)
     // Bigger tiers sit a little taller in the label.
     this.labelHeight = 3 + tier * 0.35
+  }
+
+  /** Puts the hull and turret on layer 1, which the camera doesn't draw, so the view from inside is clear. */
+  setFirstPerson(on) {
+    this.firstPerson = on
+    const keep = new Set()
+    for (const b of this.barrels) b.traverse((o) => keep.add(o))
+    this.model.traverse((o) => o.isMesh && !keep.has(o) && o.layers.set(on ? 1 : 0))
   }
 
   refreshLabel() {
@@ -249,7 +270,12 @@ export class Tank {
     // A happy wobble after a splash.
     this.body.rotation.z = Math.sin(now / 45) * this.flash * 0.12
 
-    const show = this.alive
+    const show = this.alive && !this.firstPerson
+    if (this.label.material.sizeAttenuation === view.seat) {
+      for (const s of [this.label, this.crown]) s.material.sizeAttenuation = !view.seat
+      this.label.scale.set(...(view.seat ? [0.22, 0.055, 1] : [4.4, 1.1, 1]))
+      this.crown.scale.setScalar(view.seat ? 0.07 : 1.4)
+    }
     const y = this.labelHeight
     this.label.visible = show
     this.crown.visible = show && leader

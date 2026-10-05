@@ -1,9 +1,11 @@
-// Keyboard + mouse, and twin-stick touch controls. Movement is screen-relative (up = -z).
+// Keyboard + mouse, and twin-stick touch controls. Movement is screen-relative (up = -z), or relative to
+// where you look in the driver's seat view.
 
 export const input = {
   moveX: 0,
   moveZ: 0,
   mouse: { x: 0, y: 0, active: false }, // NDC
+  look: { dx: 0, dy: 0 }, // mouse movement while the pointer is locked (driver's seat view), read and cleared by the game
   firing: false,
   aimStick: { x: 0, y: 0, active: false },
   boost: false, // edge-triggered, cleared by the game
@@ -53,6 +55,11 @@ export function bindMouse(canvas) {
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return
     input.touch = false // an iPad trackpad or mouse takes over aiming
+    if (document.pointerLockElement === canvas) {
+      input.look.dx += e.movementX
+      input.look.dy += e.movementY
+      return
+    }
     input.mouse.x = (e.clientX / innerWidth) * 2 - 1
     input.mouse.y = -(e.clientY / innerHeight) * 2 + 1
     input.mouse.active = true

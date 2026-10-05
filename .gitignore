@@ -2,3 +2,5 @@ node_modules/
 .cloudflare/
 .wrangler/
 public/bitgames.json
+blender/.polyhaven/
+blender/__pycache__/

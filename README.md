@@ -12,7 +12,10 @@ paints the same 1 m grid (`public/js/paint.js`) and agrees on the score. The gam
 stay `tank-clash` from the game's first version.
 
 - `public/`: the game (static files deployed to Cloudflare). Entry point: `public/index.html`.
-- `blender/`: model sources. Rebuild with `blender --background --python blender/tanks.py` (and `blender/arena.py`).
+- `blender/`: model sources. Rebuild with `blender --background --python blender/tanks.py` (and `blender/arena.py`,
+  `blender/environment.py` for the sky HDRI and ground textures). The realistic look comes from [Poly Haven](https://polyhaven.com)
+  (CC0): `blender/polyhaven.py` downloads models, texture sets and the HDRI into `blender/.polyhaven/` (git-ignored), and
+  the scripts decimate the models and shrink textures to 512 px before baking them into the GLBs.
 - `dev/`: local test pages (not deployed). Serve the repo root (`python3 -m http.server 5181`) and open:
   - `dev/two.html`: two players in one page, relaying WebRTC like the BitGames lobby does.
   - `dev/ipad.html`: iPad landscape and portrait layouts.

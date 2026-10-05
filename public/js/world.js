@@ -1,26 +1,31 @@
 // The arena: renderer, lights, ground, Blender props laid out from a shared seed, and collisions.
+// The sky, ground textures and several props come from Poly Haven (CC0) via the scripts in blender/.
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { ARENA, rng } from './config.js'
 
 export const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('view'), antialias: true, powerPreference: 'high-performance' })
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75))
 renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFShadowMap
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
 renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 1.05
+renderer.toneMappingExposure = 1.0
 
 export const scene = new THREE.Scene()
-scene.background = new THREE.Color('#8fd3ff')
-scene.fog = new THREE.Fog('#8fd3ff', 70, 150)
+scene.background = new THREE.Color('#a9c8e8')
+scene.fog = new THREE.Fog('#c3d5e6', 90, 200)
 
 export const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 300)
 
+// Fill light until the sky loads; then the sky lights the scene and this one fades down.
 const hemi = new THREE.HemisphereLight('#dff4ff', '#6b5a3a', 1.6)
 scene.add(hemi)
 export const sun = new THREE.DirectionalLight('#fff3dc', 2.6)
-sun.position.set(-30, 60, 25)
+/** Towards the sun; the measured direction in the HDRI (env/sky.json) replaces it once the sky loads. */
+export const sunDir = new THREE.Vector3(41, 55, 28).normalize()
+sun.position.copy(sunDir).multiplyScalar(70)
 sun.castShadow = true
 sun.shadow.mapSize.set(2048, 2048)
 const sc = sun.shadow.camera
@@ -43,48 +48,54 @@ function resize() {
 addEventListener('resize', resize)
 resize()
 
-// --- Ground -----------------------------------------------------------------------------
+// --- Sky ----------------------------------------------------------------------------------
 
-function groundTexture() {
-  const c = document.createElement('canvas')
-  c.width = c.height = 512
-  const g = c.getContext('2d')
-  g.fillStyle = '#c9a66b'
-  g.fillRect(0, 0, 512, 512)
-  const r = rng(7)
-  for (let i = 0; i < 2600; i++) {
-    const v = Math.floor(r() * 40 - 20)
-    g.fillStyle = `rgba(${120 + v},${95 + v},${55 + v},${0.08 + r() * 0.12})`
-    const s = 2 + r() * 10
-    g.fillRect(r() * 512, r() * 512, s, s)
+async function loadSky() {
+  try {
+    const [hdr, meta] = await Promise.all([new HDRLoader().loadAsync('./env/sky.hdr'), fetch('./env/sky.json').then((r) => r.json())])
+    hdr.mapping = THREE.EquirectangularReflectionMapping
+    scene.background = hdr
+    scene.environment = hdr
+    // The HDRI already holds the sun's light, so the shadow-casting sun only adds what's missing.
+    scene.environmentIntensity = 0.75
+    hemi.intensity = 0.15
+    sun.intensity = 1.6
+    sunDir.fromArray(meta.sun).normalize()
+    sun.position.copy(sunDir).multiplyScalar(70)
+  } catch (e) {
+    console.warn('Could not load the sky', e)
   }
-  g.strokeStyle = 'rgba(80,60,30,0.18)'
-  g.lineWidth = 3
-  g.strokeRect(0, 0, 512, 512)
-  const t = new THREE.CanvasTexture(c)
-  t.wrapS = t.wrapT = THREE.RepeatWrapping
-  t.colorSpace = THREE.SRGBColorSpace
-  t.anisotropy = 4
-  return t
 }
 
-const groundTex = groundTexture()
-groundTex.repeat.set(ARENA / 4, ARENA / 4)
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(ARENA * 2, ARENA * 2), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1 }))
+// --- Ground -----------------------------------------------------------------------------
+
+const texLoader = new THREE.TextureLoader()
+
+/** A Poly Haven texture set from public/textures, tiling every `tile` metres over a `size` metre plane. */
+function groundMaterial(name, size, tile) {
+  const load = (kind, srgb) => {
+    const t = texLoader.load(`./textures/${name}_${kind}.jpg`)
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.setScalar(size / tile)
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy()
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace
+    return t
+  }
+  const arm = load('arm')
+  return new THREE.MeshStandardMaterial({ map: load('diff', true), normalMap: load('nor'), roughnessMap: arm, aoMap: arm, metalness: 0 })
+}
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(ARENA * 2, ARENA * 2), groundMaterial('sand', ARENA * 2, 3.5))
 ground.rotation.x = -Math.PI / 2
 ground.receiveShadow = true
 scene.add(ground)
 
-const outside = new THREE.Mesh(new THREE.RingGeometry(ARENA * 1.2, 260, 4, 1), new THREE.MeshStandardMaterial({ color: '#6fae4c', roughness: 1 }))
-outside.rotation.x = -Math.PI / 2
-outside.rotation.z = Math.PI / 4
-outside.position.y = -0.02
-scene.add(outside)
-const verge = new THREE.Mesh(new THREE.PlaneGeometry(ARENA * 2.6, ARENA * 2.6), new THREE.MeshStandardMaterial({ color: '#7cb954', roughness: 1 }))
-verge.rotation.x = -Math.PI / 2
-verge.position.y = -0.03
-verge.receiveShadow = true
-scene.add(verge)
+const GRASS = 520
+const grass = new THREE.Mesh(new THREE.PlaneGeometry(GRASS, GRASS), groundMaterial('grass', GRASS, 4))
+grass.rotation.x = -Math.PI / 2
+grass.position.y = -0.03
+grass.receiveShadow = true
+scene.add(grass)
 
 // Painted target in the middle of the arena.
 {
@@ -112,7 +123,9 @@ async function loadGlb(url) {
 }
 
 export async function loadModels(onProgress) {
-  const [tanks, arena] = await Promise.all([loadGlb('./models/tanks.glb').finally(() => onProgress?.(0.5)), loadGlb('./models/arena.glb').finally(() => onProgress?.(1))])
+  let done = 0
+  const step = (p) => p.finally(() => onProgress?.(++done / 3))
+  const [tanks, arena] = await Promise.all([step(loadGlb('./models/tanks.glb')), step(loadGlb('./models/arena.glb')), step(loadSky())])
   const take = (gltf, name, into, key) => {
     const node = gltf?.scene.getObjectByName(name)
     if (!node) return

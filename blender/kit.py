@@ -11,6 +11,10 @@ material slot per colour. Colours are plain Principled BSDF materials:
   'gloss:#hex'    painted, shiny
   'glow:#hex'     emissive
 
+Any spec can end in '@surface' (see SURF) to get a Poly Haven texture set: the colour map is
+multiplied by the spec's colour, and the pieces get box-projected UVs so the texture tiles at its
+real size.
+
 Blender axes: +Y is the model's front (three.js -Z), +Z is up.
 Object names must be unique in Blender, so repeated child names get '.001'
 suffixes; fix_names() strips them in the GLB so every tank has 'hull', 'turret'...
@@ -26,16 +30,31 @@ import bmesh
 import bpy
 from mathutils import Euler, Matrix, Vector
 
+import polyhaven
+
 PAL = {
-    "dark": "#2b2f38",      # tracks, rubber
-    "darker": "#1b1e24",
-    "metal": "metal:#9aa3ad",
-    "steel": "metal:#5f6873",
+    "dark": "#2b2f38@rubber",  # tracks
+    "darker": "#1b1e24@rubber",
+    "metal": "metal:#9aa3ad@metal",
+    "steel": "metal:#5f6873@metal",
     "gold": "metal:#f2b632",
     "light": "glow:#ffe066",  # headlights
     "red": "#d8262c",
     "white": "#f2f0ea",
 }
+
+
+# Poly Haven texture sets: name -> (asset, metres one tile covers, use its colour map, use its metal map).
+SURF = {
+    "planks": ("brown_planks_05", 1.6, True, False),
+    "metal": ("metal_plate", 1.2, True, True),
+    "painted": ("metal_plate", 1.2, False, False),  # bumps and wear under a painted colour
+    "rubber": ("rubber_tiles", 0.8, False, False),
+    "blocks": ("concrete_block_wall", 2.0, True, False),
+    "bark": ("bark_brown_02", 1.2, True, False),
+    "leaves": ("leafy_grass", 1.6, True, False),
+}
+TEX_SIZE = 512  # every texture is shrunk to this before it goes into a GLB
 
 
 # --- Pieces: each returns a fresh bmesh -------------------------------------------------
@@ -229,15 +248,16 @@ _mats = {}
 def material(spec):
     """Material for a colour spec (see module doc), shared by name."""
     name = spec
-    spec = PAL.get(spec, spec)
+    spec, _, surf = PAL.get(spec, spec).partition("@")
     if spec == "tint":
         kind, hx = "tint", "#ffffff"
+        surf = surf or "painted"
     elif ":" in spec:
         kind, hx = spec.split(":")
     else:
         kind, hx = "matte", spec
     if name.startswith("#") or ":" in name:
-        name = f"{kind}_{hx.lstrip('#')}"
+        name = f"{kind}_{hx.lstrip('#')}" + (f"_{surf}" if surf else "")
     if name in _mats:
         return _mats[name]
     m = bpy.data.materials.new(name)
@@ -252,8 +272,79 @@ def material(spec):
         bsdf.inputs["Emission Strength"].default_value = 2.0
     m.diffuse_color = (*col, 1)
     m.use_backface_culling = True
+    if surf:
+        textured(m, SURF[surf], col)
+    m["tile"] = SURF[surf][1] if surf else 1.0
     _mats[name] = m
     return m
+
+
+_imgs = {}
+
+
+def image(path, color=True, size=TEX_SIZE):
+    """Loads a texture once, shrunk to `size`."""
+    if path in _imgs:
+        return _imgs[path]
+    img = bpy.data.images.load(path)
+    img.colorspace_settings.name = "sRGB" if color else "Non-Color"
+    shrink(img, size)
+    _imgs[path] = img
+    return img
+
+
+def shrink(img, size=TEX_SIZE):
+    w, h = img.size
+    if max(w, h) > size:
+        img.scale(round(w * size / max(w, h)), round(h * size / max(w, h)))
+
+
+def textured(m, surf, col):
+    """Wires a Poly Haven texture set into a material in the shapes the glTF exporter understands."""
+    asset, _, use_diff, use_metal = surf
+    maps = polyhaven.texture(asset)
+    nt = m.node_tree
+    bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+
+    def tex(path, color):
+        n = nt.nodes.new("ShaderNodeTexImage")
+        n.image = image(path, color)
+        return n
+
+    if use_diff:
+        diff = tex(maps["diff"], True)
+        if any(abs(c - 1) > 1e-3 for c in col):
+            mix = nt.nodes.new("ShaderNodeMix")
+            mix.data_type = "RGBA"
+            mix.blend_type = "MULTIPLY"
+            mix.inputs["Factor"].default_value = 1.0
+            nt.links.new(diff.outputs["Color"], mix.inputs["A"])
+            mix.inputs["B"].default_value = (*col, 1)
+            nt.links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
+        else:
+            nt.links.new(diff.outputs["Color"], bsdf.inputs["Base Color"])
+    arm = tex(maps["arm"], False)
+    sep = nt.nodes.new("ShaderNodeSeparateColor")
+    nt.links.new(arm.outputs["Color"], sep.inputs["Color"])
+    nt.links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
+    if use_metal:
+        nt.links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
+    nor = tex(maps["nor_gl"], False)
+    nmap = nt.nodes.new("ShaderNodeNormalMap")
+    nt.links.new(nor.outputs["Color"], nmap.inputs["Color"])
+    nt.links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
+
+
+def box_uv(bm, tile, faces=None):
+    """UVs in metres / tile, projected along each face's main axis."""
+    uv = bm.loops.layers.uv.verify()
+    for f in faces if faces is not None else bm.faces:
+        n = f.normal
+        ax = max(range(3), key=lambda k: abs(n[k]))
+        a, b = [(1, 2), (0, 2), (0, 1)][ax]
+        for loop in f.loops:
+            co = loop.vert.co
+            loop[uv].uv = (co[a] / tile, co[b] / tile)
 
 
 # --- Parts -------------------------------------------------------------------------------
@@ -277,8 +368,11 @@ class Part:
         """Merges a piece; faces where pick(face) is true get colour `alt` instead."""
         idx = self.slot(color)
         alt_idx = self.slot(alt) if alt else idx
+        bm.normal_update()
         for f in bm.faces:
             f.material_index = alt_idx if pick and pick(f) else idx
+        for i in {idx, alt_idx}:
+            box_uv(bm, self.slots[i]["tile"], [f for f in bm.faces if f.material_index == i])
         me = bpy.data.meshes.new("tmp")
         bm.to_mesh(me)
         bm.free()
@@ -303,6 +397,60 @@ class Part:
         o.parent = parent
         o.location = location
         return o
+
+
+def import_model(asset, name, tris=None):
+    """A Poly Haven model as one mesh object called `name`, its textures shrunk, decimated to about `tris`."""
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=polyhaven.model(asset))
+    new = [o for o in bpy.data.objects if o not in before]
+    meshes = [o for o in new if o.type == "MESH"]
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in meshes:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    if len(meshes) > 1:
+        bpy.ops.object.join()
+    o = bpy.context.view_layer.objects.active
+    bpy.ops.object.parent_clear(type="CLEAR_KEEP_TRANSFORM")
+    for e in new:
+        if e.type != "MESH":
+            bpy.data.objects.remove(e)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    # glTF splits vertices along UV seams; weld them so the decimator can collapse across seams.
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
+    bm.to_mesh(o.data)
+    bm.free()
+    if tris and tris < o_tris(o):
+        mod = o.modifiers.new("decimate", "DECIMATE")
+        mod.ratio = tris / o_tris(o)
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    for m in o.data.materials:
+        for n in m.node_tree.nodes:
+            if n.type == "TEX_IMAGE" and n.image:
+                shrink(n.image)
+    o.name = o.data.name = name
+    return o
+
+
+def o_tris(o):
+    return sum(len(p.vertices) - 2 for p in o.data.polygons)
+
+
+def fit(o, length=None, height=None, rot_z=0.0, scale=None):
+    """Turns the mesh by rot_z, scales it to a length along X or a height (or a plain scale), and stands
+    its base centre on the origin. Applies all of it to the vertices."""
+    me = o.data
+    me.transform(Matrix.Rotation(rot_z, 4, "Z"))
+    lo = Vector([min(v.co[k] for v in me.vertices) for k in range(3)])
+    hi = Vector([max(v.co[k] for v in me.vertices) for k in range(3)])
+    size = hi - lo
+    s = scale or (length / size.x if length else height / size.z)
+    me.transform(Matrix.Diagonal((s, s, s, 1)) @ Matrix.Translation(-Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z))))
+    me.update()
+    return o
 
 
 def empty(name, parent=None, location=(0, 0, 0), size=0.2):
@@ -338,7 +486,8 @@ def export(path, roots):
             c.select_set(True)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_apply=True,
-                              export_yup=True, export_animations=False, export_texcoords=False)
+                              export_yup=True, export_animations=False, export_texcoords=True,
+                              export_image_format="JPEG", export_jpeg_quality=80)
     fix_names(path)
     print(f"exported {path} ({os.path.getsize(path)} bytes)")
 
