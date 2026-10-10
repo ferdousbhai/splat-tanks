@@ -9,7 +9,7 @@
 // levels, pickups, paint buckets and the bots, and tells everyone what happened.
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
-import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
+import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, BOT_LEVELS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
@@ -147,11 +147,8 @@ function handle(msg, from) {
   switch (msg.t) {
     case 'hello': {
       const h = { name: safeName(msg.name), color: safeColor(msg.color) }
-      // A friend arriving is said and shown, as a friend leaving is.
-      if (!game.humans.has(from)) {
-        hud.feed(`${hud.tag(h)} came to paint 👋`)
-        if (game.phase === 'menu') voice.say(`${h.name} is here!`)
-      }
+      // A friend arriving in the menu is said; one joining a round is shown in the feed when their tank arrives.
+      if (!game.humans.has(from) && game.phase === 'menu') voice.say(`${h.name} is here!`)
       game.humans.set(from, h)
       if (msg.host) game.hostId = from
       const existing = game.tanks.get(from)
@@ -172,7 +169,10 @@ function handle(msg, from) {
       break
     }
     case 'add':
-      if (game.phase === 'battle') addTank(msg.e)
+      if (game.phase !== 'battle' || game.tanks.has(msg.e.i)) break
+      // In the colour the host gave them, mirroring "went home".
+      if (!msg.e.b && msg.e.i !== game.selfId) hud.feed(`${hud.tag(addTank(msg.e))} came to paint 👋`)
+      else addTank(msg.e)
       break
     case 'start':
       startBattle(msg)
@@ -298,6 +298,7 @@ function snapshot() {
     rem: m.mode === 'match' ? Math.max(0, m.endsAt - n) : 0,
     cd: Math.max(0, m.startAt - n),
     fresh: false,
+    opts: game.opts,
     roster: tankList().map((t) => ({ i: t.id, n: t.name, c: t.color, s: t.slot, b: t.bot ? 1 : 0, lv: t.level, xp: Math.round(t.xp), u: t.upgrades, al: t.alive ? 1 : 0, x: r2(t.pos.x), z: r2(t.pos.z), h: r2(t.heading) })),
     pads: game.pads.map((p) => p.kind),
     // 0 for a bucket that's up, else the milliseconds until it comes back, so a joiner who later hosts keeps the time.
@@ -341,6 +342,7 @@ function hostStartMatch() {
     rem: mode === 'match' ? MATCH.minutes[game.opts.length] * 60000 + cd : 0,
     cd,
     fresh: true,
+    opts: game.opts,
     roster,
     pads: PADS.map((_, i) => (mode === 'match' ? (i < 4 ? 'star' : i < 6 ? 'rapid' : null) : i < 2 ? 'roller' : i < 4 ? 'rapid' : null)),
     barrels: [],
@@ -350,8 +352,22 @@ function hostStartMatch() {
 /** Each child keeps their own colour: one already taken is swapped for the first free one. */
 const freeColor = (want, used) => (used.has(want) ? COLORS.find((c) => !used.has(c)) ?? want : want)
 
+/** The room's game choices travel with every start, so whoever hosts next keeps the same game. */
+function takeOpts(o) {
+  if (!o || typeof o !== 'object') return
+  if (['together', 'match'].includes(o.mode)) game.opts.mode = o.mode
+  if ([2, 3, 4].includes(o.parts)) game.opts.parts = o.parts
+  if ([0, 2, 3, 5, 7].includes(o.bots)) game.opts.bots = o.bots
+  if (Object.hasOwn(BOT_LEVELS, o.difficulty)) game.opts.difficulty = o.difficulty
+  if ([0, 1, 2].includes(o.length)) game.opts.length = o.length
+  for (const seg of document.querySelectorAll('.seg')) {
+    for (const b of seg.querySelectorAll('button')) b.classList.toggle('on', b.dataset.v === String(game.opts[seg.dataset.opt]))
+  }
+}
+
 function startBattle(msg) {
   leaveRound()
+  takeOpts(msg.opts)
   const mode = msg.mode === 'match' ? 'match' : 'together'
   view.levels = mode === 'match'
   for (const t of [...game.tanks.values(), ...demoTanks.splice(0)]) t.dispose()
@@ -401,10 +417,12 @@ function startBattle(msg) {
     // The countdown (or, for a joiner, its last step on the next frame) says the opening line.
     $('goal').textContent = '🎨 Paint the floor your colour!'
   }
-  // A friend already had this colour, so the host gave us another: say which, as a child knows their tank by it.
+  // A friend already had this colour, so the host gave us another: say which, as a child knows their tank by
+  // it, and tell the room so friends' menus show the colour we really have.
   if (game.me && game.me.color !== game.myColor) {
     game.myColor = game.me.color
     voice.say(`You're ${COLOR_NAMES[COLORS.indexOf(game.myColor)]}!`)
+    hello()
   }
   // The driver's seat is remembered between rounds: say so, after the round's own opening line.
   if (msg.fresh && seat.on) voice.say("You're in the driver's seat.")

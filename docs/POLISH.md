@@ -175,6 +175,13 @@ The cleanup review came back clean.
 - **A friend arriving:** the feed shows "… came to paint 👋", mirroring "went home", and in the menu the game says "… is here!".
 - The README and this log now say tanks grow at every part except the last.
 
+### Fresh audit, round 12
+
+The cleanup review came back clean.
+- **Swapped colour reaches the room:** a child given a free colour now sends `hello`, so friends' menus dim the colour they really have and their chip shows it. Before, a third child could pick a colour that looked free and be swapped again.
+- **"Came to paint" colour:** the line now appears when the joiner's tank arrives (`add`), in the colour the host gave them.
+- **A new host keeps the room's game:** every `start` (and the mid-join snapshot) now carries the game choices (mode, parts, robots, speed, time). Every device takes them and shows them in its menu, so whoever hosts next replays the same game, and the robots keep their speed.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
