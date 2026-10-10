@@ -601,7 +601,7 @@ function onBucket(msg) {
   setBarrel(b, false)
   splash(b.x, b.z, 3, color)
   sound.splosh(hearing(b.x, b.z))
-  if (by === game.me) hud.subBanner('🪣 Paint bucket!', 1400)
+  if (by === game.me) hud.subBanner('🪣 Paint bucket!', 1400, true)
 }
 
 /** Levels arrive from the network: keep them whole and in range, since they index the tier and XP tables. */

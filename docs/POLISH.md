@@ -126,6 +126,12 @@ Test scripts and screenshots are in the session scratchpad `splat/` (`audit/` be
   - robot brains are made in one place
   - the dead `skip` and `fresh` parameters are gone
 
+### Fresh audit, round 6
+
+The bug and cleanup reviews came back clean. Design found two problems:
+- **Bucket over the half fact:** picking up a paint bucket replaced the "Two quarters make one half!" sub-line while it was being said. Passing notes are now `soft` and never replace a sub-line that is still showing.
+- **Banners on small phones:** on 375×667, 360×640 and 414×736, 🏠 covered the start of every banner. On narrow screens, banners now start below the left column.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

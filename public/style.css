@@ -87,8 +87,9 @@ body.together .bars { width: auto; }
   body.together .top-center { left: auto; right: var(--right); transform: none; }
   .fraction { --side: 60px; }
   /* Below the leaderboard's six rows. */
-  #hud #banner { top: 32%; }
-  #hud #subbanner { top: calc(32% + clamp(44px, 8vw, 90px)); }
+  /* …and below the left column (minimap and three buttons) on short phones. */
+  #hud #banner { top: max(32%, calc(var(--top) + var(--map) + 164px)); }
+  #hud #subbanner { top: calc(max(32%, calc(var(--top) + var(--map) + 164px)) + clamp(44px, 8vw, 90px)); }
   .fraction b { font-size: 12px; }
 }
 #board { position: absolute; top: calc(var(--top) + 56px); right: var(--right); width: 210px; display: flex; flex-direction: column; gap: 3px; }

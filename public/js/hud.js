@@ -41,8 +41,10 @@ export function banner(text, sub = '', ms = 1600) {
     $('subbanner').classList.remove('show')
   }
 }
-export function subBanner(text, ms = 2000) {
+/** soft: a passing note (a paint bucket) that never replaces a sub-line still on screen. */
+export function subBanner(text, ms = 2000, soft = false) {
   const s = $('subbanner')
+  if (soft && s.classList.contains('show')) return
   s.textContent = text
   s.classList.add('show')
   clearTimeout(subTimer)
