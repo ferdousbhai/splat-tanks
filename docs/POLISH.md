@@ -236,6 +236,13 @@ Cleanup came back clean.
 - **Results on landscape phones with the toolbar showing (about 290–340 px tall):** a smaller title, a capped picture and compact painter chips keep the floor picture, all eight painters and the buttons in view, so Play again no longer floats over the picture.
 - **Aim stick on 568-wide phones:** its ring rests further in, clear of 🎈.
 
+### Fresh audit, round 21
+
+Cleanup came back clean.
+- **Strip over the tank on landscape phones:** the camera looks ahead of the tank, so a child aiming down the screen drove their tank up under the top-centre fraction strip, fully hidden at 740×290 and 800×304. On short screens the strip now sits in the free top-right corner, at a smaller size.
+- **Wrapped banners (from round 20):** the pill's extra width made "Two quarters painted!" wrap on 360–375 px phones, onto the half fact below. On taller screens the sub-line is now placed below the banner's real height, however many lines it wraps to, and the pill is a little wider again.
+- **Match leaderboard:** it could show the previous round's names (robot ids repeat) until a percentage changed. Names and colours are now part of its redraw key.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

@@ -109,10 +109,10 @@ body.together .bars { width: auto; }
 .brow .k { min-width: 22px; text-align: right; color: var(--accent); }
 
 /* Banners are a soft dark pill around their words, so they read over anything behind (labels, paint, sky). */
-#banner, #subbanner { width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; box-sizing: border-box; background: rgba(10, 14, 24, 0.55); border-radius: 14px; }
-#banner { position: absolute; top: var(--banner-top); left: 0; right: 0; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; opacity: 0; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; pointer-events: none; padding: 4px 16px; }
+#banner, #subbanner { width: fit-content; max-width: calc(100% - 16px); margin: 0 auto; box-sizing: border-box; background: rgba(10, 14, 24, 0.55); border-radius: 14px; }
+#banner { position: absolute; top: var(--banner-top); left: 0; right: 0; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; opacity: 0; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; pointer-events: none; padding: 4px 12px; }
 #banner.show { opacity: 1; transform: scale(1); }
-#subbanner { position: absolute; top: calc(var(--banner-top) + var(--sub-gap)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 4px 16px; }
+#subbanner { position: absolute; top: calc(var(--banner-top) + var(--sub-gap)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 4px 12px; }
 #subbanner.show { opacity: 1; }
 
 /* While the upgrade cards are up, the sub-banner makes way for them. */
@@ -221,6 +221,11 @@ body.seat #periscope { display: block; }
   body.cards #banner, body.cards .top-center { display: none; }
   #upgrades { top: var(--top); bottom: auto; }
   .card .tx, .card .pips { display: none; }
+  /* The fraction strip goes to the free top-right corner (no leaderboard when painting together), so it never
+     covers your tank when the camera looks ahead of it toward the top of the screen. */
+  body.together .top-center { left: auto; right: var(--right); transform: none; }
+  .fraction { --side: 60px; }
+  .fraction b { font-size: 12px; }
   /* Banners sit just above the level panel, below your tank (hud.js placeBanners), so they're smaller here. */
   #banner { font-size: clamp(22px, 4.5vw, 30px); }
   #subbanner { font-size: 16px; }

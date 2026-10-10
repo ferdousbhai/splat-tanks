@@ -44,16 +44,18 @@ export function banner(text, sub = '', ms = 1600) {
 }
 
 /**
- * Short screens (landscape phones, the store's preview frame) have no spare band: the tank sits in the middle,
- * the fraction strip or timer at the top and the level panel at the bottom. There the sub-line sits just above
- * the panel, wherever it really is, and the banner just above the sub-line. Taller screens use style.css.
+ * Taller screens: the banner sits where style.css puts it and the sub-line just below it, however many lines
+ * the banner wrapped to. Short screens (landscape phones, the store's preview frame) have no spare band: the
+ * tank sits in the middle, the fraction strip or timer at the top and the level panel at the bottom. There the
+ * sub-line sits just above the panel, wherever it really is, and the banner just above the sub-line.
  */
 addEventListener('resize', () => placeBanners()) // a phone turned while a banner shows
 function placeBanners() {
   const b = $('banner')
   const s = $('subbanner')
   if (innerHeight > 520) {
-    b.style.top = b.style.bottom = s.style.top = s.style.bottom = ''
+    b.style.top = b.style.bottom = s.style.bottom = ''
+    s.style.top = `${b.offsetTop + b.offsetHeight + 6}px`
     return
   }
   const above = innerHeight - document.querySelector('#hud .bottom').getBoundingClientRect().top + 6
@@ -107,7 +109,7 @@ export function board(tanks, me) {
   const sorted = [...tanks].sort(byPaint)
   let rows = sorted.slice(0, 6)
   if (me && !rows.includes(me)) rows = [...rows.slice(0, 5), me]
-  const key = rows.map((t) => `${t.id}${pct(t)}${t.level}`).join('|')
+  const key = rows.map((t) => `${t.id}${t.name}${t.color}${pct(t)}${t.level}`).join('|')
   if (key === boardKey) return sorted
   boardKey = key
   $('board').innerHTML = rows
