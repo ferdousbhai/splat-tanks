@@ -141,6 +141,17 @@ The bug and cleanup reviews came back clean. Design found two problems:
   - Landscape phones: the cards are compact, at the top in place of the timer, and no longer cover the tank.
 - A stale CSS comment was fixed. Keeping part progress in `parts.js` was suggested but skipped as marginal.
 
+### Fresh audit, round 8
+
+- **New power, shown as said:** the power was spoken after its banner had gone. Finishing a part is now two beats. First the fraction and the half fact; then, once that line has been said and no sooner than 3 s, "✨ Splasher! 🎈 Paint balloons!" is shown while it is said. The timer is cleared by `leaveRound`.
+- **Menu on upright phones:** each label sits on its own line, so "2 3 4" (and every other row of choices) stays on one line.
+- **Colour buttons:** they have names for screen readers (`aria-label`, `aria-pressed`) and say their colour when tapped.
+- **Bucket times for joiners:** the mid-join snapshot sends each burst bucket's time left, so a joiner who later becomes host brings it back on time.
+- **Cleanup:**
+  - banner placement is one `--banner-top` / `--sub-gap` pair, defaulted on `:root` and set per layout, instead of rules competing on specificity
+  - a dead tiny-frame selector was removed
+  - the chalk label comment says "ring", not "tick"
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

@@ -210,7 +210,7 @@ function drawChalk() {
   }
 }
 
-/** The part's fraction in chalk, "1 over n", bolder with a tick once it's painted. */
+/** The part's fraction in chalk, "1 over n", bolder with a ring once it's painted. */
 function drawLabel(p) {
   const mesh = labels[p]
   if (!mesh) return

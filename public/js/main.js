@@ -9,7 +9,7 @@
 // levels, pickups, paint buckets and the bots, and tells everyone what happened.
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
-import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
+import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
@@ -44,6 +44,7 @@ const game = {
   progress: [], // painting together: each part's painted share, measured when the paint changes
   progressVersion: -1, // the paintVersion it was measured at
   endTimer: 0,
+  powerTimer: 0, // painting together: the new power's banner, after the fraction line
   pads: [],
   offer: null,
   shotCount: 0,
@@ -291,7 +292,8 @@ function snapshot() {
     fresh: false,
     roster: tankList().map((t) => ({ i: t.id, n: t.name, c: t.color, s: t.slot, b: t.bot ? 1 : 0, lv: t.level, xp: Math.round(t.xp), u: t.upgrades, al: t.alive ? 1 : 0, x: r2(t.pos.x), z: r2(t.pos.z), h: r2(t.heading) })),
     pads: game.pads.map((p) => p.kind),
-    barrels: barrels.map((b) => (b.alive ? 1 : 0)),
+    // 0 for a bucket that's up, else the milliseconds until it comes back, so a joiner who later hosts keeps the time.
+    barrels: barrels.map((b) => (b.alive ? 0 : Math.max(1, b.backAt - n))),
     paint: encodePaint(),
   }
 }
@@ -358,7 +360,11 @@ function startBattle(msg) {
   game.progress = []
   game.progressVersion = -1
   hud.resetMinimap()
-  barrels.forEach((b, i) => setBarrel(b, msg.barrels.length ? !!msg.barrels[i] : true))
+  barrels.forEach((b, i) => {
+    const back = msg.barrels[i] ?? 0
+    setBarrel(b, !back)
+    if (back) b.backAt = now() + back
+  })
   game.pads.forEach((p, i) => setPad(i, msg.pads[i] ?? null))
   if (msg.paint) decodePaint(msg.paint)
   else resetPaint()
@@ -387,6 +393,7 @@ function startBattle(msg) {
 /** Every way out of a round goes through here: nothing from it keeps talking, waiting or showing. */
 function leaveRound() {
   clearTimeout(game.endTimer)
+  clearTimeout(game.powerTimer)
   homeArmedUntil = 0
   voice.hush()
   hud.clearBanners()
@@ -708,10 +715,20 @@ function onPartDone(msg) {
     for (const t of game.tanks.values()) if (t.level < grownLevel(k)) setLevel(t, grownLevel(k))
     if (game.me && game.me.tier !== was) tier = TIERS[game.me.tier - 1]
   }
-  // Shown as said: the fraction, the half fact when there is one, and the new power.
-  hud.banner(doneTitle(k, n), [halfWords(k, n), tier && `✨ ${tier.name}! ${tier.perk}`].filter(Boolean).join('\n'), 3000)
-  voice.say(doneWords(k, n))
-  if (tier) voice.say(tier.say)
+  // Two beats, each shown while it is said: the fraction (and the half fact), then the new power once
+  // that line has finished, and never sooner than the first banner's 3 s.
+  hud.banner(doneTitle(k, n), halfWords(k, n), 3000)
+  const shownAt = now()
+  voice.say(doneWords(k, n), {
+    onend: () => {
+      if (!tier) return
+      clearTimeout(game.powerTimer)
+      game.powerTimer = setTimeout(() => {
+        hud.banner(`✨ ${tier.name}!`, tier.perk, 3000)
+        voice.say(tier.say)
+      }, Math.max(0, 3000 - (now() - shownAt)))
+    },
+  })
 }
 
 // --- Squirting ---------------------------------------------------------------------------
@@ -1107,16 +1124,19 @@ function pickSpawn(t) {
 function renderMenu() {
   $('callsign').textContent = game.myName
   $('colors').innerHTML = ''
-  for (const c of COLORS) {
+  COLORS.forEach((c, k) => {
     const b = document.createElement('button')
     b.style.background = c
     b.classList.toggle('on', c === game.myColor)
+    b.setAttribute('aria-label', COLOR_NAMES[k])
+    b.setAttribute('aria-pressed', String(c === game.myColor))
     b.addEventListener('click', () => {
       game.myColor = c
+      voice.sayNow(COLOR_NAMES[k])
       menuChanged()
     })
     $('colors').appendChild(b)
-  }
+  })
   showHostOptions()
 }
 

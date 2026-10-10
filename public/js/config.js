@@ -81,6 +81,8 @@ export const PICKUPS = {
 }
 
 export const COLORS = ['#ff3b3b', '#2f8cff', '#22c55e', '#ffb703', '#b14cff', '#ff6ec7', '#00d1c1', '#ff7a1a']
+/** The colours' names, in the same order, for the menu's voice and screen readers. */
+export const COLOR_NAMES = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Teal', 'Orange']
 /** Names and colours arrive from other devices: keep names short and colours in our palette (paint slots and models need one). */
 export const safeName = (n) => String(n).slice(0, 24)
 export const safeColor = (c) => (COLORS.includes(c) ? c : COLORS[0])
