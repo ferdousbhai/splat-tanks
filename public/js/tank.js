@@ -4,10 +4,13 @@ import { scene, models } from './world.js'
 import { BASE, emptyLoadout, statsFor, tierFor } from './config.js'
 import { emojiTexture } from './fx.js'
 
-/** Yaw (three.js rotation.y) that faces direction (dx, dz); models face -Z. */
-/** The camera's view: in the driver's seat, labels keep one size on screen instead of filling it up close. */
-export const view = { seat: false }
+/**
+ * seat: in the driver's seat, labels keep one size on screen instead of filling it up close.
+ * levels: the splat match shows levels on the labels; painting together shows just the tank's name.
+ */
+export const view = { seat: false, levels: true }
 
+/** Yaw (three.js rotation.y) that faces direction (dx, dz); models face -Z. */
 export const yawOf = (dx, dz) => Math.atan2(-dx, -dz)
 export const dirOf = (yaw) => ({ x: -Math.sin(yaw), z: -Math.cos(yaw) })
 export const angleDiff = (a, b) => {
@@ -177,7 +180,8 @@ export class Tank {
   }
 
   refreshLabel() {
-    const sub = `Lv ${this.level} ${tierFor(this.level).name}`
+    const tier = tierFor(this.level).name
+    const sub = view.levels ? `Lv ${this.level} ${tier}` : tier
     const key = `${this.name}|${sub}`
     if (key === this.labelKey) return
     this.labelKey = key
@@ -280,7 +284,7 @@ export class Tank {
     this.label.visible = show
     this.crown.visible = show && leader
     this.label.position.set(this.pos.x, y + 0.9, this.pos.z)
-    this.crown.position.set(this.pos.x, y + 2.1 + Math.sin(now / 250) * 0.15, this.pos.z)
+    this.crown.position.set(this.pos.x, y + 2.1 + Math.sin(now / 600) * 0.12, this.pos.z)
   }
 
   dispose() {

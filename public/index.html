@@ -24,7 +24,7 @@
 
 <div id="menu" class="screen hidden">
   <div class="logo">SPLAT<b>TANKS</b></div>
-  <div class="tagline">🎨 Paint the floor your colour! Grow into a <b>TITAN</b>.</div>
+  <div class="tagline">🎨 Paint the floor! Grow into a <b>Titan</b>.</div>
   <div class="panel">
     <div class="row callsign">
       <span class="label">😀 Name</span>
@@ -36,9 +36,11 @@
       <div id="colors" class="colors"></div>
     </div>
     <div id="host-options">
-      <div class="row"><span class="label">🤖 Robots</span><div class="seg" data-opt="bots"><button data-v="0">0</button><button data-v="3">3</button><button data-v="5" class="on">5</button><button data-v="7">7</button></div></div>
-      <div class="row"><span class="label">🤖 Speed</span><div class="seg" data-opt="difficulty"><button data-v="easy" title="Slow">🐢</button><button data-v="normal" class="on" title="Medium">🐇</button><button data-v="hard" title="Fast">🚀</button></div></div>
-      <div class="row"><span class="label">⏱️ Time</span><div class="seg" data-opt="length"><button data-v="0">2 min</button><button data-v="1" class="on">3 min</button><button data-v="2">5 min</button></div></div>
+      <div class="row"><span class="label">🎮 Game</span><div class="seg" data-opt="mode"><button data-v="together" class="on" data-say="Paint together. There's no clock: everyone paints the whole floor.">🤝 Together</button><button data-v="match" data-say="Splat match. Paint the floor your colour before the time runs out.">⏱️ Match</button></div></div>
+      <div class="row" data-for="together"><span class="label">✂️ Parts</span><div class="seg" data-opt="parts"><button data-v="2" data-say="Halves. Two equal parts." aria-label="Halves"><i class="cut c2"></i>2</button><button data-v="3" data-say="Thirds. Three equal parts." aria-label="Thirds"><i class="cut c3"></i>3</button><button data-v="4" class="on" data-say="Quarters. Four equal parts." aria-label="Quarters"><i class="cut c4"></i>4</button></div></div>
+      <div class="row"><span class="label">🤖 Robots</span><div class="seg" data-opt="bots"><button data-v="0">0</button><button data-v="2" class="on">2</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button></div></div>
+      <div class="row"><span class="label">🤖 Speed</span><div class="seg" data-opt="difficulty"><button data-v="easy" class="on" title="Slow">🐢</button><button data-v="normal" title="Medium">🐇</button><button data-v="hard" title="Fast">🚀</button></div></div>
+      <div class="row" data-for="match"><span class="label">⏱️ Time</span><div class="seg" data-opt="length"><button data-v="0">2 min</button><button data-v="1" class="on">3 min</button><button data-v="2">5 min</button></div></div>
     </div>
     <div id="lobby" class="lobby"></div>
   </div>
@@ -54,11 +56,13 @@
   <div class="hud-left">
     <canvas id="minimap" width="150" height="150"></canvas>
     <button id="music" class="corner-btn" title="Music (M)">🎵</button>
-    <button id="view" class="corner-btn" title="Driver's seat (V)">👀</button>
+    <button id="seat-btn" class="corner-btn" title="Driver's seat (V)">👀</button>
+    <button id="home" class="corner-btn" title="Menu">🏠</button>
     <div id="feed"></div>
   </div>
   <div class="top-center">
     <div id="timer" class="pill">3:00</div>
+    <div class="fraction-box"><div id="fraction" class="fraction"></div><div id="fraction-words"></div></div>
     <div id="goal" class="pill small">🎨 Paint the floor!</div>
   </div>
   <div id="board"></div>
@@ -101,7 +105,7 @@
   <div class="logo small">🎉 Great painting!</div>
   <div id="end-sub" class="tagline"></div>
   <div id="results" class="panel"></div>
-  <button id="again" class="big-go">🔁 Play again</button>
+  <div id="end-host" class="go-row"><button id="again" class="big-go">🔁 Play again</button><button id="to-menu" class="icon-btn home" title="Menu">🏠</button></div>
   <div id="end-wait" class="hint hidden">⏳ Waiting for the host…</div>
 </div>
 

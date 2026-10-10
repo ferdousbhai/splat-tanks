@@ -6,7 +6,7 @@ import * as THREE from 'three'
 import { scene } from './world.js'
 import { ARENA } from './config.js'
 
-const N = ARENA * 2 // cells per side
+export const N = ARENA * 2 // cells per side
 export const CELLS = N * N
 const grid = new Uint8Array(CELLS) // 0 = bare floor, otherwise the painter's slot
 const counts = new Uint32Array(256)
@@ -75,6 +75,27 @@ export function paint(x, z, r, slot) {
   }
   dirty = true
   return gained
+}
+
+/** The slot that painted cell i (0 = bare floor). Cell i is column i % N, row floor(i / N), 1 m each. */
+export const slotAt = (i) => grid[i]
+
+/** Fills the given bare cells with one slot's paint. Returns how many changed. */
+export function fillCells(cells, slot) {
+  g.fillStyle = colors.get(slot) ?? '#ffffff'
+  let filled = 0
+  for (const i of cells) {
+    if (grid[i]) continue
+    grid[i] = slot
+    counts[slot]++
+    filled++
+    // Round dabs, as decodePaint draws, so the filled gaps look painted rather than tiled.
+    g.beginPath()
+    g.arc(((i % N) + 0.5) * K, (Math.floor(i / N) + 0.5) * K, K * 0.75, 0, Math.PI * 2)
+    g.fill()
+  }
+  dirty ||= filled > 0
+  return filled
 }
 
 export const cellsOf = (slot) => counts[slot]

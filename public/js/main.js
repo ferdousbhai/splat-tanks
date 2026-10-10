@@ -1,5 +1,9 @@
 // Splat Tanks: the match, the network protocol and the frame loop.
 //
+// Two ways to play. Paint together (the default): chalk cuts the floor into halves, thirds or quarters,
+// everyone paints every part with no clock, and finishing a part names the fraction and grows every
+// tank. The splat match: a timed round where each tank paints its own colour, levels up and picks upgrades.
+//
 // Networking: each device drives its own tank and sends its position ~20x a second.
 // The host (the device that started the room) runs the rules: where paint lands, splashes, XP,
 // levels, pickups, paint buckets and the bots, and tells everyone what happened.
@@ -9,19 +13,21 @@ import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, TIE
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
-import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, addShake, shake, emojiTexture } from './fx.js'
+import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey } from './input.js'
-import { unlockAudio, sound, announce, toggleMusic, musicIntensity } from './audio.js'
+import { unlockAudio, sound, announce, voice, toggleMusic, musicIntensity } from './audio.js'
+import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, bareSpot, doneWords, introWords, fractionWords, partsName, DONE } from './parts.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
-const show = (id, on = true) => $(id).classList.toggle('hidden', !on)
+const show = (el, on = true) => (typeof el === 'string' ? $(el) : el).classList.toggle('hidden', !on)
 const now = () => performance.now()
 const r1 = (v) => Math.round(v * 10) / 10
 const r2 = (v) => Math.round(v * 100) / 100
 const r5 = (v) => Math.round(v * 1e5) / 1e5
+const cap = (s) => s[0].toUpperCase() + s.slice(1)
 
 const game = {
   phase: 'loading',
@@ -32,8 +38,13 @@ const game = {
   me: null,
   brains: new Map(),
   humans: new Map(), // id -> { name, color } from hello messages
-  opts: { bots: 5, difficulty: 'normal', length: 1 },
-  match: null, // { seed, endsAt, startAt, over }
+  // mode: 'together' or 'match'. parts: how many equal parts painting together cuts the floor into.
+  opts: { mode: 'together', parts: 4, bots: 2, difficulty: 'easy', length: 1 },
+  match: null, // { seed, mode, endsAt, startAt, over }
+  round: 0, // host: rounds started, so square and strip quarters take turns
+  progress: [], // painting together: each part's painted share, measured a few times a second
+  lastProgress: 0,
+  endTimer: 0,
   pads: [],
   offer: null,
   shotCount: 0,
@@ -46,9 +57,9 @@ const game = {
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
-  announcedTime: false,
 }
 const isHost = () => game.hostId === game.selfId
+const together = () => game.match?.mode === 'together'
 const tankList = () => [...game.tanks.values()]
 
 // --- Networking --------------------------------------------------------------------------
@@ -170,7 +181,7 @@ function handle(msg, from) {
         if (!s) continue
         s.xp = xp
         if (!al && s.alive) s.alive = false
-        if (lv !== s.level) setLevel(s, lv)
+        if (lv !== s.level) setLevel(s, lv, together())
       }
       break
     case 'pu':
@@ -187,6 +198,12 @@ function handle(msg, from) {
       break
     case 'end':
       onEnd(msg)
+      break
+    case 'pd':
+      onPartDone(msg)
+      break
+    case 'menu':
+      if (from === game.hostId) toMenu()
       break
   }
 }
@@ -237,7 +254,11 @@ function snapshot(fresh = false) {
   return {
     t: 'start',
     seed: m.seed,
-    rem: Math.max(0, m.endsAt - n),
+    mode: m.mode,
+    parts: layout.n,
+    grid: layout.grid,
+    done: layout.done.map((d) => (d ? 1 : 0)),
+    rem: m.mode === 'match' ? Math.max(0, m.endsAt - n) : 0,
     cd: Math.max(0, m.startAt - n),
     fresh,
     roster: tankList().map((t) => ({ i: t.id, n: t.name, c: t.color, s: t.slot, b: t.bot ? 1 : 0, lv: t.level, xp: Math.round(t.xp), u: t.upgrades, al: t.alive ? 1 : 0, x: r2(t.pos.x), z: r2(t.pos.z), h: r2(t.heading) })),
@@ -267,21 +288,30 @@ function hostStartMatch() {
     e.h = yawOf(-x, -z)
     e.al = 1
   })
-  const cd = 3000
+  const mode = game.opts.mode
+  // Painting together starts at once with one spoken line; the match counts in.
+  const cd = mode === 'match' ? 3000 : 0
   game.paintQueue.length = 0
   broadcast({
     t: 'start',
     seed,
-    rem: MATCH.minutes[game.opts.length] * 60000 + cd,
+    mode,
+    parts: game.opts.parts,
+    grid: game.round++ % 2 === 0,
+    done: [],
+    rem: mode === 'match' ? MATCH.minutes[game.opts.length] * 60000 + cd : 0,
     cd,
     fresh: true,
     roster,
-    pads: PADS.map((_, i) => (i < 4 ? 'star' : i < 6 ? 'rapid' : null)),
+    pads: PADS.map((_, i) => (mode === 'match' ? (i < 4 ? 'star' : i < 6 ? 'rapid' : null) : i < 2 ? 'roller' : i < 4 ? 'rapid' : null)),
     barrels: [],
   })
 }
 
 function startBattle(msg) {
+  leaveRound()
+  const mode = msg.mode === 'match' ? 'match' : 'together'
+  view.levels = mode === 'match'
   for (const t of [...game.tanks.values(), ...demoTanks.splice(0)]) t.dispose()
   game.tanks.clear()
   game.brains.clear()
@@ -290,9 +320,13 @@ function startBattle(msg) {
   if (msg.seed !== game.arenaSeed) {
     buildArena(msg.seed)
     game.arenaSeed = msg.seed
-    hud.resetMinimap()
     makePads()
   }
+  if (mode === 'together') setupParts([2, 3, 4].includes(msg.parts) ? msg.parts : 4, !!msg.grid, msg.done ?? [])
+  else clearParts()
+  game.progress = []
+  game.lastProgress = 0
+  hud.resetMinimap()
   barrels.forEach((b, i) => setBarrel(b, msg.barrels.length ? !!msg.barrels[i] : true))
   game.pads.forEach((p, i) => setPad(i, msg.pads[i] ?? null))
   if (msg.paint) decodePaint(msg.paint)
@@ -300,19 +334,54 @@ function startBattle(msg) {
   for (const e of msg.roster) addTank(e)
   if (!game.me) addTank({ i: game.selfId, n: game.myName, c: game.myColor, s: nextSlot() })
   const n = now()
-  game.match = { seed: msg.seed, endsAt: n + msg.rem, startAt: n + msg.cd, over: false, countdown: Math.ceil(msg.cd / 1000) + 1 }
+  game.match = { seed: msg.seed, mode, endsAt: mode === 'match' ? n + msg.rem : Infinity, startAt: n + msg.cd, over: false, countdown: mode === 'match' ? Math.ceil(msg.cd / 1000) + 1 : 0 }
   game.offer = null
-  game.announcedTime = false
   game.phase = 'battle'
   show('menu', false)
   show('end', false)
   show('hud')
+  show('home', isHost())
   document.body.classList.add('playing')
+  document.body.classList.toggle('together', mode === 'together')
   musicIntensity(true)
   if (game.me) {
     camPos.set(game.me.pos.x, 30, game.me.pos.z + 20)
   }
-  if (msg.cd <= 0) hud.banner("🎨 LET'S PAINT!")
+  if (mode === 'together') {
+    $('goal').textContent = `🎨 Paint all ${layout.n} ${partsName(layout.n)}!`
+    if (msg.fresh) {
+      hud.banner('🤝 Paint together!', `Paint all ${layout.n} ${partsName(layout.n)}`, 2600)
+      voice.sayNow(introWords(layout.n))
+    }
+  } else {
+    $('goal').textContent = '🎨 Paint the floor your colour!'
+    if (msg.cd <= 0) hud.banner('🎨 Paint!')
+  }
+}
+
+/** Every way out of a round goes through here: nothing from it keeps talking, waiting or showing. */
+function leaveRound() {
+  clearTimeout(game.endTimer)
+  voice.hush()
+  hud.clearBanners()
+  game.offer = null
+  hud.showUpgrades(null)
+}
+
+/** The host's 🏠: everyone goes back to the menu, where the host can change the game. */
+function toMenu() {
+  if (game.phase === 'menu' || game.phase === 'loading') return
+  leaveRound()
+  if (game.match) game.match.over = true
+  clearShells()
+  if (document.pointerLockElement) document.exitPointerLock()
+  game.phase = 'menu'
+  show('hud', false)
+  show('end', false)
+  document.body.classList.remove('playing', 'together', 'seat')
+  musicIntensity(false)
+  renderMenu()
+  show('menu')
 }
 
 // --- Pickups -----------------------------------------------------------------------------
@@ -349,11 +418,13 @@ function setPad(i, kind) {
     p.sprite.material.map = emojiTexture(PICKUPS[kind].icon, PICKUPS[kind].color)
     p.sprite.material.needsUpdate = true
     p.glow.material.color.set(PICKUPS[kind].color)
-  } else p.respawnAt = now() + 9000 + Math.random() * 7000
+  } else p.respawnAt = now() + (together() ? 16000 : 9000) + Math.random() * (together() ? 10000 : 7000)
 }
 
+/** Painting together has no XP, so no stars: just things that help paint. */
 function randomPickup() {
   const r = Math.random()
+  if (together()) return r < 0.4 ? 'roller' : r < 0.75 ? 'rapid' : 'mega'
   return r < 0.35 ? 'star' : r < 0.6 ? 'rapid' : r < 0.85 ? 'roller' : 'mega'
 }
 
@@ -417,13 +488,15 @@ function hostBucket(i, by) {
   broadcast({ t: 'bx', i, by: by.id })
   addXp(by, XP.bucket)
   bigSplash(b.x, b.z, 5.5, by)
+  const match = game.match
   setTimeout(() => {
-    if (isHost() && game.phase === 'battle') broadcast({ t: 'bu', i })
+    if (isHost() && game.match === match && game.phase === 'battle') broadcast({ t: 'bu', i })
   }, 25000)
 }
 
+/** XP and levels belong to the splat match; painting together grows tanks by finished parts instead. */
 function addXp(t, amount) {
-  if (t.level >= MAX_LEVEL) return
+  if (t.level >= MAX_LEVEL || together()) return
   t.xp += amount
   let lv = t.level
   while (lv < MAX_LEVEL && t.xp >= xpToNext(lv)) {
@@ -445,7 +518,8 @@ function endMatch() {
   if (game.match.over) return
   flushPaint()
   sendStats()
-  const sorted = tankList().sort(byPaint)
+  // Painting together lists everyone in the order they joined, not by how much they painted.
+  const sorted = together() ? tankList() : tankList().sort(byPaint)
   broadcast({ t: 'end', a: sorted.map((t) => [t.id, t.level]) })
 }
 
@@ -466,13 +540,8 @@ function onHit(msg) {
     t.paintColor.set(by.color)
     t.paintT = 1
   }
-  sparks(t.pos.x, t.pos.z, by?.color ?? '#ffffff', 8)
+  sparks(t.pos.x, t.pos.z, by?.color ?? '#ffffff', 5)
   sound.splat(hearing(t.pos.x, t.pos.z))
-  if (msg.by === game.selfId && t !== game.me) {
-    floatText(t.pos.x, t.pos.z, 'SPLAT! 🎨', 'crit')
-    sound.hitMarker()
-    crosshairHit()
-  }
   if (t === game.me) {
     floatText(t.pos.x, t.pos.z, '💦', 'me')
     sound.boing()
@@ -494,17 +563,18 @@ function onBucket(msg) {
   const color = by?.color ?? '#ff6ec7'
   setBarrel(b, false)
   splash(b.x, b.z, 3, color)
-  confetti(b.x, b.z, [color, '#ffffff', '#ffd60a'])
   sound.splosh(hearing(b.x, b.z))
-  addShake(0.2 * hearing(b.x, b.z))
-  if (by === game.me) hud.subBanner('🪣 PAINT BUCKET!', 1200)
+  if (by === game.me) hud.subBanner('🪣 Paint bucket!', 1400)
 }
 
 /** Levels arrive from the network: keep them whole and in range, since they index the tier and XP tables. */
 const toLevel = (lv) => Math.min(MAX_LEVEL, Math.max(1, Math.floor(lv) || 1))
 
-/** A tank's level changed (anywhere). Handles growing, the player's upgrade cards and bots' picks. */
-function setLevel(t, lv) {
+/**
+ * A tank's level changed (anywhere). Handles growing, the player's upgrade cards and bots' picks.
+ * quiet: painting together says the finished fraction instead of the new tier.
+ */
+function setLevel(t, lv, quiet = false) {
   lv = toLevel(lv)
   const oldTier = t.tier
   const up = lv > t.level
@@ -518,19 +588,18 @@ function setLevel(t, lv) {
   }
   if (t === game.me) {
     if (evolved) {
-      const tier = TIERS[t.tier - 1]
-      hud.banner(`✨ ${tier.name.toUpperCase()}!`, tier.perk, 2600)
       sound.evolve()
-      announce(`You are a ${tier.name}!`)
-    } else {
-      hud.banner(`LEVEL ${lv}!`, '', 900)
-      sound.levelUp()
-    }
+      if (!quiet) {
+        const tier = TIERS[t.tier - 1]
+        hud.banner(`✨ ${tier.name}!`, tier.perk, 2600)
+        announce(`You are a ${tier.name}!`)
+      }
+    } else sound.levelUp()
     levelBurst(t.pos.x, t.pos.z, '#ffd60a')
-  } else if (evolved && t.tier === 4) {
-    hud.subBanner(`🌈 ${t.name} grew into a TITAN!`, 2500)
+  } else if (evolved && t.tier === 4 && !quiet) {
+    hud.subBanner(`🌈 ${t.name} grew into a Titan!`, 2500)
   }
-  if (t.bot && isHost()) {
+  if (t.bot && isHost() && !together()) {
     while (pendingPoints(t) > 0) {
       const opts = offerFor(t)
       if (!opts.length) break
@@ -542,6 +611,7 @@ function setLevel(t, lv) {
 }
 
 function pendingPoints(t) {
+  if (together()) return 0
   const used = Object.values(t.upgrades).reduce((a, b) => a + b, 0)
   return t.level - 1 - used
 }
@@ -570,21 +640,38 @@ function onEnd(msg) {
     if (t && t.level !== lv) setLevel(t, lv)
   }
   const sorted = msg.a.map(([i]) => game.tanks.get(i)).filter(Boolean)
-  for (const t of sorted) confetti(t.pos.x, t.pos.z, COLORS)
-  hud.banner("🎉 TIME'S UP!", '', 2200)
   sound.cheer()
-  announce("Time's up! Great painting!")
-  setTimeout(() => {
+  if (together()) hud.banner('🎉 The whole floor!', '', 2200)
+  else {
+    hud.banner("Time's up!", '', 2200)
+    announce("Time's up! Great painting!")
+  }
+  clearTimeout(game.endTimer)
+  game.endTimer = setTimeout(() => {
     game.phase = 'end'
     show('hud', false)
     show('end')
-    hud.results(sorted, game.me, Math.round((painted() / CELLS) * 100))
-    show('again', isHost())
+    hud.results(sorted, game.me, Math.round((painted() / CELLS) * 100), together())
+    show('end-host', isHost())
     show('end-wait', !isHost())
     document.body.classList.remove('playing')
     musicIntensity(false)
   }, 2400)
   game.phase = 'ending'
+}
+
+/** Painting together: the host says a part is finished. Its gaps fill in, the fraction is named and every tank grows. */
+function onPartDone(msg) {
+  if (!together() || game.match.over || !Number.isInteger(msg.p) || msg.p < 0 || msg.p >= layout.n || layout.done[msg.p]) return
+  finishPart(msg.p)
+  game.lastProgress = 0
+  const k = partsDone()
+  const n = layout.n
+  const tier = TIERS[Math.min(TIERS.length, 1 + k) - 1]
+  for (const t of game.tanks.values()) if (t.level < tier.level) setLevel(t, tier.level, true)
+  hud.banner(`${cap(fractionWords(k, n))} painted!`, game.me?.tier === tier.tier && tier.perk ? `✨ ${tier.name}! ${tier.perk}` : '', 3000)
+  announce(doneWords(k, n))
+  if (game.me) levelBurst(game.me.pos.x, game.me.pos.z, game.me.color)
 }
 
 // --- Squirting ---------------------------------------------------------------------------
@@ -688,7 +775,7 @@ function setSeat(on) {
   try {
     localStorage.setItem(VIEW_KEY, on ? 'seat' : 'top')
   } catch {}
-  $('view').classList.toggle('on', on)
+  $('seat-btn').classList.toggle('on', on)
   if (game.me) seat.yaw = game.me.turretYaw
   seat.pitch = 0
   if (!on && document.pointerLockElement) document.exitPointerLock()
@@ -763,10 +850,6 @@ function updateCamera(dt) {
   const back = portrait ? 18 : 19
   camPos.lerp(camWant.set(camTarget.x, height, camTarget.z + back), Math.min(1, dt * 6))
   camera.position.copy(camPos)
-  const s = shake.amount * shake.amount
-  camera.position.x += (Math.random() - 0.5) * s * 1.6
-  camera.position.y += (Math.random() - 0.5) * s * 1.2
-  camera.position.z += (Math.random() - 0.5) * s * 1.6
   camera.lookAt(camTarget.x, 0, camTarget.z)
   followSun()
 }
@@ -779,9 +862,6 @@ function seatCamera(dt) {
   eye.x -= d.x * 0.15
   eye.z -= d.z * 0.15
   camera.position.copy(eye)
-  const s = shake.amount * shake.amount * 0.3
-  camera.position.x += (Math.random() - 0.5) * s
-  camera.position.y += (Math.random() - 0.5) * s
   const p = seat.pitch - 0.06
   camera.lookAt(eye.x + d.x * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z + d.z * Math.cos(p) * 10)
   // Keep the top view ready to take over smoothly, and the shadows centred ahead of the tank.
@@ -793,14 +873,6 @@ function seatCamera(dt) {
 function followSun() {
   sun.position.copy(sunDir).multiplyScalar(70).add(camTarget)
   sun.target.position.copy(camTarget)
-}
-
-let crossTimer = null
-function crosshairHit() {
-  const c = $('crosshair')
-  c.classList.add('hit')
-  clearTimeout(crossTimer)
-  crossTimer = setTimeout(() => c.classList.remove('hit'), 120)
 }
 
 // --- Frame loop --------------------------------------------------------------------------
@@ -834,14 +906,14 @@ function battleStep(dt, n) {
     const c = Math.ceil((m.startAt - n) / 1000)
     if (c !== m.countdown && c > 0) {
       m.countdown = c
-      hud.banner(String(c), c === 3 ? 'Get ready…' : '', 800)
+      hud.banner(String(c), '', 800)
       sound.countdown()
     }
   } else if (m.countdown > 0) {
     m.countdown = 0
-    hud.banner('GO! 🎨', 'Paint the floor your colour!', 1400)
+    hud.banner('🎨 Paint!', 'Paint the floor your colour!', 1400)
     sound.countdown(true)
-    announce('Go! Paint the floor!')
+    announce('Paint the floor your colour!')
   }
 
   // Our tank and (on the host) the bots.
@@ -851,7 +923,7 @@ function battleStep(dt, n) {
     for (const t of game.tanks.values()) {
       if (!t.bot || !t.alive) continue
       const brain = game.brains.get(t.id) ?? game.brains.set(t.id, newBrain()).get(t.id)
-      control(t, botControls(t, brain, tanks, game.pads, game.opts.difficulty, dt), dt)
+      control(t, botControls(t, brain, tanks, game.pads, game.opts.difficulty, dt, together() ? { together: true, wanderTo: bareSpot } : undefined), dt)
     }
   }
   for (const t of game.tanks.values()) if (!t.local) t.follow(dt)
@@ -893,9 +965,10 @@ function battleStep(dt, n) {
 
   // Visuals.
   dustT += dt
-  const sorted = hud.board(tanks, me)
+  // Painting together has no ranking: no leaderboard and no crown.
+  const sorted = together() ? tanks : hud.board(tanks, me)
   const best = cellsOf(sorted[0]?.slot ?? 0)
-  const leader = best > 0 ? sorted[0] : null
+  const leader = best > 0 && !together() ? sorted[0] : null
   for (const t of game.tanks.values()) {
     t.render(dt, t === leader)
     if (!t.alive) continue
@@ -907,18 +980,19 @@ function battleStep(dt, n) {
   if (dustT > 0.08) dustT = 0
   for (const p of game.pads) {
     if (!p.kind) continue
-    p.sprite.position.y = 1.6 + Math.sin(n / 300 + p.i) * 0.25
+    p.sprite.position.y = 1.6 + Math.sin(n / 700 + p.i) * 0.2
     p.glow.position.y = p.sprite.position.y
-    p.glow.scale.setScalar(1 + Math.sin(n / 200 + p.i) * 0.12)
+    p.glow.scale.setScalar(1 + Math.sin(n / 900 + p.i) * 0.06)
   }
 
   // HUD.
-  hud.timer(m.over ? 0 : Math.min(m.endsAt - n, m.endsAt - m.startAt))
-  if (!game.announcedTime && m.endsAt - n < 30000 && live) {
-    game.announcedTime = true
-    hud.subBanner('⏱️ 30 SECONDS LEFT!', 2000)
-    announce('Thirty seconds!')
-  }
+  if (together()) {
+    if (n - game.lastProgress > 250) {
+      game.lastProgress = n
+      game.progress = partProgress()
+      hud.fraction(game.progress, me?.alive ? partAt(me.pos.x, me.pos.z) : -1)
+    }
+  } else hud.timer(m.over ? 0 : Math.min(m.endsAt - n, m.endsAt - m.startAt))
   if (me) hud.bars(me, best, n)
   hud.minimap(tanks, me, game.pads)
   const ch = $('crosshair')
@@ -956,7 +1030,15 @@ function hostStep(dt, n) {
     }
   }
   for (const p of game.pads) if (!p.kind && n >= p.respawnAt) broadcast({ t: 'pu', i: p.i, k: randomPickup() })
-  if (n >= game.match.endsAt) endMatch()
+  if (together()) {
+    // A part is finished once most of it is painted; the whole floor ends the round.
+    const p = game.progress.findIndex((v, i) => !layout.done[i] && v >= DONE)
+    if (p >= 0) {
+      flushPaint()
+      broadcast({ t: 'pd', p })
+    }
+    if (partsDone() === layout.n) endMatch()
+  } else if (n >= game.match.endsAt) endMatch()
 }
 
 /** The start point farthest from other tanks. */
@@ -988,6 +1070,7 @@ function renderMenu() {
     $('colors').appendChild(b)
   }
   const host = isHost()
+  for (const row of document.querySelectorAll('[data-for]')) show(row, row.dataset.for === game.opts.mode)
   show('host-options', host)
   show('go', host)
   show('waiting-host', !host)
@@ -1023,17 +1106,22 @@ function setupMenu() {
       sound.click()
       seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b))
       const key = seg.dataset.opt
-      game.opts[key] = key === 'difficulty' ? b.dataset.v : Number(b.dataset.v)
+      game.opts[key] = ['difficulty', 'mode'].includes(key) ? b.dataset.v : Number(b.dataset.v)
+      if (b.dataset.say) voice.sayNow(b.dataset.say)
+      if (key === 'mode') renderMenu()
     })
   }
   const start = () => isHost() && hostStartMatch()
   $('go').addEventListener('click', start)
   $('again').addEventListener('click', start)
+  const home = () => isHost() && broadcast({ t: 'menu' })
+  $('home').addEventListener('click', home)
+  $('to-menu').addEventListener('click', home)
   const flipMusic = () => $('music').classList.toggle('off', !toggleMusic())
   $('music').addEventListener('click', flipMusic)
   onKey('KeyM', flipMusic)
-  $('view').classList.toggle('on', seat.on)
-  $('view').addEventListener('click', () => setSeat(!seat.on))
+  $('seat-btn').classList.toggle('on', seat.on)
+  $('seat-btn').addEventListener('click', () => setSeat(!seat.on))
   onKey('KeyV', () => setSeat(!seat.on))
   renderer.domElement.addEventListener('pointerdown', (e) => {
     // Lock the pointer for mouse look, but not while the upgrade cards want clicking.
@@ -1076,7 +1164,7 @@ async function boot() {
   renderMenu()
   show('menu')
   if (params.has('autostart')) hostStartMatch()
-  if (params.has('debug')) window.__tank = { game, hud, input, camera, addXp, setLevel, step: () => frame(), renderer }
+  if (params.has('debug')) window.__tank = { game, hud, input, camera, addXp, setLevel, step: () => frame(), renderer, layout, partProgress, broadcast, voice }
 }
 
 boot().catch((e) => {

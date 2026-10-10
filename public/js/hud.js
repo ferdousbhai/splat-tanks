@@ -1,7 +1,8 @@
-// The HUD: banners, news feed, paint leaderboard, paint/XP bars, upgrade cards, minimap, results.
+// The HUD: banners, news feed, paint leaderboard, paint/XP bars, upgrade cards, minimap, fraction strip, results.
 import { ARENA, UPGRADES, BASE, xpToNext, MAX_LEVEL, tierFor, PICKUPS } from './config.js'
 import { colliders, barrels } from './world.js'
 import { canvas as paintCanvas, cellsOf, byPaint, paintVersion, CELLS } from './paint.js'
+import { layout, chalkLines, fractionWords, partsName } from './parts.js'
 
 /** Share of the arena floor in a tank's colour, as a whole percentage. */
 const pct = (t) => Math.round((cellsOf(t.slot) / CELLS) * 100)
@@ -43,11 +44,21 @@ export function subBanner(text, ms = 2000) {
   subTimer = setTimeout(() => s.classList.remove('show'), ms)
 }
 
+let toastTimer = null
 export function toast(text, ms = 2500) {
   const t = $('toast')
   t.textContent = text
   t.classList.remove('hidden')
-  setTimeout(() => t.classList.add('hidden'), ms)
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => t.classList.add('hidden'), ms)
+}
+
+/** Leaving a round: nothing left over from it stays on screen. */
+export function clearBanners() {
+  clearTimeout(bannerTimer)
+  clearTimeout(subTimer)
+  $('banner').classList.remove('show')
+  $('subbanner').classList.remove('show')
 }
 
 export function feed(html) {
@@ -108,7 +119,28 @@ export function timer(msLeft) {
   const s = Math.max(0, Math.ceil(msLeft / 1000))
   const t = $('timer')
   put(t, 'text', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)
-  t.classList.toggle('urgent', s <= 30)
+}
+
+/**
+ * Paint together: one box per part, laid out like the floor (a 2 x 2 square for square quarters,
+ * else a row), each filling up as it's painted. mine: the part the player is in.
+ */
+export function fraction(progress, mine) {
+  const box = $('fraction')
+  const key = `${layout.n}|${layout.grid}`
+  if (box.dataset.key !== key) {
+    box.dataset.key = key
+    box.classList.toggle('grid', layout.grid)
+    box.innerHTML = progress.map(() => `<span class="part"><i></i><b><sup>1</sup><sub>${layout.n}</sub></b></span>`).join('')
+  }
+  const done = layout.done.filter(Boolean).length
+  progress.forEach((v, p) => {
+    const part = box.children[p]
+    part.classList.toggle('done', layout.done[p])
+    part.classList.toggle('mine', p === mine)
+    put(part.firstChild, 'height', cssPct(Math.min(1, v)))
+  })
+  put($('fraction-words'), 'text', `${done ? fractionWords(done, layout.n) : `${layout.n} ${partsName(layout.n)}`} ${done ? 'painted' : 'to paint'}`)
 }
 
 /** Shows the three upgrade cards; onPick(key) when one is chosen. */
@@ -182,6 +214,7 @@ export function minimap(tanks, me, pads) {
     l.globalAlpha = 0.85
     l.drawImage(paintCanvas, X(-ARENA), X(-ARENA), ARENA * 2 * k, ARENA * 2 * k)
     l.globalAlpha = 1
+    chalkLines(l, X)
   }
   g.clearRect(0, 0, S, S)
   g.drawImage(mapLayer, 0, 0)
@@ -214,8 +247,34 @@ export function minimap(tanks, me, pads) {
   }
 }
 
-/** The end screen: everyone gets a medal; the gold, silver and bronze go to the most paint. */
-export function results(sorted, me, total) {
+/** The finished floor as a picture, chalk lines and all. */
+function floorPicture() {
+  const c = document.createElement('canvas')
+  c.width = c.height = 240
+  const g = c.getContext('2d')
+  const X = (x) => ((x + ARENA) / (ARENA * 2)) * c.width
+  g.fillStyle = '#c9a66b'
+  g.fillRect(0, 0, c.width, c.height)
+  g.drawImage(paintCanvas, 0, 0, c.width, c.height)
+  chalkLines(g, X)
+  c.className = 'floor-pic'
+  c.setAttribute('role', 'img')
+  c.setAttribute('aria-label', 'The floor we painted')
+  return c
+}
+
+/** The end screen. Together: the floor we painted and who painted it, with no ranking. */
+export function results(sorted, me, total, together) {
+  $('results').classList.toggle('together', together)
+  if (together) {
+    const n = layout.n
+    $('end-sub').innerHTML = `${esc(fractionWords(n, n).replace(/^\w/, (c) => c.toUpperCase()))} make <b>one whole</b> floor!`
+    const who = document.createElement('div')
+    who.className = 'painters'
+    who.innerHTML = sorted.map((t) => `<span class="chip${t === me ? ' me' : ''}" style="border-color:${esc(t.color)}"><span class="sw" style="background:${esc(t.color)}"></span>${t.bot ? '🤖 ' : ''}${esc(t.name)}</span>`).join('')
+    $('results').replaceChildren(floorPicture(), who)
+    return
+  }
   $('end-sub').innerHTML = `Together you painted <b>${total}%</b> of the floor!`
   const medal = ['🥇', '🥈', '🥉']
   $('results').innerHTML = sorted

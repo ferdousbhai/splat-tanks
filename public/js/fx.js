@@ -1,4 +1,4 @@
-// Paint splashes, squirts, sparkles, confetti, floating words and camera shake.
+// Paint splashes, squirts, sparkles, confetti and floating words. The camera never shakes.
 import * as THREE from 'three'
 import { scene, camera } from './world.js'
 
@@ -32,11 +32,6 @@ function release(m) {
 
 function spawn(m, p) {
   particles.push({ m, t: 0, life: 1, vx: 0, vy: 0, vz: 0, g: 0, spin: 0, grow: 0, fade: true, size: 1, base: m.material.opacity, ...p })
-}
-
-export const shake = { amount: 0 }
-export function addShake(a) {
-  shake.amount = Math.min(1.6, shake.amount + a)
 }
 
 /** A puff of paint at the nozzle. */
@@ -145,7 +140,6 @@ export function updateFx(dt) {
     p.m.scale.setScalar(Math.max(0.01, p.size + p.grow * p.t))
     if (p.fade) p.m.material.opacity = p.base * (1 - k)
   }
-  shake.amount = Math.max(0, shake.amount - dt * 2.2)
 }
 
 /** A cached emoji sprite texture, optionally on a coloured token (so it still reads where emoji fonts are missing). */

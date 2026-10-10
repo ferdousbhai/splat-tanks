@@ -75,9 +75,9 @@ export const XP = {
 
 export const PICKUPS = {
   star: { icon: '⭐', color: '#ffd60a', text: '+XP' },
-  rapid: { icon: '💦', color: '#4cc9f0', text: 'SUPER SQUIRT!', seconds: 7 },
-  roller: { icon: '🖌️', color: '#ff6ec7', text: 'BIG BRUSH!', seconds: 7 },
-  mega: { icon: '🎈', color: '#c77dff', text: 'BALLOON READY!' },
+  rapid: { icon: '💦', color: '#4cc9f0', text: 'Super squirt', seconds: 7 },
+  roller: { icon: '🖌️', color: '#ff6ec7', text: 'Big brush', seconds: 7 },
+  mega: { icon: '🎈', color: '#c77dff', text: 'Balloon ready' },
 }
 
 export const COLORS = ['#ff3b3b', '#2f8cff', '#22c55e', '#ffb703', '#b14cff', '#ff6ec7', '#00d1c1', '#ff7a1a']

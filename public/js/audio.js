@@ -1,4 +1,6 @@
 // All sound is synthesised with Web Audio: no files to load, and it starts on the first tap or key.
+// Soft sines and triangles at a steady pace: nothing shrill, nothing that hurries.
+import { createVoice } from './speech.js'
 
 let ctx = null
 let master, sfx, musicBus
@@ -8,7 +10,7 @@ let musicTimer = null
 
 export function unlockAudio() {
   if (ctx) {
-    if (ctx.state === 'suspended') ctx.resume()
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {})
     return
   }
   try {
@@ -25,7 +27,7 @@ export function unlockAudio() {
   sfx = ctx.createGain()
   sfx.connect(master)
   musicBus = ctx.createGain()
-  musicBus.gain.value = 0.22
+  musicBus.gain.value = 0.1
   musicBus.connect(master)
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate)
   const d = noiseBuf.getChannelData(0)
@@ -75,15 +77,15 @@ export const sound = {
   shoot(vol = 1, big = false) {
     if (!ctx || vol < 0.03) return
     const t = now()
-    tone(t, big ? 0.3 : 0.12, { freq: big ? 220 : 380, to: big ? 520 : 900, type: 'sine', peak: 0.35 * vol })
-    noise(t, 0.06, { freq: 2500, type: 'bandpass', q: 3, peak: 0.12 * vol })
+    tone(t, big ? 0.3 : 0.12, { freq: big ? 220 : 380, to: big ? 520 : 760, type: 'sine', peak: 0.22 * vol })
+    noise(t, 0.06, { freq: 1800, type: 'bandpass', q: 3, peak: 0.05 * vol })
   },
   /** A big splosh: a bucket or a balloon bursting. */
   splosh(vol = 1) {
     if (!ctx || vol < 0.03) return
     const t = now()
-    noise(t, 0.45, { freq: 1400, sweepTo: 200, peak: 0.6 * vol, q: 1.5 })
-    tone(t, 0.25, { freq: 300, to: 90, type: 'sine', peak: 0.4 * vol })
+    noise(t, 0.45, { freq: 1100, sweepTo: 200, peak: 0.35 * vol, q: 1.5 })
+    tone(t, 0.25, { freq: 300, to: 90, type: 'sine', peak: 0.25 * vol })
     ;[523, 784].forEach((f, i) => tone(t + 0.12 + i * 0.07, 0.15, { freq: f, type: 'triangle', peak: 0.12 * vol }))
   },
   /** A blob landing. */
@@ -93,17 +95,10 @@ export const sound = {
     noise(t, 0.12, { freq: 900 + Math.random() * 500, sweepTo: 250, type: 'bandpass', q: 1.2, peak: 0.35 * vol })
     tone(t, 0.08, { freq: 200, to: 120, type: 'sine', peak: 0.2 * vol })
   },
-  /** Your blob splashed another tank. */
-  hitMarker() {
-    if (!ctx) return
-    const t = now()
-    tone(t, 0.08, { freq: 1046, type: 'triangle', peak: 0.12 })
-    tone(t + 0.06, 0.1, { freq: 1568, type: 'triangle', peak: 0.1 })
-  },
   /** You got splashed: a silly boing. */
   boing() {
     if (!ctx) return
-    tone(now(), 0.3, { freq: 180, to: 520, type: 'sine', peak: 0.25 })
+    tone(now(), 0.3, { freq: 180, to: 420, type: 'sine', peak: 0.12 })
   },
   bounce(vol = 1) {
     if (!ctx || vol < 0.05) return
@@ -120,21 +115,23 @@ export const sound = {
     const t = now()
     ;[660, 880, 1320].forEach((f, i) => tone(t + i * 0.06, 0.15, { freq: f, type: 'triangle', peak: 0.16 }))
   },
+  /** One step up: two soft notes. */
   levelUp() {
     if (!ctx) return
     const t = now()
-    ;[523, 659, 784, 1047, 1319].forEach((f, i) => tone(t + i * 0.07, 0.25, { freq: f, type: 'triangle', peak: 0.16 }))
+    ;[523, 784].forEach((f, i) => tone(t + i * 0.12, 0.3, { freq: f, type: 'sine', peak: 0.1 }))
   },
   evolve() {
     if (!ctx) return
     const t = now()
-    tone(t, 0.8, { freq: 200, to: 800, type: 'sine', peak: 0.2 })
-    ;[392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(t + 0.3 + i * 0.09, 0.4, { freq: f, type: 'triangle', peak: 0.16 }))
+    tone(t, 0.8, { freq: 200, to: 600, type: 'sine', peak: 0.12 })
+    ;[392, 523, 659, 784].forEach((f, i) => tone(t + 0.3 + i * 0.14, 0.5, { freq: f, type: 'triangle', peak: 0.1 }))
   },
   cheer() {
     if (!ctx) return
     const t = now()
-    ;[523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(t + i * 0.12, 0.3, { freq: f, type: 'triangle', peak: 0.18 }))
+    // One soft chord, not a fanfare.
+    ;[523, 659, 784].forEach((f, i) => tone(t + i * 0.05, 1.2, { freq: f, type: 'sine', peak: 0.09, attack: 0.08 }))
   },
   click() {
     if (!ctx) return
@@ -142,29 +139,19 @@ export const sound = {
   },
   countdown(final = false) {
     if (!ctx) return
-    tone(now(), final ? 0.5 : 0.2, { freq: final ? 1046 : 523, type: 'triangle', peak: 0.25 })
+    tone(now(), final ? 0.5 : 0.25, { freq: final ? 784 : 523, type: 'sine', peak: 0.12 })
   },
 }
 
 // --- Announcer: uses the browser's speech voice when it has one ------------------------
 
-export function announce(text) {
-  try {
-    if (!('speechSynthesis' in window)) return
-    const u = new SpeechSynthesisUtterance(text)
-    u.rate = 1
-    u.pitch = 1.3
-    u.volume = 0.9
-    speechSynthesis.cancel()
-    speechSynthesis.speak(u)
-  } catch {
-    /* no voice in this browser; the banner is enough */
-  }
-}
+// Lines wait their turn instead of cutting each other off.
+export const voice = createVoice({ rate: 0.9, pitch: 1.1 })
+export const announce = (text) => voice.say(text)
 
-// --- Music: a bouncy 120 bpm loop in C major, built from the same synths ----------------
+// --- Music: an easy 96 bpm loop in C major, built from the same synths --------------------
 
-const BPM = 120
+const BPM = 96
 const STEP = 60 / BPM / 4
 const BASS = [0, null, 7, null, 12, null, 7, null, 0, null, 7, null, 12, 7, 4, 2]
 const ROOTS = [65.4, 98, 110, 87.3] // C2, G2, A2, F2 (Hz)
@@ -177,11 +164,9 @@ function scheduleMusic() {
     const s = step % 16
     const bar = Math.floor(step / 16) % 4
     const t = nextTime
-    if (s % 4 === 0) tone(t, 0.18, { freq: 110, to: 50, type: 'sine', peak: 0.6, out: musicBus })
-    if (s % 8 === 4) noise(t, 0.08, { freq: 3000, type: 'bandpass', q: 1.5, peak: 0.25, out: musicBus })
-    if (s % 2 === 1) noise(t, 0.03, { freq: 9000, type: 'highpass', peak: 0.1, out: musicBus })
-    if (BASS[s] !== null) tone(t, STEP * 1.4, { freq: ROOTS[bar] * Math.pow(2, BASS[s] / 12), type: 'triangle', peak: 0.35, out: musicBus })
-    if (bar === 3 && s % 2 === 0) tone(t, STEP * 1.6, { freq: 261.6 * Math.pow(2, MELODY[s / 2] / 12), type: 'square', peak: 0.05, out: musicBus })
+    if (s % 8 === 0) tone(t, 0.2, { freq: 100, to: 55, type: 'sine', peak: 0.35, out: musicBus })
+    if (BASS[s] !== null) tone(t, STEP * 1.6, { freq: ROOTS[bar] * Math.pow(2, BASS[s] / 12), type: 'triangle', peak: 0.3, out: musicBus })
+    if (bar === 3 && s % 2 === 0) tone(t, STEP * 1.8, { freq: 261.6 * Math.pow(2, MELODY[s / 2] / 12), type: 'triangle', peak: 0.08, out: musicBus })
     step++
     nextTime += STEP
   }
@@ -208,5 +193,5 @@ export function toggleMusic() {
 /** Lowers the music during menus and raises it while playing. */
 export function musicIntensity(battle) {
   if (!musicBus) return
-  musicBus.gain.setTargetAtTime(battle ? 0.22 : 0.12, ctx.currentTime, 0.5)
+  musicBus.gain.setTargetAtTime(battle ? 0.16 : 0.1, ctx.currentTime, 0.5)
 }

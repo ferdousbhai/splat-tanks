@@ -16,8 +16,11 @@ export function newBrain() {
   return { target: null, think: 0, wander: null, wanderT: 0, sweep: Math.random() * Math.PI * 2 }
 }
 
-/** Decides one bot's controls for this frame. */
-export function botControls(bot, brain, tanks, pickups, difficulty, dt) {
+/**
+ * Decides one bot's controls for this frame. Painting together (`together`), bots never aim at
+ * tanks and head for bare floor in parts that aren't finished (`wanderTo`).
+ */
+export function botControls(bot, brain, tanks, pickups, difficulty, dt, { together = false, wanderTo = freeSpot } = {}) {
   const cfg = BOT_LEVELS[difficulty]
   const out = { mx: 0, mz: 0, aimYaw: bot.turretYaw, fire: false, boost: false, mega: false }
   const me = bot.pos
@@ -28,7 +31,7 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt) {
     brain.think = cfg.reaction * (0.7 + Math.random() * 0.6)
     // Sometimes pick a nearby tank to splash; most of the time just paint.
     brain.target = null
-    if (Math.random() < cfg.chase) {
+    if (!together && Math.random() < cfg.chase) {
       let bd = 16
       for (const t of tanks) {
         if (t === bot || !t.alive) continue
@@ -47,7 +50,7 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt) {
   }
   brain.wanderT -= dt
   if (!brain.wander || brain.wanderT <= 0 || Math.hypot(brain.wander.x - me.x, brain.wander.z - me.z) < 4) {
-    brain.wander = freeSpot()
+    brain.wander = wanderTo()
     brain.wanderT = 5 + Math.random() * 4
   }
   goal ??= brain.wander
