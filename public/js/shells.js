@@ -48,7 +48,7 @@ export function clearShells() {
 /**
  * Moves every blob. Calls hooks.tank(blob, tank) when it splats a tank, hooks.barrel(blob, index)
  * when it hits a paint bucket, and hooks.land(blob) when it splats on a wall or the floor.
- * hearing(x, z) returns 0..1 volume for sounds.
+ * hearing(x, z, owner) returns { vol: 0..1, mine } for sounds.
  */
 export function updateShells(dt, tanks, hooks, hearing) {
   for (const s of shells.values()) {
@@ -79,13 +79,15 @@ export function updateShells(dt, tanks, hooks, hearing) {
           s.z = oz
           s.owner2 = true // a bounced shell can hit its own tank
           sparks(s.x, s.z, s.color, 4)
-          sound.bounce(hearing(s.x, s.z))
+          const ear = hearing(s.x, s.z, s.owner)
+          sound.bounce(ear.vol, ear.mine)
           s.mesh.rotation.y = yawOf(s.dx, s.dz)
           continue
         }
         hooks.land?.(s)
         removeShell(s.sid)
-        sound.splat(hearing(s.x, s.z) * 0.6)
+        const ear = hearing(s.x, s.z, s.owner)
+        sound.splat(ear.vol * 0.6, ear.mine)
         done = true
         break
       }
@@ -105,7 +107,8 @@ export function updateShells(dt, tanks, hooks, hearing) {
     if (s.t > s.life) {
       hooks.land?.(s)
       removeShell(s.sid)
-      sound.splat(hearing(s.x, s.z) * 0.5)
+      const ear = hearing(s.x, s.z, s.owner)
+      sound.splat(ear.vol * 0.5, ear.mine)
       continue
     }
     // A little lob: up, then down onto the floor at the end of its range.

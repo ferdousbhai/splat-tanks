@@ -215,6 +215,13 @@ Cleanup came back clean.
 - **Robot hits in Paint together:** a robot's stray blob hitting the child just tints the tank, with no flash, 💦 word or boing (it was up to 11 a minute).
 - **Rotation:** turning the phone while a banner shows now re-places it, so it never lands on the fraction strip.
 
+### Fresh audit, round 18
+
+Cleanup came back clean.
+- **The player's own sounds were muted (from round 17):** the robots' quieter, spaced-out treatment also caught the child's own blob landings and bounces, so most of them were silent. `hearing()` now says whose sound it is. The player's own paint is heard across the floor at near-full volume and is never spaced out; only other tanks' sounds are quiet and spaced.
+- **Drive stick on landscape phones:** its area began under 🎵 👀 🏠, so a thumb could flip the view or arm 🏠 instead of driving. On short touch screens it now starts right of that column.
+- **Floor labels:** with square quarters, a part's chalk "1/4" sat under a crate, wall, rock or tree in 43% of arenas. Each label now goes to the nearest spot to its part's middle where its whole square (and 2 m around it) is clear and inside the part: 0% over 200 arenas, in every layout.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

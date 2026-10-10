@@ -3,7 +3,7 @@
 // fraction. Every device keeps the same paint grid (paint.js), so every device measures the same
 // progress; only the host decides when a part is finished.
 import * as THREE from 'three'
-import { scene, solidAt, freeSpot } from './world.js'
+import { scene, solidAt, freeSpot, colliders } from './world.js'
 import { ARENA } from './config.js'
 import { N, CELLS, slotAt, fillCells } from './paint.js'
 
@@ -198,9 +198,7 @@ function drawChalk() {
     let sx = 0
     let sz = 0
     for (const i of layout.cells[p]) ((sx += cellX(i)), (sz += cellZ(i)))
-    let x = sx / layout.cells[p].length
-    let z = sz / layout.cells[p].length
-    if (Math.hypot(x, z) < 8) z += 16 // keep clear of the tower in the middle
+    const [x, z] = labelSpot(p, sx / layout.cells[p].length, sz / layout.cells[p].length)
     const mesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial(onPaint))
     mesh.position.set(x, 0.06, z)
     mesh.renderOrder = 3
@@ -208,6 +206,35 @@ function drawChalk() {
     labels[p] = mesh
     drawLabel(p)
   }
+}
+
+/**
+ * Where a part's chalk label goes: the nearest spot to the part's middle where the whole 7 m label (and a
+ * little room around it) lies inside the part with no tower, wall, crate, rock or tree standing on it.
+ */
+const LABEL_ROOM = 5.5 // half the label (3.5 m) and 2 m around it
+function labelSpot(p, x0, z0) {
+  const R = LABEL_ROOM
+  const clear = (x, z) => {
+    if (Math.max(Math.abs(x), Math.abs(z)) > ARENA - R) return false
+    for (const [dx, dz] of [[-R, -R], [R, -R], [-R, R], [R, R]]) if (partAt(x + dx, z + dz) !== p) return false
+    for (const b of colliders.boxes) if (Math.abs(x - b.x) < R + b.hx && Math.abs(z - b.z) < R + b.hz) return false
+    for (const c of colliders.circles) {
+      if (c.barrel !== undefined) continue
+      const nx = Math.max(x - R, Math.min(c.x, x + R)) // nearest point of the square to the circle
+      const nz = Math.max(z - R, Math.min(c.z, z + R))
+      if (Math.hypot(c.x - nx, c.z - nz) < c.r) return false
+    }
+    return true
+  }
+  for (let r = 0; r <= 24; r += 2) {
+    for (let a = 0; a < (r ? 16 : 1); a++) {
+      const x = x0 + Math.cos((a / 16) * Math.PI * 2) * r
+      const z = z0 + Math.sin((a / 16) * Math.PI * 2) * r
+      if (clear(x, z)) return [x, z]
+    }
+  }
+  return [x0, z0]
 }
 
 /** The part's fraction in chalk, "1 over n", bolder with a ring once it's painted. */

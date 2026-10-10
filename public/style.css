@@ -193,6 +193,10 @@ body.seat #periscope { display: block; }
   .card .tx { display: none; }
   body.cards #board, body.cards #banner { display: none; }
 }
+/* Landscape phones: the drive stick's area starts right of the 🎵 👀 🏠 column, so a thumb can't land on them. */
+@media (any-pointer: coarse) and (max-height: 520px) {
+  .stick:not(.aim) { left: calc(var(--left) + 52px); width: calc(42vw - 52px); }
+}
 @media (any-pointer: coarse) and (max-width: 400px) {
   :root { --map: 92px; }
   .bottom { left: calc(50% - 36px); }

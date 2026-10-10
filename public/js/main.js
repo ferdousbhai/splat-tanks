@@ -194,7 +194,7 @@ function handle(msg, from) {
         muzzleFlash(x, 1.1, z, dx, dz, owner.color, !!msg.m)
       }
       owner.recoil = 1
-      sound.shoot(hearing(owner.pos.x, owner.pos.z), !!msg.m)
+      sound.shoot(hearing(owner.pos.x, owner.pos.z).vol, !!msg.m)
       break
     }
     case 'lo': {
@@ -626,10 +626,16 @@ function endMatch() {
 
 // --- Events everyone shows --------------------------------------------------------------
 
-/** Volume for a sound somewhere else on the floor: quiet, and only from close by, so busy robots stay in the background. */
-function hearing(x, z) {
+/**
+ * How loud a sound at (x, z) is, and whether it is the player's own (owner: the tank it came from). The
+ * player's own paint is heard across the floor; everyone else's is quiet and only from close by, so busy
+ * robots stay in the background. { vol, mine }; mine sounds are never spaced out (audio.js).
+ */
+function hearing(x, z, owner) {
   const c = game.me?.alive ? game.me.pos : { x: camTarget.x, z: camTarget.z }
-  return Math.max(0, 1 - Math.hypot(x - c.x, z - c.z) / 24) * 0.5
+  const d = Math.hypot(x - c.x, z - c.z)
+  if (owner !== undefined && owner === game.me?.id) return { vol: Math.max(0.3, 1 - d / 50), mine: true }
+  return { vol: Math.max(0, 1 - d / 24) * 0.5, mine: false }
 }
 
 function onHit(msg) {
@@ -645,7 +651,9 @@ function onHit(msg) {
   if (together() && by?.bot) return
   t.flash = 1
   sparks(t.pos.x, t.pos.z, by?.color ?? '#ffffff', 5)
-  sound.splat(hearing(t.pos.x, t.pos.z))
+  const ear = hearing(t.pos.x, t.pos.z, by?.id)
+  const mine = ear.mine || t === game.me
+  sound.splat(mine ? 1 : ear.vol, mine)
   if (t === game.me) {
     floatText(t.pos.x, t.pos.z, '💦', 'me')
     sound.boing()
@@ -667,7 +675,7 @@ function onBucket(msg) {
   const color = by?.color ?? '#ff6ec7'
   setBarrel(b, false)
   splash(b.x, b.z, 3, color)
-  sound.splosh(hearing(b.x, b.z))
+  sound.splosh(by === game.me ? 1 : hearing(b.x, b.z).vol)
   if (by === game.me) hud.subBanner('🪣 Paint bucket!', 1400, true)
 }
 
@@ -817,7 +825,7 @@ function fire(t, mega = false) {
   for (const [sid, x, z, dx, dz] of out) spawnShell({ sid, owner: t.id, x, z, dx, dz, speed, range, splat, bounces: mega ? 0 : s.bounces, mega, color: t.color })
   send({ t: 'f', o: t.id, m: mega ? 1 : 0, d: r2(splat), v: r2(speed), r: r2(range), b: mega ? 0 : s.bounces, s: out })
   t.recoil = 1
-  sound.shoot(t === game.me ? 1 : hearing(t.pos.x, t.pos.z), mega)
+  sound.shoot(t === game.me ? 1 : hearing(t.pos.x, t.pos.z).vol, mega, t === game.me)
 }
 
 /** Shared controls for the player and bots: drive, aim, squirt, zoom, balloon. */
