@@ -61,7 +61,7 @@ export function muzzleFlash(x, y, z, dx, dz, color, big = false) {
   }
 }
 
-/** A paint splash: drops of colour fly up and fall. size: 1 = blob, 2.5 = bucket or balloon. */
+/** A paint splash: drops of colour fly up and fall. size: 0.8 = blob, 2.5 = balloon, 3 = bucket. */
 export function splash(x, z, size = 1, color = '#ff6ec7') {
   const y = 0.6
   // By the camera (driver's seat): no pop or ring, and a few small drops that stay low. A balloon's or bucket's
@@ -119,7 +119,6 @@ export function boostTrail(x, z, color) {
 }
 
 export function shellTrail(x, y, z, color, big) {
-  if (nearCamera(x, y, z, 3)) return
   const f = mesh(ball, color, 0.6)
   f.position.set(x, y, z)
   spawn(f, { life: big ? 0.3 : 0.16, size: big ? 0.3 : 0.12, grow: -0.4, vy: -1.5 })

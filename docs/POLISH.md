@@ -360,8 +360,14 @@ Design came back clean. The round 31 design review, which arrived late, and roun
 ### Fresh audit, round 36
 
 - **Big splashes just past 6 m:** a balloon or bucket burst grows several metres wide, so one 7–8 m ahead still filled the seat view. The near distance now grows with the splash's size (6 m plus 3 m per size step: about 13 m for a balloon, 15 m for a bucket). The sky camera stays 30 m away, so the sky view is unchanged.
-- **Your own throw in the seat:** a blob, and especially a 🎈 balloon, starts half a metre from the seat camera and covered most of the view for a few frames on every throw. A blob is now hidden until it is clear of the camera (1.5 m, 3 m for a balloon), and its trail starts there too.
+- **Your own throw in the seat:** a blob, and especially a 🎈 balloon, starts half a metre from the seat camera and covered most of the view for a few frames on every throw. A blob is now hidden until it is clear of the camera (1.5 m, 3 m for a balloon), and its trail starts with it.
 - **Respawn rings in the seat:** a child joining mid-round, or coming back after a host change, with the seat view saved saw the arrival rings spawn while the camera was still in the sky, then had the camera drop inside them. Your own arrival seen from the seat now has no rings.
+
+### Fresh audit, round 37
+
+Design and correctness came back clean.
+- **Tidy:** a blob's trail now starts when the blob itself shows (one check, one radius), instead of a second near-camera check in `shellTrail` with its own 3 m. The `splash` size comment now matches its callers (0.8 blob, 2.5 balloon, 3 bucket).
+- **Shown matches said:** the upgrade cards' title reads "Level up! Pick a new power", as the voice says it.
 
 ### Open
 

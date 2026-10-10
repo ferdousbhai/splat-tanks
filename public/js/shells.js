@@ -124,7 +124,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
     s.mesh.position.set(s.x, 1.1 + 2.4 * k * (1 - k) - 0.8 * k * k, s.z)
     hideNear(s)
     s.trail += dt
-    if (s.trail > 0.04) {
+    if (s.trail > 0.04 && s.mesh.visible) {
       s.trail = 0
       shellTrail(s.x, s.mesh.position.y, s.z, s.color, s.mega)
     }
