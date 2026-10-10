@@ -174,6 +174,9 @@ body.seat #periscope { display: block; }
   .bottom { left: calc(50% - 36px); }
 }
 @media (max-height: 520px) {
+  /* Banners sit below the fraction strip, so the box that just filled stays in view. */
+  body.together #banner { top: calc(var(--top) + 118px); }
+  body.together #subbanner { top: calc(var(--top) + 118px + clamp(40px, 7vw, 76px)); }
   #board .brow:nth-child(n + 4) { display: none; }
   #upgrades { bottom: calc(var(--bottom) + 84px); }
   .card { padding: 6px; }

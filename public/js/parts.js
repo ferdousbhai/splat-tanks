@@ -100,7 +100,7 @@ export function finishPart(p) {
 export const partsDone = () => layout.done.filter(Boolean).length
 
 /** How a round starts: "The floor is cut into four equal parts. Each part is one quarter. …" */
-export const introWords = (n) => `The floor is cut into ${NUMBERS[n]} equal parts. Each part is one ${NAMES[n][0]}. Let's paint them all together!`
+export const introWords = (n) => `The floor is cut into ${NUMBERS[n]} equal parts. Each part is one ${NAMES[n][0]}. Let's paint ${n === 2 ? 'both' : 'them all'} together!`
 
 /** What the game says when the k-th part is finished. */
 export function doneWords(k, n) {

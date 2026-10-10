@@ -43,7 +43,6 @@ const game = {
   round: 0, // host: rounds started, so square and strip quarters take turns
   progress: [], // painting together: each part's painted share, measured when the paint changes
   progressVersion: -1, // the paintVersion it was measured at
-  lastProgress: 0,
   endTimer: 0,
   pads: [],
   offer: null,
@@ -109,6 +108,8 @@ function migrateHost() {
       if (!game.brains.has(t.id)) game.brains.set(t.id, newBrain())
     }
   }
+  // A player who joined just before the old host left still needs their tank placed.
+  for (const t of game.tanks.values()) if (!t.alive && !t.respawnAt) t.respawnAt = now() + 800
   hello()
   showHostButtons()
 }
@@ -125,8 +126,12 @@ function showHostButtons() {
 /** Painting together, every tank grows one tier per finished part. */
 const grownLevel = (done) => TIERS[Math.min(TIERS.length, 1 + done) - 1].level
 
+/** What happens inside a round; a late one arriving after the host's 🏠 is dropped. */
+const IN_ROUND = new Set(['pb', 'f', 'lo', 'pt', 'hit', 'sp', 'st', 'pu', 'pk', 'bx', 'bu', 'pd'])
+
 function handle(msg, from) {
   if (!msg || typeof msg !== 'object') return
+  if (IN_ROUND.has(msg.t) && game.phase !== 'battle' && game.phase !== 'ending') return
   const t = game.tanks.get(msg.i)
   switch (msg.t) {
     case 'hello': {
@@ -349,7 +354,6 @@ function startBattle(msg) {
   else resetPaint()
   for (const e of msg.roster) addTank(e)
   if (!game.me) addTank({ i: game.selfId, n: game.myName, c: game.myColor, s: nextSlot() })
-  game.offer = null
   game.phase = 'battle'
   show('menu', false)
   show('end', false)
@@ -465,8 +469,12 @@ function onPick(msg) {
 /** Host: paint a splat here and on every device, and give its painter XP for new floor. */
 function hostPaint(x, z, r, t) {
   if (!t || game.match?.over) return
+  // Paint exactly what is sent, so every device's grid stays identical.
+  x = r1(x)
+  z = r1(z)
+  r = r1(r)
   const gained = paint(x, z, r, t.slot)
-  game.paintQueue.push(r1(x), r1(z), r1(r), t.slot)
+  game.paintQueue.push(x, z, r, t.slot)
   if (gained) addXp(t, gained * XP.perCell)
 }
 
@@ -492,18 +500,19 @@ function bigSplash(x, z, radius, by, skip) {
     if (!t.alive || t === skip || t === by) continue
     if (Math.hypot(t.pos.x - x, t.pos.z - z) < radius + TANK_RADIUS) splashTank(t, by, null)
   }
+  const match = game.match
   barrels.forEach((b, i) => {
-    if (b.alive && Math.hypot(b.x - x, b.z - z) < radius) setTimeout(() => hostBucket(i, by), 150)
+    if (b.alive && Math.hypot(b.x - x, b.z - z) < radius) setTimeout(() => hostBucket(i, by, match), 150)
   })
 }
 
-function hostBucket(i, by) {
+/** match: the round this bucket burst in; a timer from an earlier round does nothing. */
+function hostBucket(i, by, match = game.match) {
   const b = barrels[i]
-  if (!b?.alive || !isHost() || !by) return
+  if (!b?.alive || !isHost() || !by || game.match !== match) return
   broadcast({ t: 'bx', i, by: by.id })
   addXp(by, XP.bucket)
   bigSplash(b.x, b.z, 5.5, by)
-  const match = game.match
   setTimeout(() => {
     if (isHost() && game.match === match && game.phase === 'battle') broadcast({ t: 'bu', i })
   }, 25000)
@@ -683,14 +692,16 @@ function onPartDone(msg) {
   const k = partsDone()
   const n = layout.n
   // The last part ends the round: nobody grows then, so the whole floor is the moment.
-  let perk = ''
+  let sub = ''
   if (k < n) {
     const was = game.me?.tier
     for (const t of game.tanks.values()) if (t.level < grownLevel(k)) setLevel(t, grownLevel(k))
     const tier = TIERS[(game.me?.tier ?? 1) - 1]
-    if (game.me && game.me.tier !== was && tier.perk) perk = `✨ ${tier.name}! ${tier.perk}`
+    if (game.me && game.me.tier !== was && tier.perk) sub = `✨ ${tier.name}! ${tier.perk}`
   }
-  hud.banner(`${cap(fractionWords(k, n))} painted!`, perk, 3000)
+  // Show the one equivalence the round says aloud, rather than the perk.
+  if (n === 4 && k === 2) sub = 'Two quarters make one half!'
+  hud.banner(`${cap(fractionWords(k, n))} painted!`, sub, 3000)
   announce(doneWords(k, n))
 }
 
@@ -1007,15 +1018,12 @@ function battleStep(dt, n) {
 
   // HUD.
   if (together()) {
-    if (n - game.lastProgress > 250) {
-      game.lastProgress = n
-      // Measure only when the paint changed (it uploads about 10 times a second).
-      if (game.progressVersion !== paintVersion) {
-        game.progressVersion = paintVersion
-        game.progress = partProgress()
-      }
-      hud.fraction(game.progress, me?.alive ? partAt(me.pos.x, me.pos.z) : -1)
+    // Measure only when the paint changed (it uploads about 10 times a second).
+    if (game.progressVersion !== paintVersion) {
+      game.progressVersion = paintVersion
+      game.progress = partProgress()
     }
+    hud.fraction(game.progress, me?.alive ? partAt(me.pos.x, me.pos.z) : -1)
   } else hud.timer(m.over ? 0 : Math.min(m.endsAt - n, m.endsAt - m.startAt))
   if (me) hud.bars(me, best, n, together())
   hud.minimap(tanks, me, game.pads)

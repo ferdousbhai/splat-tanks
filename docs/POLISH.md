@@ -28,7 +28,7 @@ The standard and audit are in [AUDIT_2026-10-10.md](AUDIT_2026-10-10.md). It is 
 - **Growing is the reward for finishing a part.** Every tank grows a tier per finished part (Squirter → Splasher → Roller → Titan), and the banner names the new perk (🎈 balloons, 🖌️ zoom stripe, 🌈 twin squirters).
 - Robots never aim at tanks. They paint bare floor in the unfinished part nearest to done, so parts finish one after another and the fraction moments are spaced out.
 - The results screen says "Four quarters make one whole floor!" and shows a picture of the floor with its chalk lines, plus everyone who painted it, in join order.
-- Pickups are the ones that help paint (big brush, super squirt, balloon), with a slower respawn.
+- Pickups are the ones that help paint (big brush, super squirt), with a slower respawn.
 
 ### ⏱️ Splat match (kept as a menu choice)
 
@@ -74,6 +74,17 @@ Test scripts and screenshots are in the session scratchpad `splat/` (`audit/` be
   - part progress is measured only when the paint changed
   - one `cap` and one `cellAt`
   - the dead `--hot` colour is removed
+
+### Fresh audit, round 2
+
+- **Grid desync:** the host painted exact splats but sent ones rounded to 0.1 m, so guests' grids drifted (48 of 1,895 painted cells after 20 s). The host now rounds first and paints exactly what it sends: 0 cells differ.
+- In-round messages that arrive after the host's 🏠 are dropped, so no frozen blob is left in the menu.
+- A player who joins just before the old host leaves still gets placed.
+- Both bucket timers check their round through one guard in `hostBucket`.
+- **Landscape phones:** banners sit below the fraction strip, so the box that just filled stays visible.
+- The second quarter shows "Two quarters make one half!" on screen as well as saying it. The halves intro says "Let's paint both together!".
+- **Cleanup:** one `dab()` draws a whole cell. Progress is measured whenever the paint changes, and the strip updates every frame through change-only writes.
+- **Test note:** headless WebKit's WebRTC in `dev/two.html` connects only about 1 time in 3, on the original code as well, so a failed WebKit connect in `duo.mjs` is the environment. When it connects, the test passes.
 
 ### Open
 

@@ -80,22 +80,23 @@ export function paint(x, z, r, slot) {
 /** The slot that painted cell i (0 = bare floor). Cell i is column i % N, row floor(i / N), 1 m each. */
 export const slotAt = (i) => grid[i]
 
-/** Fills the given bare cells with one slot's paint. Returns how many changed. */
+/** One cell drawn as a round dab, so whole cells look painted rather than tiled. */
+function dab(i) {
+  g.beginPath()
+  g.arc(((i % N) + 0.5) * K, (Math.floor(i / N) + 0.5) * K, K * 0.75, 0, Math.PI * 2)
+  g.fill()
+}
+
+/** Fills the given bare cells with one slot's paint. */
 export function fillCells(cells, slot) {
   g.fillStyle = colors.get(slot) ?? '#ffffff'
-  let filled = 0
   for (const i of cells) {
     if (grid[i]) continue
     grid[i] = slot
     counts[slot]++
-    filled++
-    // Round dabs, as decodePaint draws, so the filled gaps look painted rather than tiled.
-    g.beginPath()
-    g.arc(((i % N) + 0.5) * K, (Math.floor(i / N) + 0.5) * K, K * 0.75, 0, Math.PI * 2)
-    g.fill()
+    dab(i)
+    dirty = true
   }
-  dirty ||= filled > 0
-  return filled
 }
 
 export const cellsOf = (slot) => counts[slot]
@@ -140,9 +141,7 @@ export function decodePaint(data) {
       for (; i < end; i++) {
         grid[i] = v
         counts[v]++
-        g.beginPath()
-        g.arc(((i % N) + 0.5) * K, (Math.floor(i / N) + 0.5) * K, K * 0.75, 0, Math.PI * 2)
-        g.fill()
+        dab(i)
       }
     }
     i = end
