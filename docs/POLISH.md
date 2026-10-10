@@ -222,6 +222,12 @@ Cleanup came back clean.
 - **Drive stick on landscape phones:** its area began under 🎵 👀 🏠, so a thumb could flip the view or arm 🏠 instead of driving. On short touch screens it now starts right of that column.
 - **Floor labels:** with square quarters, a part's chalk "1/4" sat under a crate, wall, rock or tree in 43% of arenas. Each label now goes to the nearest spot to its part's middle where its whole square (and 2 m around it) is clear and inside the part: 0% over 200 arenas, in every layout.
 
+### Fresh audit, round 19
+
+Cleanup found only a comment to fix.
+- **Giant name labels after the driver's seat (from before today):** switching views changed the labels' `sizeAttenuation` without rebuilding the material, so the change only took effect when a label was next redrawn. In Paint together every tank grows (and redraws) at each part, so after the driver's seat, names could fill the screen in the sky view, or vanish in the seat. The materials now rebuild on every switch.
+- **Store preview frame:** the drive stick's offset (round 18) applied there too, where the button column is hidden, losing the left 68 px of the drive area. It now applies only above 280 px tall.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

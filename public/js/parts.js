@@ -15,7 +15,7 @@ const NUMBERS = ['no', 'one', 'two', 'three', 'four']
 /** "one quarter", "three quarters", "two halves" */
 export const fractionWords = (k, n) => `${NUMBERS[k]} ${NAMES[n][k === 1 ? 0 : 1]}`
 export const cap = (s) => s[0].toUpperCase() + s.slice(1)
-/** The menu pill and opening banner: "Paint both halves!", "Paint all four quarters!" */
+/** The HUD goal pill and opening banner: "Paint both halves!", "Paint all four quarters!" */
 export const goalWords = (n) => `Paint ${n === 2 ? 'both' : `all ${NUMBERS[n]}`} ${NAMES[n][1]}!`
 
 const partOf = new Uint8Array(CELLS)

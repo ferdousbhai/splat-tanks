@@ -276,7 +276,11 @@ export class Tank {
 
     const show = this.alive && !this.firstPerson
     if (this.label.material.sizeAttenuation === view.seat) {
-      for (const s of [this.label, this.crown]) s.material.sizeAttenuation = !view.seat
+      // sizeAttenuation is compiled into the shader, so the material must rebuild for the change to show.
+      for (const s of [this.label, this.crown]) {
+        s.material.sizeAttenuation = !view.seat
+        s.material.needsUpdate = true
+      }
       this.label.scale.set(...(view.seat ? [0.22, 0.055, 1] : [4.4, 1.1, 1]))
       this.crown.scale.setScalar(view.seat ? 0.07 : 1.4)
     }
