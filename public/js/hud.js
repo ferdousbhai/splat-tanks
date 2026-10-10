@@ -57,12 +57,6 @@ export function banner(text, sub = '', ms = 1600) {
 }
 
 /**
- * style.css says where banners hang from (--banner-anchor). From the top: the banner sits where style.css puts
- * it and the sub-line just below it, however many lines the banner wrapped to. From the bottom (landscape
- * phones, the store's preview frame, where the tank fills the middle): the sub-line sits just above the level
- * panel, wherever it really is, and the banner just above the sub-line.
- */
-/**
  * Where style.css hangs the toast from the top (short and landscape-laptop screens), it sits just below
  * whatever is in the top middle (the fraction strip, or the timer and goal), never over it. Only one edge is
  * ever set inline, so a later layout's own rule can't stretch it.
@@ -84,6 +78,13 @@ addEventListener('resize', () => {
   placeBanners()
   placeToast()
 })
+
+/**
+ * style.css says where banners hang from (--banner-anchor). From the top: the banner sits where style.css puts
+ * it and the sub-line just below it, however many lines the banner wrapped to. From the bottom (landscape
+ * screens, where the camera keeps the tank in the middle): the sub-line sits just above the level panel,
+ * wherever it really is, and the banner just above the sub-line.
+ */
 function placeBanners() {
   const b = $('banner')
   const s = $('subbanner')

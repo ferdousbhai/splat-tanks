@@ -46,7 +46,8 @@ const game = {
   endTimer: 0,
   powerTimer: 0, // painting together: the new powers' banner, after the fraction line
   powers: [], // the tiers grown into that haven't been announced yet
-  cardsSaid: false, // the splat match's "Pick a new power" was said for the cards now up
+  cardsSaid: false,
+  arriveTimer: 0, // a new screen's buttons wait a moment (setScreen) // the splat match's "Pick a new power" was said for the cards now up
   pads: [],
   offer: null,
   shotCount: 0,
@@ -480,6 +481,11 @@ function toMenu() {
 /** Which screen shows: the menu, a round ('battle') or the results ('end'). */
 function setScreen(phase) {
   game.phase = phase
+  // A new screen's buttons wait before they answer (style.css body.arriving): the results long enough for the
+  // whole-floor line to be heard, the menu a moment.
+  document.body.classList.add('arriving')
+  clearTimeout(game.arriveTimer)
+  game.arriveTimer = setTimeout(() => document.body.classList.remove('arriving'), phase === 'end' ? 2500 : 1500)
   show('menu', phase === 'menu')
   show('hud', phase === 'battle')
   show('end', phase === 'end')
@@ -1274,9 +1280,11 @@ function setupMenu() {
   $('again').addEventListener('click', start)
   const home = () => isHost() && broadcast({ t: 'menu' })
   // In play, 🏠 ends the round for everyone, so it asks for a second tap: a stray tap loses nothing.
-  $('home').addEventListener('click', (e) => {
-    // Only a real tap or click: Tab-then-Enter (keys a child mashes beside WASD and Q) never ends the round.
-    if (!isHost() || e.detail === 0) return
+  // 🏠 is left out of the Tab order, so Tab-then-Enter (keys a child mashes beside WASD and Q) can't reach it;
+  // screen readers and switch access still can.
+  $('home').tabIndex = -1
+  $('home').addEventListener('click', () => {
+    if (!isHost()) return
     if (now() < homeArmedUntil) return home()
     homeArmedUntil = now() + 3000
     // A toast, so it shows even while upgrade cards hide the sub-banner.

@@ -340,6 +340,12 @@ Design came back clean. The round 31 design review, which arrived late, and roun
 - **Not changed:** with cards up, the toast still sits over the cards' title, which is also spoken, rather than over the tank (as decided in round 26).
 - **Comment fix:** the tank-label comment says painting together shows the tier.
 
+### Fresh audit, round 33
+
+- **Stray taps skipped the ending:** the results appear right over where ⚡ and the sticks were. A child still tapping hit the results 🏠 (one tap), then the menu's PLAY. That skipped "Four quarters make one whole" and the floor picture, and on a host device it restarted everyone's game. A newly shown screen now holds its buttons back, faded: the results for 2.5 s, so the whole-floor line is heard, and the menu for 1.5 s.
+- **🏠 and the keyboard (from round 32):** ignoring keyboard-triggered clicks also locked out screen-reader and switch users, who would have had no way out of a Paint together round. 🏠 is now left out of the Tab order instead, so Tab-and-Enter mashing can't reach it but assistive tech still can. The two-tap confirm is unchanged.
+- **Comments:** the `placeBanners` comment sits on `placeBanners` again, and a contradictory CSS comment is gone.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

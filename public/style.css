@@ -261,12 +261,12 @@ body.seat #periscope { display: block; }
   #end .painters { gap: 4px; }
   #end .painters .chip { padding: 2px 8px; font-size: 12px; }
   #end .panel { padding: 8px 12px; }
-  /* Banners hang just above the level panel (landscape, above), so they're smaller here. */
   /* A match's banners go up top too, between the minimap and the leaderboard; the timer makes way while one
      shows. (Painting together, they hang above the panel, or sit up top on very short screens, below.) */
   body:not(.together) #hud { --banner-anchor: top; --banner-top: var(--top); }
   body:not(.together) #banner, body:not(.together) #subbanner { left: calc(var(--left) + var(--map) + 12px); right: calc(var(--right) + 172px); }
   body.bannering:not(.together) .top-center { visibility: hidden; }
+  /* Banners are smaller here. */
   #banner { font-size: clamp(22px, 4.5vw, 30px); }
   #subbanner { font-size: 16px; }
   #board .brow:nth-child(n + 4) { display: none; }
@@ -311,6 +311,10 @@ body.playing { cursor: none; }
 .rrow.me { background: rgba(255, 207, 51, 0.2); }
 .rrow .pos { font-size: 20px; }
 
+/* A screen that has just appeared (results, or the menu after a round) holds its buttons back for a moment,
+   so taps meant for the play controls that were under them land on nothing, and the finished floor is seen. */
+body.arriving #end .go-row, body.arriving #go { opacity: 0.3; pointer-events: none; }
+#end .go-row, #go { transition: opacity 0.5s; }
 /* The end screen: the host's again and menu buttons; painting together shows the floor and its painters. */
 .go-row { display: flex; align-items: center; gap: 14px; }
 .icon-btn.home { width: 64px; height: 64px; border-radius: 18px; font-size: 30px; }
