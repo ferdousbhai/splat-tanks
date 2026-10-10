@@ -26,10 +26,17 @@ export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '
 
 let bannerTimer = null
 let subTimer = null
-/** Shows or hides a banner line. body.bannering lets style.css move things out of a showing banner's way. */
+/**
+ * Shows or hides a banner line. body.bannering lets style.css move things out of a showing banner's way; it
+ * stays on until 0.5 s after the last line has gone (and faded), so a quick run of banners, like the 3, 2, 1
+ * countdown, never makes what moved aside blink back in between.
+ */
+let unbannerTimer = null
 function showLine(el, on) {
   el.classList.toggle('show', on)
-  document.body.classList.toggle('bannering', $('banner').classList.contains('show') || $('subbanner').classList.contains('show'))
+  clearTimeout(unbannerTimer)
+  if ($('banner').classList.contains('show') || $('subbanner').classList.contains('show')) document.body.classList.add('bannering')
+  else unbannerTimer = setTimeout(() => document.body.classList.remove('bannering'), 500)
 }
 
 export function banner(text, sub = '', ms = 1600) {
@@ -97,6 +104,8 @@ export function clearBanners() {
   clearTimeout(toastTimer)
   showLine($('banner'), false)
   showLine($('subbanner'), false)
+  clearTimeout(unbannerTimer)
+  document.body.classList.remove('bannering')
   $('toast').classList.add('hidden')
 }
 

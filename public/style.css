@@ -107,11 +107,8 @@ body.together .bars { width: auto; }
   #hud #banner, #hud #subbanner { left: calc(var(--left) + var(--map) + 12px); right: var(--right); }
   #hud #banner { font-size: 26px; }
   #hud #subbanner { font-size: 15px; }
-  body.bannering #board { visibility: hidden; transition: none; }
+  body.bannering #board { visibility: hidden; }
 }
-/* What makes way for a banner (body.bannering) hides at once but comes back only after the banner has faded,
-   so a quick run of banners (the 3, 2, 1 countdown) never makes it blink. */
-#board, .top-center { transition: visibility 0s 0.5s; }
 #board { position: absolute; top: calc(var(--top) + 56px); right: var(--right); width: 210px; display: flex; flex-direction: column; gap: 3px; }
 .brow { display: flex; align-items: center; gap: 6px; background: rgba(10, 14, 24, 0.65); padding: 4px 8px; border-radius: 8px; font-size: 13px; font-weight: 800; border-left: 5px solid; }
 .brow.me { background: rgba(255, 207, 51, 0.25); }
@@ -210,14 +207,14 @@ body.seat #periscope { display: block; }
   .card .ic { font-size: 22px; }
   body.cards #board, body.cards #banner, body.cards #goal { display: none; }
 }
-/* Tablets on their side and short screens: compact cards at the top in place of the timer and strip, clear of
-   your tank in the middle. */
-@media (any-pointer: coarse) and (orientation: landscape), (max-height: 520px) {
+/* Tablets on their side, short laptop windows and short screens: compact cards at the top in place of the
+   timer and strip, clear of your tank in the middle. */
+@media (any-pointer: coarse) and (orientation: landscape), (orientation: landscape) and (max-height: 700px), (max-height: 520px) {
   #upgrades { top: var(--top); bottom: auto; }
   body.cards .top-center, body.cards #board { display: none; }
 }
 /* Compact cards (touch screens and short ones): icon and name only. */
-@media (any-pointer: coarse), (max-height: 520px) {
+@media (any-pointer: coarse), (orientation: landscape) and (max-height: 700px), (max-height: 520px) {
   .card .tx, .card .pips { display: none; }
 }
 /* Upright phones: news of friends arriving or leaving wraps under the minimap, two lines at most. */
@@ -262,7 +259,7 @@ body.seat #periscope { display: block; }
      shows. (Painting together, they hang above the panel, or sit up top on very short screens, below.) */
   body:not(.together) #hud { --banner-anchor: top; --banner-top: var(--top); }
   body:not(.together) #banner, body:not(.together) #subbanner { left: calc(var(--left) + var(--map) + 12px); right: calc(var(--right) + 172px); }
-  body.bannering:not(.together) .top-center { visibility: hidden; transition: none; }
+  body.bannering:not(.together) .top-center { visibility: hidden; }
   #banner { font-size: clamp(22px, 4.5vw, 30px); }
   #subbanner { font-size: 16px; }
   #board .brow:nth-child(n + 4) { display: none; }

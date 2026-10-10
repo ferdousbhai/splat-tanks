@@ -297,6 +297,13 @@ Design and cleanup came back clean. The bug review found two regressions from ro
 - **Blinking during the countdown:** in a match on phones, the leaderboard or timer made way for each "3", "2", "1" banner and came back in the 200 ms gaps, blinking once a second. What makes way for a banner now hides at once but returns only 0.5 s after the banner has faded, so a run of banners keeps it hidden throughout and it comes back once.
 - **Toast with cards up:** the round 25 toast position below the cards sat where the tank rides on landscape phones. Toasts stay at the top, over the cards' title for 3 s (the title is also spoken).
 
+### Fresh audit, round 27
+
+Cleanup came back clean.
+- **Reduced motion brought the countdown blinking back:** the round 26 fix was a CSS transition delay, which the reduced-motion rule switches off. The delay now lives in JS: `body.bannering` stays on until 0.5 s after the last banner line has gone, with or without reduced motion.
+- **Short laptop windows (600–700 px tall, mouse):** Splat match cards hung into the middle over the tank. Compact top cards now also cover landscape windows up to 700 px tall. Clear at 1024×600, 1366×600, 1280×640 and 1366×657.
+- **Small tidy-ups:** `freeColor` loses an unused default, and `cardsSaid` is declared with the other `game` fields.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

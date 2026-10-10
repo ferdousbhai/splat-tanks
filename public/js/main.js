@@ -46,6 +46,7 @@ const game = {
   endTimer: 0,
   powerTimer: 0, // painting together: the new powers' banner, after the fraction line
   powers: [], // the tiers grown into that haven't been announced yet
+  cardsSaid: false, // the splat match's "Pick a new power" was said for the cards now up
   pads: [],
   offer: null,
   shotCount: 0,
@@ -361,7 +362,7 @@ function hostStartMatch() {
  * Each child keeps their own colour. One already taken is swapped for a colour nobody wanted (`wanted`), so a
  * later child whose colour was free keeps theirs; only if every colour is wanted does it take any free one.
  */
-const freeColor = (want, used, wanted = used) =>
+const freeColor = (want, used, wanted) =>
   used.has(want) ? COLORS.find((c) => !used.has(c) && !wanted.has(c)) ?? COLORS.find((c) => !used.has(c)) ?? want : want
 
 /**
