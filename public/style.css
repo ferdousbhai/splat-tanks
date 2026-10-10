@@ -179,7 +179,12 @@ body.seat #periscope { display: block; }
   :root { --map: 92px; }
   .bottom { left: calc(50% - 36px); }
 }
+/* Landscape phones: everything that changes for a short screen, in one place. */
 @media (max-height: 520px) {
+  #menu .logo { font-size: 40px; }
+  #menu .tagline, #menu .controls-help { display: none; }
+  #results.together { flex-direction: row; justify-content: center; }
+  #results.together .floor-pic { width: min(150px, 40vh); }
   body.cards #banner { top: 6%; }
   /* Banners sit below the fraction strip, so the box that just filled stays in view. */
   body.together #banner { top: calc(var(--top) + 118px); }
@@ -216,10 +221,6 @@ body.playing { cursor: none; }
 .go-row { display: flex; align-items: center; gap: 14px; }
 .icon-btn.home { width: 64px; height: 64px; border-radius: 18px; font-size: 30px; }
 #results.together { align-items: center; gap: 12px; max-height: none; overflow: visible; flex-shrink: 0; }
-@media (max-height: 520px) {
-  #results.together { flex-direction: row; justify-content: center; }
-  #results.together .floor-pic { width: min(150px, 40vh); }
-}
 .floor-pic { width: min(240px, 56vw, 34vh); height: auto; aspect-ratio: 1; border-radius: 12px; border: 3px solid rgba(255, 255, 255, 0.6); }
 .painters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .painters .chip { display: inline-flex; align-items: center; gap: 6px; }
@@ -231,13 +232,9 @@ body.playing { cursor: none; }
 .cut.c3 { background: linear-gradient(90deg, transparent calc(33.3% - 1px), currentColor 0 calc(33.3% + 1px), transparent 0 calc(66.7% - 1px), currentColor 0 calc(66.7% + 1px), transparent 0); }
 .cut.c4 { background: linear-gradient(90deg, transparent calc(50% - 1px), currentColor 0 calc(50% + 1px), transparent 0), linear-gradient(0deg, transparent calc(50% - 1px), currentColor 0 calc(50% + 1px), transparent 0); }
 
-/* Short screens: a smaller title, and 🎨 PLAY always in view at the bottom of the menu. */
+/* Short screens: 🎨 PLAY always in view at the bottom of the menu. */
 @media (max-height: 700px) {
   #menu #go { position: sticky; bottom: 0; z-index: 1; flex: none; }
-}
-@media (max-height: 520px) {
-  #menu .logo { font-size: 40px; }
-  #menu .tagline, #menu .controls-help { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

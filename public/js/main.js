@@ -121,7 +121,17 @@ function showHostButtons() {
   show('home', host)
   show('end-host', host)
   show('end-wait', !host)
-  renderMenu()
+  showHostOptions()
+}
+
+/** The menu's host-only choices, and the rows for the chosen mode. */
+function showHostOptions() {
+  const host = isHost()
+  for (const row of document.querySelectorAll('[data-for]')) show(row, row.dataset.for === game.opts.mode)
+  show('host-options', host)
+  show('go', host)
+  show('waiting-host', !host)
+  renderLobby()
 }
 
 /** Painting together, every tank grows one tier per finished part. */
@@ -376,6 +386,8 @@ function startBattle(msg) {
     $('goal').textContent = '🎨 Paint the floor your colour!'
     if (msg.cd <= 0) hud.banner('🎨 Paint!')
   }
+  // The driver's seat is remembered between rounds: say so, after the round's own opening line.
+  if (msg.fresh && seat.on) voice.say("You're in the driver's seat.")
 }
 
 /** Every way out of a round goes through here: nothing from it keeps talking, waiting or showing. */
@@ -813,10 +825,19 @@ function setSeat(on) {
   if (game.me) seat.yaw = game.me.turretYaw
   seat.pitch = 0
   if (!on && document.pointerLockElement) document.exitPointerLock()
-  if (game.phase === 'battle') {
-    const touch = input.touch || matchMedia('(any-pointer: coarse)').matches
-    hud.subBanner(on ? (touch ? "👀 Driver's seat! Right stick looks around" : "👀 Driver's seat! Click, then move the mouse to look") : '🗺️ Sky view', 2200)
+  if (game.phase === 'battle') sayView()
+}
+
+/** Shows and says which view is on, so a child who can't read knows what changed. */
+function sayView() {
+  const touch = input.touch || matchMedia('(any-pointer: coarse)').matches
+  if (!seat.on) {
+    hud.subBanner('🗺️ Sky view', 2200)
+    voice.sayNow('Sky view.')
+    return
   }
+  hud.subBanner(touch ? "👀 Driver's seat! Right stick looks around" : "👀 Driver's seat! Click, then move the mouse to look", 2600)
+  voice.sayNow(touch ? "You're in the driver's seat. The right stick looks around." : "You're in the driver's seat. Click, then move the mouse to look around.")
 }
 
 function seatControls(me, c, dt) {
@@ -1101,12 +1122,7 @@ function renderMenu() {
     })
     $('colors').appendChild(b)
   }
-  const host = isHost()
-  for (const row of document.querySelectorAll('[data-for]')) show(row, row.dataset.for === game.opts.mode)
-  show('host-options', host)
-  show('go', host)
-  show('waiting-host', !host)
-  renderLobby()
+  showHostOptions()
 }
 
 /** The player changed their name or colour: show it and tell the room. */
@@ -1140,7 +1156,7 @@ function setupMenu() {
       const key = seg.dataset.opt
       game.opts[key] = ['difficulty', 'mode'].includes(key) ? b.dataset.v : Number(b.dataset.v)
       if (b.dataset.say) voice.sayNow(b.dataset.say)
-      if (key === 'mode') renderMenu()
+      if (key === 'mode') showHostOptions()
     })
   }
   const start = () => isHost() && hostStartMatch()
@@ -1152,7 +1168,8 @@ function setupMenu() {
     if (!isHost()) return
     if (now() < homeArmedUntil) return home()
     homeArmedUntil = now() + 3000
-    hud.subBanner('🏠 Tap again for the menu', 3000)
+    // A toast, so it shows even while upgrade cards hide the sub-banner.
+    hud.toast('🏠 Tap again for the menu', 3000)
     voice.sayNow('Tap the house again to stop painting.')
   })
   $('to-menu').addEventListener('click', home)

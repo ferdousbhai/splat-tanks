@@ -3,7 +3,7 @@
 // fraction. Every device keeps the same paint grid (paint.js), so every device measures the same
 // progress; only the host decides when a part is finished.
 import * as THREE from 'three'
-import { scene, colliders, freeSpot } from './world.js'
+import { scene, solidAt, freeSpot } from './world.js'
 import { ARENA } from './config.js'
 import { N, CELLS, slotAt, fillCells } from './paint.js'
 
@@ -21,19 +21,14 @@ export const goalWords = (n) => `Paint ${n === 2 ? 'both' : `all ${NUMBERS[n]}`}
 const partOf = new Uint8Array(CELLS)
 const open = new Uint8Array(CELLS) // 1 where a tank can reach the floor: not under a wall, crate, rock or tree
 /**
- * n: how many parts; grid: quarters as four squares (else strips); done: finished parts.
+ * n: how many parts; grid: quarters as four squares (else strips); cuts: the columns where strips begin;
+ * done: finished parts.
  * focus: the unfinished part nearest to done, where the robots help, so parts finish one after another.
  */
-export const layout = { n: 0, grid: false, done: [], cells: [], open: [], focus: 0 }
+export const layout = { n: 0, grid: false, cuts: [], done: [], cells: [], open: [], focus: 0 }
 
 const cellX = (i) => (i % N) + 0.5 - ARENA
 const cellZ = (i) => Math.floor(i / N) + 0.5 - ARENA
-
-function blocked(x, z) {
-  for (const b of colliders.boxes) if (Math.abs(x - b.x) < b.hx && Math.abs(z - b.z) < b.hz) return true
-  for (const c of colliders.circles) if (c.barrel === undefined && Math.hypot(x - c.x, z - c.z) < c.r) return true
-  return false
-}
 
 /** The grid cell under a point on the floor. */
 function cellAt(x, z) {
@@ -49,16 +44,19 @@ export const partAt = (x, z) => partOf[cellAt(x, z)]
 export function setupParts(n, grid, done = []) {
   layout.n = n
   layout.grid = n === 4 && grid
+  // Strips are cut on whole 1 m cells, so paint never crosses the chalk. 92 cells make halves and quarters
+  // exact; thirds are 31, 30 and 31 m, as equal as the grid allows.
+  layout.cuts = Array.from({ length: n - 1 }, (_, k) => Math.round(((k + 1) * N) / n))
   layout.done = Array.from({ length: n }, (_, p) => !!done[p])
   layout.cells = Array.from({ length: n }, () => [])
   layout.open = Array(n).fill(0)
   for (let i = 0; i < CELLS; i++) {
     const cx = i % N
     const cz = Math.floor(i / N)
-    const p = layout.grid ? (cz < N / 2 ? 0 : 2) + (cx < N / 2 ? 0 : 1) : Math.floor((cx * n) / N)
+    const p = layout.grid ? (cz < N / 2 ? 0 : 2) + (cx < N / 2 ? 0 : 1) : layout.cuts.filter((c) => cx >= c).length
     partOf[i] = p
     layout.cells[p].push(i)
-    open[i] = blocked(cellX(i), cellZ(i)) ? 0 : 1
+    open[i] = solidAt(cellX(i), cellZ(i)) ? 0 : 1
     layout.open[p] += open[i]
   }
   drawChalk()
@@ -147,10 +145,7 @@ export function chalkLines(g, X) {
 
 function lines() {
   if (layout.grid) return [[0, -ARENA, 0, ARENA], [-ARENA, 0, ARENA, 0]]
-  return Array.from({ length: layout.n - 1 }, (_, k) => {
-    const x = -ARENA + ((k + 1) * 2 * ARENA) / layout.n
-    return [x, -ARENA, x, ARENA]
-  })
+  return layout.cuts.map((c) => [c - ARENA, -ARENA, c - ARENA, ARENA])
 }
 
 // --- Chalk on the floor -------------------------------------------------------------------

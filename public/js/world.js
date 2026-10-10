@@ -446,6 +446,13 @@ export function shellObstacle(x, z, px, pz, rad) {
   return null
 }
 
+/** True if a wall, crate, rock, tree or tyre stands on this point (paint buckets don't count). */
+export function solidAt(x, z) {
+  for (const b of colliders.boxes) if (Math.abs(x - b.x) < b.hx && Math.abs(z - b.z) < b.hz) return true
+  for (const c of colliders.circles) if (c.barrel === undefined && Math.hypot(x - c.x, z - c.z) < c.r) return true
+  return false
+}
+
 /** True if nothing solid is between two points (for bots). */
 export function lineOfSight(ax, az, bx, bz) {
   const d = Math.hypot(bx - ax, bz - az)

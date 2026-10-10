@@ -104,6 +104,16 @@ Test scripts and screenshots are in the session scratchpad `splat/` (`audit/` be
   - a duplicate host check was dropped
   - the README lists `dev/cover.html`
 
+### Fresh audit, round 4
+
+- **Thirds were unequal on the floor:** 92 one-metre cells don't divide by three, so a finished third filled half a metre past its chalk line. Strips are now cut on whole cells, symmetrically (thirds are 31, 30 and 31 m), and the chalk is drawn exactly on those cuts, so paint never crosses a line. Halves and quarters were already exact.
+- **The 🏠 "tap again" prompt** is a toast, so it shows even while upgrade cards are up. It used to be a sub-banner that the cards hid.
+- **Spoken view changes:** switching between the driver's seat and the sky view is said aloud, and a round that starts in a remembered driver's seat says so after its opening line.
+- **Cleanup:**
+  - `showHostOptions()` updates the host-only menu choices without rebuilding the colour buttons
+  - one `@media (max-height: 520px)` block
+  - `solidAt()` in world.js is the one "what is solid" rule
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
