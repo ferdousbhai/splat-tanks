@@ -51,8 +51,16 @@ addEventListener('blur', () => {
   updateMoveFromKeys()
 })
 
+/**
+ * Mouse aiming and squirting. On touch-capable laptops and iPads with a mouse, the touch sticks' zones lie over
+ * the lower screen, so the mouse is heard there too, not only on the canvas.
+ */
+export const mouseSurfaces = (canvas) => [canvas, ...document.querySelectorAll('.stick')]
+
 export function bindMouse(canvas) {
-  canvas.addEventListener('pointermove', (e) => {
+  const surfaces = mouseSurfaces(canvas)
+  const on = (type, fn) => surfaces.forEach((el) => el.addEventListener(type, fn))
+  on('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return
     input.touch = false // an iPad trackpad or mouse takes over aiming
     if (document.pointerLockElement === canvas) {
@@ -64,7 +72,7 @@ export function bindMouse(canvas) {
     input.mouse.y = -(e.clientY / innerHeight) * 2 + 1
     input.mouse.active = true
   })
-  canvas.addEventListener('pointerdown', (e) => {
+  on('pointerdown', (e) => {
     if (e.pointerType !== 'mouse') return
     input.mouse.active = true
     if (e.button === 0) input.firing = true
@@ -73,7 +81,7 @@ export function bindMouse(canvas) {
   addEventListener('pointerup', (e) => {
     if (e.pointerType === 'mouse' && e.button === 0) input.firing = false
   })
-  canvas.addEventListener('contextmenu', (e) => e.preventDefault())
+  on('contextmenu', (e) => e.preventDefault())
 }
 
 /** A virtual joystick in `zone`; the knob follows the finger from wherever it lands. */

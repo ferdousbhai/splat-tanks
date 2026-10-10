@@ -16,7 +16,7 @@ import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
 import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
-import { input, bindMouse, bindTouch, onKey } from './input.js'
+import { input, bindMouse, bindTouch, onKey, mouseSurfaces } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE } from './parts.js'
 import * as hud from './hud.js'
@@ -637,7 +637,7 @@ function endMatch() {
 /**
  * How loud a sound at (x, z) is, and whether it is the player's own (owner: the tank it came from). The
  * player's own paint is heard across the floor; everyone else's is quiet and only from close by, so busy
- * robots stay in the background. { vol, mine }; mine sounds are never spaced out (audio.js).
+ * robots stay in the background. { vol, mine }; how sounds are spaced out is decided in audio.js.
  */
 function hearing(x, z, owner) {
   const c = game.me?.alive ? game.me.pos : { x: camTarget.x, z: camTarget.z }
@@ -1285,10 +1285,12 @@ function setupMenu() {
   $('seat-btn').classList.toggle('on', seat.on)
   $('seat-btn').addEventListener('click', () => setSeat(!seat.on))
   onKey('KeyV', () => setSeat(!seat.on))
-  renderer.domElement.addEventListener('pointerdown', (e) => {
-    // Lock the pointer for mouse look, but not while the upgrade cards want clicking.
-    if (e.pointerType === 'mouse' && firstPerson() && !game.offer && !document.pointerLockElement) renderer.domElement.requestPointerLock()
-  })
+  for (const el of mouseSurfaces(renderer.domElement)) {
+    el.addEventListener('pointerdown', (e) => {
+      // Lock the pointer for mouse look, but not while the upgrade cards want clicking.
+      if (e.pointerType === 'mouse' && firstPerson() && !game.offer && !document.pointerLockElement) renderer.domElement.requestPointerLock()
+    })
+  }
   // iOS Safari only unlocks audio from certain gestures, and the sticks cancel clicks.
   for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, { capture: true, passive: true })
 }

@@ -310,6 +310,12 @@ Cleanup came back clean.
 - **Top cards on narrow laptop windows:** they now centre in the space right of the minimap, so a card never covers it.
 - **Cleanup:** the touch sticks no longer reset on every resize. That was left over from when they were placed in pixels, and it briefly mis-showed a stick held during rotation.
 
+### Fresh audit, round 29
+
+- **Mouse on touch-capable devices (from before today):** on touchscreen laptops and Chromebooks, and on iPads with a mouse, the invisible touch-stick zones swallowed the mouse over the lower half of the screen, so a child couldn't aim or squirt down-left or down-right of their tank. Mouse aiming, squirting and the driver's-seat pointer lock now work over those zones too, and both sets of control hints show.
+- **Cards in the store's preview frame (from round 28):** the cards were pushed right of a minimap that isn't shown there and ran off the edge. They now centre across the whole frame.
+- **Cleanup:** the cards' placement is written once, and the `hearing()` comment points to audio.js for how sounds are spaced.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

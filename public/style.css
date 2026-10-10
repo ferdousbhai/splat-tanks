@@ -60,6 +60,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .controls-help b { color: var(--accent); }
 .touch-only { display: none; }
 @media (any-pointer: coarse) { .touch-only { display: inline; } .kbd-only { display: none; } }
+/* A touch laptop or an iPad with a mouse: both sets of hints. */
+@media (any-pointer: coarse) and (any-pointer: fine) { .kbd-only { display: inline; } }
 
 /* --- HUD ----------------------------------------------------------------------------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
@@ -200,7 +202,7 @@ body.seat #periscope { display: block; }
 /* Phones upright: compact cards sit up top, under the timer and right of the minimap, clear of your tank in
    the middle and of where thumbs rest on the sticks. While they're up, the leaderboard and banner make way. */
 @media (any-pointer: coarse) and (orientation: portrait) {
-  #upgrades { top: calc(var(--top) + 52px); bottom: auto; left: calc(var(--left) + var(--map) + 8px); right: var(--right); transform: none; width: auto; }
+  #upgrades { top: calc(var(--top) + 52px); }
   .up-title { font-size: 13px; }
   #up-cards { gap: 6px; width: 100%; }
   .card { flex: 1; width: auto; padding: 6px 4px; }
@@ -210,14 +212,15 @@ body.seat #periscope { display: block; }
 /* Tablets on their side, short laptop windows and short screens: compact cards at the top in place of the
    timer and strip, clear of your tank in the middle. */
 @media (any-pointer: coarse) and (orientation: landscape), (orientation: landscape) and (max-height: 700px), (max-height: 520px) {
-  /* Centred in the space right of the minimap, so a narrow window never puts a card over it. */
-  #upgrades { top: var(--top); bottom: auto; left: calc(var(--left) + var(--map) + 12px); right: var(--right); transform: none; width: auto; }
-  #up-cards { justify-content: center; }
+  #upgrades { top: var(--top); }
   body.cards .top-center, body.cards #board { display: none; }
 }
-/* Compact cards (touch screens and short ones): icon and name only. */
+/* Compact cards (touch screens and short ones): icon and name only, centred in the space right of the
+   minimap so a card never covers it. (The two blocks above set how far down they sit.) */
 @media (any-pointer: coarse), (orientation: landscape) and (max-height: 700px), (max-height: 520px) {
   .card .tx, .card .pips { display: none; }
+  #upgrades { bottom: auto; left: calc(var(--left) + var(--map) + 12px); right: var(--right); transform: none; width: auto; }
+  #up-cards { justify-content: center; }
 }
 /* Upright phones: news of friends arriving or leaving wraps under the minimap, two lines at most. */
 @media (max-width: 430px) {
@@ -287,7 +290,7 @@ body.seat #periscope { display: block; }
   #hud #subbanner { font-size: 12px; }
   .hud-left, #board, #timer, .up-title, .bars { display: none; }
   .bottom { transform: translateX(-50%) scale(0.6); }
-  #upgrades { top: 6px; bottom: auto; }
+  #upgrades { top: 6px; left: var(--left); } /* no minimap here: centred across the whole frame */
   .card { width: 84px; padding: 4px; }
   .touch-btn { width: 48px; height: 48px; font-size: 22px; }
   .touch-btn.mega { bottom: calc(var(--bottom) + 8px); right: calc(var(--right) + 64px); }
