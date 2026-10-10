@@ -22,6 +22,12 @@ function put(el, prop, v) {
   return true
 }
 const cssPct = (v) => `${Math.round(v * 1000) / 10}%`
+/** A toggle button's state: lit, and announced as pressed. */
+export function press(el, on) {
+  el.classList.toggle('on', on)
+  el.setAttribute('aria-pressed', String(on))
+}
+
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
 let bannerTimer = null

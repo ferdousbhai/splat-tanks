@@ -16,7 +16,7 @@ import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera } fr
 import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
-import { input, bindMouse, bindTouch, onKey, mouseSurfaces, handsFree } from './input.js'
+import { input, bindMouse, bindTouch, onKey, mouseSurfaces, handsFree, mouseAims } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import * as hud from './hud.js'
@@ -375,10 +375,7 @@ function setOpt(key, value) {
   const b = [...(seg?.querySelectorAll('button') ?? [])].find((x) => x.dataset.v === String(value))
   if (!b) return null
   game.opts[key] = ['difficulty', 'mode'].includes(key) ? b.dataset.v : Number(b.dataset.v)
-  for (const x of seg.querySelectorAll('button')) {
-    x.classList.toggle('on', x === b)
-    x.setAttribute('aria-pressed', String(x === b))
-  }
+  for (const x of seg.querySelectorAll('button')) hud.press(x, x === b)
   return b
 }
 
@@ -389,6 +386,7 @@ function takeOpts(o) {
 
 function startBattle(msg) {
   leaveRound()
+  input.mouseUsed = false
   takeOpts(msg.opts)
   const mode = msg.mode === 'match' ? 'match' : 'together'
   view.levels = mode === 'match'
@@ -460,6 +458,7 @@ function leaveRound() {
   hud.clearBanners()
   game.offer = null
   hud.showUpgrades(null)
+  input.firing = false
 }
 
 /** The host's 🏠: everyone goes back to the menu, where the host can change the game. */
@@ -905,13 +904,12 @@ const mouseNdc = new THREE.Vector2()
 function playerControls(me, dt) {
   const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing, boost: input.boost, mega: input.mega }
   if (firstPerson()) return seatControls(me, c, dt)
-  const free = handsFree()
-  if (input.mouse.active && !free) {
+  if (mouseAims()) {
     ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
     if (ray.ray.intersectPlane(aimPlane, aimPoint)) c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   } else if (input.aimStick.active) {
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, yawOf(input.aimStick.x, input.aimStick.y)) * Math.min(1, dt * 18)
-  } else if (free && Math.hypot(input.moveX, input.moveZ) > 0.2) {
+  } else if (handsFree() && Math.hypot(input.moveX, input.moveZ) > 0.2) {
     // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically.
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, me.heading) * Math.min(1, dt * 4)
     c.fire = true
@@ -937,7 +935,7 @@ function setSeat(on) {
   try {
     localStorage.setItem(VIEW_KEY, on ? 'seat' : 'top')
   } catch {}
-  $('seat-btn').classList.toggle('on', on)
+  hud.press($('seat-btn'), on)
   if (game.me) seat.yaw = game.me.turretYaw
   seat.pitch = 0
   if (!on && document.pointerLockElement) document.exitPointerLock()
@@ -953,8 +951,14 @@ function sayView() {
     voice.sayNow('Sky view.')
     return
   }
-  hud.subBanner(touch ? "👀 Driver's seat! Right stick looks around" : "👀 Driver's seat! Click, then move the mouse to look", 2600)
-  voice.sayNow(touch ? "You're in the driver's seat. The right stick looks around." : "You're in the driver's seat. Click, then move the mouse to look around.")
+  // Keys alone (no mouse yet this round) steer like a toy tank: say so rather than send them to the mouse.
+  const [shown, said] = touch
+    ? ["👀 Driver's seat! Right stick looks around", "You're in the driver's seat. The right stick looks around."]
+    : input.mouseUsed
+      ? ["👀 Driver's seat! Click, then move the mouse to look", "You're in the driver's seat. Click, then move the mouse to look around."]
+      : ["👀 Driver's seat! ← → turn", "You're in the driver's seat. The arrow keys turn and drive."]
+  hud.subBanner(shown, 2600)
+  voice.sayNow(said)
 }
 
 function seatControls(me, c, dt) {
@@ -964,9 +968,15 @@ function seatControls(me, c, dt) {
   look.dx = look.dy = 0
   if (input.aimStick.active) seat.yaw -= input.aimStick.x * 2.4 * dt
   else if (handsFree() && Math.hypot(input.moveX, input.moveZ) > 0.2) {
-    // Driving only: the view swings round behind the tank, so holding the stick or a key to one side steers.
-    seat.yaw += angleDiff(seat.yaw, me.heading) * Math.min(1, dt * 2.5)
+    // Driving only, like a toy tank: left and right turn the view gently, up and down drive along it, and paint
+    // squirts ahead.
+    seat.yaw -= input.moveX * 1.3 * dt
+    const d = dirOf(seat.yaw)
+    c.mx = -d.x * input.moveZ
+    c.mz = -d.z * input.moveZ
+    c.aimYaw = seat.yaw
     c.fire = true
+    return c
   }
   const d = dirOf(seat.yaw)
   const ahead = -input.moveZ
@@ -1192,7 +1202,7 @@ function battleStep(dt, n) {
   // In the driver's seat the aim is the middle of the view, but only while the mouse is captured: when it is
   // free (cards up, or after Esc) the ring follows the mouse, so a child can always see where they're pointing.
   if (inside && (input.touch || document.pointerLockElement)) hud.crosshair(true, innerWidth / 2, innerHeight / 2)
-  else hud.crosshair(input.mouse.active && !input.touch && me?.alive, ((input.mouse.x + 1) / 2) * innerWidth, ((1 - input.mouse.y) / 2) * innerHeight)
+  else hud.crosshair(mouseAims() && me?.alive, ((input.mouse.x + 1) / 2) * innerWidth, ((1 - input.mouse.y) / 2) * innerHeight)
 }
 
 function hostStep(dt, n) {
@@ -1254,12 +1264,11 @@ function renderMenu() {
   COLORS.forEach((c, k) => {
     const b = document.createElement('button')
     b.style.background = c
-    b.classList.toggle('on', c === game.myColor)
+    hud.press(b, c === game.myColor)
     // A colour a friend already has is dimmed: picking it would swap you to another one at the start.
     const taken = [...game.humans.values()].some((h) => h.color === c)
     b.classList.toggle('taken', taken)
     b.setAttribute('aria-label', taken ? `${COLOR_NAMES[k]}, a friend has it` : COLOR_NAMES[k])
-    b.setAttribute('aria-pressed', String(c === game.myColor))
     b.addEventListener('click', () => {
       game.myColor = c
       voice.sayNow(COLOR_NAMES[k])
@@ -1333,7 +1342,7 @@ function setupMenu() {
   onKey('KeyM', flipMusic)
   // HUD buttons never keep keyboard focus from a click, so Enter (a key young children mash) can't press one again.
   for (const b of document.querySelectorAll('#hud button')) b.addEventListener('mousedown', (e) => e.preventDefault())
-  $('seat-btn').classList.toggle('on', seat.on)
+  hud.press($('seat-btn'), seat.on)
   $('seat-btn').addEventListener('click', () => setSeat(!seat.on))
   onKey('KeyV', () => setSeat(!seat.on))
   for (const el of mouseSurfaces(renderer.domElement)) {

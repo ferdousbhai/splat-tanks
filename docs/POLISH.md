@@ -389,10 +389,18 @@ Code quality came back clean.
 
 ### Fresh audit, round 40
 
-- **Keyboard-only painting (design):** no key squirted, so a child driving with the arrow keys alone painted only a thin wheel trail, and in the driver's seat ← → slid the tank while the view stayed fixed. Driving now paints on keys too once the mouse has rested 2.5 s (`input.js handsFree`), as the drive stick does on touch: the turret squirts ahead in the sky view, and in the seat the view swings behind the tank so ← → steer. Moving or clicking the mouse gives aim back to it. The menu's keyboard hint says "WASD or arrows drive and paint".
+- **Keyboard-only painting (design):** no key squirted, so a child driving with the arrow keys alone painted only a thin wheel trail, and in the driver's seat ← → slid the tank while the view stayed fixed. Driving now paints on keys too (`input.js handsFree`; changed in round 41), as the drive stick does on touch: the turret squirts ahead in the sky view, and in the seat the view swings behind the tank so ← → steer. Moving or clicking the mouse gives aim back to it. The menu's keyboard hint says "WASD or arrows drive and paint".
 - **Selected choices for screen readers (design):** the menu choices and 🎵 now carry `aria-pressed`, as the colours already did.
 - **Your own splat on a tank in Paint together (correctness):** round 39's early return also silenced the squirter's own splat when a blob hit a tank. The squirter hears the same soft splat as on the floor again.
 - **Tidy (code quality):** a card press now removes both its end listeners once either fires, instead of leaving one behind per pick.
+
+### Fresh audit, round 41
+
+- **Whirling in the driver's seat (design):** round 40's keyboard driving in the seat chased the tank's heading with the view, so holding → spun the tank in a tight circle at about 230°/s, and ← kept it spinning the same way. The touch drive stick held sideways did the same. Driving alone in the seat now steers like a toy tank: left and right turn the view gently, up and down drive along it, and paint squirts ahead.
+- **The mouse keeps the aim (design):** after 2.5 s of a resting mouse the turret left the cursor, squirted on its own, then snapped back at the next nudge. Driving alone now paints only until the mouse is used in a round (`input.mouseUsed`, cleared at each start); from then on the mouse aims, resting or not.
+- **The seat line for keys (design):** a keyboard child is now told "← → turn" rather than sent to the mouse.
+- **Squirting stuck on (correctness):** with left and right buttons held together, letting go of left arrived as a move and the last release named the right button, so squirting stayed on into later rounds. Squirting now follows the left button's state, and stops on leaving a round.
+- **Tidy (code quality):** the crosshair and the aim share one `mouseAims()`, and toggle buttons (menu choices, colours, 👀) go through one `hud.press`, which gave 👀 its `aria-pressed` too.
 
 ### Open
 
