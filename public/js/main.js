@@ -1151,7 +1151,9 @@ function battleStep(dt, n) {
   hud.minimap(tanks, me, game.pads)
   const inside = firstPerson()
   document.body.classList.toggle('seat', !!inside)
-  if (inside) hud.crosshair(true, innerWidth / 2, innerHeight / 2)
+  // In the driver's seat the aim is the middle of the view, but only while the mouse is captured: when it is
+  // free (cards up, or after Esc) the ring follows the mouse, so a child can always see where they're pointing.
+  if (inside && (input.touch || document.pointerLockElement)) hud.crosshair(true, innerWidth / 2, innerHeight / 2)
   else hud.crosshair(input.mouse.active && !input.touch && me?.alive, ((input.mouse.x + 1) / 2) * innerWidth, ((1 - input.mouse.y) / 2) * innerHeight)
 }
 
@@ -1272,8 +1274,9 @@ function setupMenu() {
   $('again').addEventListener('click', start)
   const home = () => isHost() && broadcast({ t: 'menu' })
   // In play, 🏠 ends the round for everyone, so it asks for a second tap: a stray tap loses nothing.
-  $('home').addEventListener('click', () => {
-    if (!isHost()) return
+  $('home').addEventListener('click', (e) => {
+    // Only a real tap or click: Tab-then-Enter (keys a child mashes beside WASD and Q) never ends the round.
+    if (!isHost() || e.detail === 0) return
     if (now() < homeArmedUntil) return home()
     homeArmedUntil = now() + 3000
     // A toast, so it shows even while upgrade cards hide the sub-banner.

@@ -326,10 +326,19 @@ Cleanup came back clean.
 
 ### Fresh audit, round 31
 
-Design came back clean.
+(The design review reported after this was committed; its findings are fixed in round 32.)
 - **Toast over the strip or timer on laptop windows (from round 30):** a top toast now measures the top-middle stack (fraction strip, or timer and goal) and sits just below it whenever they'd overlap.
 - **Menu defaults:** they are set once, in `game.opts`, and shown through `setOpt`. The HTML no longer repeats them, so the two can't drift.
 - **Comments:** the floaters comment and the `paintVersion` comment match what the code does.
+
+### Fresh audit, round 32
+
+Design came back clean. The round 31 design review, which arrived late, and round 32's bug review found:
+- **Pointer in the driver's seat:** with cards up, or after Esc, the mouse was free but the crosshair stayed fixed in the middle, so a child couldn't see where they were pointing. Free of the pointer lock, the ring now follows the mouse; it centres only while the mouse is captured (or on touch).
+- **Tab, Tab, Tab, Enter, Enter ended the round:** 🏠 in play now ignores keyboard-triggered clicks. Tab sits right beside Q, the balloon key. A real tap or click still works.
+- **Toast stretching on rotation (from round 31):** a toast placed below the top-middle stack kept its inline position when the layout changed, and stretched into a tall panel. The toast now sets only one edge, and it is re-placed on resize.
+- **Not changed:** with cards up, the toast still sits over the cards' title, which is also spoken, rather than over the tank (as decided in round 26).
+- **Comment fix:** the tank-label comment says painting together shows the tier.
 
 ### Open
 

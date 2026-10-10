@@ -62,7 +62,28 @@ export function banner(text, sub = '', ms = 1600) {
  * phones, the store's preview frame, where the tank fills the middle): the sub-line sits just above the level
  * panel, wherever it really is, and the banner just above the sub-line.
  */
-addEventListener('resize', () => placeBanners()) // a phone turned while a banner shows
+/**
+ * Where style.css hangs the toast from the top (short and landscape-laptop screens), it sits just below
+ * whatever is in the top middle (the fraction strip, or the timer and goal), never over it. Only one edge is
+ * ever set inline, so a later layout's own rule can't stretch it.
+ */
+function placeToast() {
+  const t = $('toast')
+  t.style.top = t.style.bottom = ''
+  const r = t.getBoundingClientRect()
+  if (r.top >= innerHeight / 2) return
+  const tc = document.querySelector('.top-center').getBoundingClientRect()
+  if (tc.height && tc.left < r.right && tc.right > r.left) {
+    t.style.top = `${tc.bottom + 8}px`
+    t.style.bottom = 'auto'
+  }
+}
+
+// A phone turned (or a window resized) while a banner or toast shows: place them for the new layout.
+addEventListener('resize', () => {
+  placeBanners()
+  placeToast()
+})
 function placeBanners() {
   const b = $('banner')
   const s = $('subbanner')
@@ -93,14 +114,7 @@ export function toast(text, ms = 2500) {
   const t = $('toast')
   t.textContent = text
   t.classList.remove('hidden')
-  // Where style.css hangs the toast from the top (short and landscape-laptop screens), it sits just below
-  // whatever is in the top middle (the fraction strip, or the timer and goal), never over it.
-  t.style.top = ''
-  const r = t.getBoundingClientRect()
-  if (r.top < innerHeight / 2) {
-    const tc = document.querySelector('.top-center').getBoundingClientRect()
-    if (tc.height && tc.left < r.right && tc.right > r.left) t.style.top = `${tc.bottom + 8}px`
-  }
+  placeToast()
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => t.classList.add('hidden'), ms)
 }

@@ -6,7 +6,7 @@ import { emojiTexture, still } from './fx.js'
 
 /**
  * seat: in the driver's seat, labels keep one size on screen instead of filling it up close.
- * levels: the splat match shows levels on the labels; painting together shows just the tank's name.
+ * levels: the splat match labels show "Lv n Tier"; painting together shows just the tier.
  */
 export const view = { seat: false, levels: true }
 
