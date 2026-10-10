@@ -46,8 +46,8 @@ const game = {
   endTimer: 0,
   powerTimer: 0, // painting together: the new powers' banner, after the fraction line
   powers: [], // the tiers grown into that haven't been announced yet
-  cardsSaid: false,
-  arriveTimer: 0, // a new screen's buttons wait a moment (setScreen) // the splat match's "Pick a new power" was said for the cards now up
+  cardsSaid: false, // the splat match's "Pick a new power" was said for the cards now up
+  arriveTimer: 0, // a new screen's buttons wait a moment (setScreen)
   pads: [],
   offer: null,
   shotCount: 0,
@@ -483,9 +483,15 @@ function setScreen(phase) {
   game.phase = phase
   // A new screen's buttons wait before they answer (style.css body.arriving): the results long enough for the
   // whole-floor line to be heard, the menu a moment.
+  // Inert as well, so keys (Tab, Enter) can't press them either.
+  const held = [$('go'), $('end-host')]
   document.body.classList.add('arriving')
+  for (const el of held) el.inert = true
   clearTimeout(game.arriveTimer)
-  game.arriveTimer = setTimeout(() => document.body.classList.remove('arriving'), phase === 'end' ? 2500 : 1500)
+  game.arriveTimer = setTimeout(() => {
+    document.body.classList.remove('arriving')
+    for (const el of held) el.inert = false
+  }, phase === 'end' ? 2500 : 1500)
   show('menu', phase === 'menu')
   show('hud', phase === 'battle')
   show('end', phase === 'end')
@@ -831,7 +837,7 @@ function fire(t, mega = false) {
     for (const a of spread) {
       const { x: dx, z: dz } = dirOf(t.turretYaw + a)
       out.push([`${t.id}.${game.shotCount++}`, r2(m.x), r2(m.z), r5(dx), r5(dz)])
-      muzzleFlash(m.x, m.y, m.z, dx, dz, t.color, mega)
+      muzzleFlash(m.x, m.y, m.z, dx, dz, t.color, mega, t === game.me && view.seat)
     }
   }
   const splat = mega ? BASE.megaSplat * (1 + 0.1 * t.upgrades.big) : s.splat * (s.twin ? 0.85 : 1)

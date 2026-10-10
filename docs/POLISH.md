@@ -346,6 +346,12 @@ Design came back clean. The round 31 design review, which arrived late, and roun
 - **🏠 and the keyboard (from round 32):** ignoring keyboard-triggered clicks also locked out screen-reader and switch users, who would have had no way out of a Paint together round. 🏠 is now left out of the Tab order instead, so Tab-and-Enter mashing can't reach it but assistive tech still can. The two-tap confirm is unchanged.
 - **Comments:** the `placeBanners` comment sits on `placeBanners` again, and a contradictory CSS comment is gone.
 
+### Fresh audit, round 34
+
+- **Flashing in the driver's seat:** the camera sits just behind the nozzle, so the growing puff of every squirt filled the middle of the view about twice a second, a steady colour pulse. Your own squirts seen from the driver's seat now send only the little drops; the sky view is unchanged.
+- **The button hold and the keyboard (from round 33):** `pointer-events: none` stopped taps but not Tab and Enter, so a child mashing keys could still skip the ending. The held buttons are now `inert` for the hold, which blocks keys too.
+- **Comment fix:** the `cardsSaid` and `arriveTimer` comments are back on their own lines.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
