@@ -173,12 +173,12 @@ export function bars(me, now, together) {
   put($('btn-boost'), 'opacity', String(now >= me.boostReadyAt ? 1 : 0.4))
   // A power's icon with a little bar that drains as it wears off: no ticking seconds.
   const buffs = [
-    ['💦', me.rapidUntil, PICKUPS.rapid.seconds],
-    ['🖌️', me.rollerUntil, PICKUPS.roller.seconds],
+    [PICKUPS.rapid, me.rapidUntil],
+    [PICKUPS.roller, me.rollerUntil],
   ].filter(([, until]) => now < until)
   const box = $('buffs')
-  put(box, 'html', buffs.map(([icon]) => `<span class="buff">${icon}<i></i></span>`).join(''))
-  box.querySelectorAll('.buff i').forEach((bar, k) => put(bar, 'width', cssPct(Math.min(1, (buffs[k][1] - now) / (buffs[k][2] * 1000)))))
+  put(box, 'html', buffs.map(([p]) => `<span class="buff">${p.icon}<i></i></span>`).join(''))
+  buffs.forEach(([p, until], k) => put(box.children[k].firstElementChild, 'width', cssPct(Math.min(1, (until - now) / (p.seconds * 1000)))))
 }
 function levelBars(me) {
   // The bar shows your share of the whole floor, the same number as its label, so it only ever grows as you paint.

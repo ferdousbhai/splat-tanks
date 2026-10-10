@@ -447,6 +447,11 @@ Correctness came back clean.
 - **A ticking countdown in Paint together (design):** a Super squirt or Big brush showed 💦 7, 6, 5 … under the tank, a clock in the mode that promises none (and a number a pre-reader can't use). Powers now show just their icon with a thin bar that drains as they wear off, in both games.
 - **Tidy (code quality):** the landscape-phone PLAY placement states its sticky spot on its own, rather than half relying on the general short-screen rule (`bottom: auto`).
 
+### Fresh audit, round 49
+
+Design and correctness came back clean (real painting to the end on iPad, phones and two devices, reduced motion on for one run; three devices with a mid-round joiner; 28 fuzzed rounds).
+- **Tidy (code quality):** the power pills take their icon and length from `PICKUPS`, as the pickups themselves do, and find their bars directly rather than querying each frame.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
