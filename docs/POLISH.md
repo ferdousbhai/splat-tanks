@@ -291,6 +291,12 @@ Checked at tablet and desktop sizes this time, again measuring the tank in all 8
   - `noise()` lost its dead `out` option
   - `fire()` asks `hearing()` whether the sound is the player's own
 
+### Fresh audit, round 26
+
+Design and cleanup came back clean. The bug review found two regressions from round 25:
+- **Blinking during the countdown:** in a match on phones, the leaderboard or timer made way for each "3", "2", "1" banner and came back in the 200 ms gaps, blinking once a second. What makes way for a banner now hides at once but returns only 0.5 s after the banner has faded, so a run of banners keeps it hidden throughout and it comes back once.
+- **Toast with cards up:** the round 25 toast position below the cards sat where the tank rides on landscape phones. Toasts stay at the top, over the cards' title for 3 s (the title is also spoken).
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
