@@ -429,6 +429,12 @@ Design came back clean: every tier turns its turret on a still hull, fires from 
 - **Blobs from last frame's aim (correctness):** the nozzles were read before the frame had turned the turret, so a quick flick fired from where it pointed before, behind the tank. `muzzles()` now poses the tank first (`Tank.pose`, shared with `render`).
 - **Renamed parts, fixed once (code quality):** the loader's renamed nodes now get their own names back when the models load, so `setModel` finds parts with plain `getObjectByName`. The fallbacks that had quietly hidden the missing parts (whole model as turret, turret as muzzle) are gone.
 
+### Fresh audit, round 46
+
+- **Names over the results (design):** the results screen sits over the stilled 3D scene, and tank name labels draw on top of everything, so a tank left high on the screen put its name across "Four quarters make one whole floor!". Labels and the crown are hidden when the results come up.
+- **Splashing yourself (correctness, older; more often since round 45):** with ricochet, squirting at a nearby wall bounced the blob back onto your own tank: in Splat match a flash, 💦 and boing on every shot. Your own blob coming back now just tints you with a soft splat, as in Paint together.
+- **Tidy (code quality):** `muzzles()` no longer updates every matrix in the tank per shot; `getWorldPosition` updates each nozzle's own chain.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

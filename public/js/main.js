@@ -483,6 +483,8 @@ function toMenu() {
 /** Which screen shows: the menu, a round ('battle') or the results ('end'). */
 function setScreen(phase) {
   game.phase = phase
+  // Tanks stop being drawn afresh behind the results: their name labels would sit over its lines.
+  if (phase === 'end') for (const t of game.tanks.values()) t.label.visible = t.crown.visible = false
   // A new screen's buttons wait before they answer (style.css body.arriving): the results long enough for the
   // whole-floor line to be heard, the menu a moment.
   // Inert as well, so keys (Tab, Enter) can't press them either.
@@ -670,8 +672,9 @@ function onHit(msg) {
     t.paintT = 1
   }
   // Painting together, a stray blob (a robot's or a friend's) just tints you: no flash, splash word or boing,
-  // so squirting each other is never the fun part. The squirter hears the same soft splat as on the floor.
-  if (together()) {
+  // so squirting each other is never the fun part. Your own blob bouncing back off a wall is the same in any
+  // game. The squirter hears the same soft splat as on the floor.
+  if (together() || t === by) {
     const ear = hearing(t.pos.x, t.pos.z, by?.id)
     if (ear.mine) sound.splat(ear.vol * 0.6, true)
     return

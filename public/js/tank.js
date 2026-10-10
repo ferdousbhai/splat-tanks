@@ -193,8 +193,7 @@ export class Tank {
 
   /** World positions of the muzzles. */
   muzzles() {
-    this.pose() // this frame's place and aim: render() comes later in the frame
-    this.root.updateMatrixWorld(true)
+    this.pose() // this frame's place and aim: render() comes later in the frame (getWorldPosition updates the chain)
     return this.muzzleNodes.map((m) => m.getWorldPosition(new THREE.Vector3()))
   }
 
