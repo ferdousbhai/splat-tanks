@@ -199,6 +199,12 @@ The bug and cleanup reviews came back clean.
 - **Banners over your tank on landscape phones:** the camera keeps the tank in the middle of the screen, and Paint together banners sat right on it for about 6 s at each finished part (and match sub-lines did too). On short screens, banners now sit at 66%, below the tank and above the level pill, at a smaller size. Checked at 640×360, 667×375, 844×390 and 932×430.
 - A child who has just joined no longer hears "… is here!" for everyone already in the room.
 
+### Fresh audit, round 16
+
+Design came back clean.
+- **Short-screen banners are placed by measurement:** the round 15 fixed 66% put Splat match sub-lines on the level and paint panel on landscape phones, and in the store's tiny preview frame it put Paint together banners back over the fraction strip. On screens 520 px tall or less, `hud.placeBanners()` now puts the sub-line just above wherever the bottom panel really is, and the banner just above that, in smaller type. The banner clears the tank, the panel and the strip at 640×360, 667×375, 740×360, 844×390, 932×430, 1024×500 and in 900×280, 568×270 and 480×270 frames.
+- **The menu buttons are the one list of game choices:** `setOpt()` serves both taps and choices arriving with a start, so a new button can't be dropped by other devices.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

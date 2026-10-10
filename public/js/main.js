@@ -9,7 +9,7 @@
 // levels, pickups, paint buckets and the bots, and tells everyone what happened.
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
-import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, BOT_LEVELS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
+import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
@@ -364,17 +364,22 @@ function hostStartMatch() {
 const freeColor = (want, used, wanted = used) =>
   used.has(want) ? COLORS.find((c) => !used.has(c) && !wanted.has(c)) ?? COLORS.find((c) => !used.has(c)) ?? want : want
 
+/**
+ * Sets one game choice from a menu value. The menu's buttons are the only list of allowed values: a value
+ * with no button (say, from another device) is ignored. Returns the button chosen.
+ */
+function setOpt(key, value) {
+  const seg = document.querySelector(`.seg[data-opt="${key}"]`)
+  const b = [...(seg?.querySelectorAll('button') ?? [])].find((x) => x.dataset.v === String(value))
+  if (!b) return null
+  game.opts[key] = ['difficulty', 'mode'].includes(key) ? b.dataset.v : Number(b.dataset.v)
+  for (const x of seg.querySelectorAll('button')) x.classList.toggle('on', x === b)
+  return b
+}
+
 /** The room's game choices travel with every start, so whoever hosts next keeps the same game. */
 function takeOpts(o) {
-  if (!o || typeof o !== 'object') return
-  if (['together', 'match'].includes(o.mode)) game.opts.mode = o.mode
-  if ([2, 3, 4].includes(o.parts)) game.opts.parts = o.parts
-  if ([0, 2, 3, 5, 7].includes(o.bots)) game.opts.bots = o.bots
-  if (Object.hasOwn(BOT_LEVELS, o.difficulty)) game.opts.difficulty = o.difficulty
-  if ([0, 1, 2].includes(o.length)) game.opts.length = o.length
-  for (const seg of document.querySelectorAll('.seg')) {
-    for (const b of seg.querySelectorAll('button')) b.classList.toggle('on', b.dataset.v === String(game.opts[seg.dataset.opt]))
-  }
+  if (o && typeof o === 'object') for (const key of Object.keys(game.opts)) setOpt(key, o[key])
 }
 
 function startBattle(msg) {
@@ -1227,12 +1232,10 @@ function setupMenu() {
   })
   for (const seg of document.querySelectorAll('.seg')) {
     seg.addEventListener('click', (e) => {
-      const b = e.target.closest('button')
+      const key = seg.dataset.opt
+      const b = setOpt(key, e.target.closest('button')?.dataset.v)
       if (!b) return
       sound.click()
-      seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b))
-      const key = seg.dataset.opt
-      game.opts[key] = ['difficulty', 'mode'].includes(key) ? b.dataset.v : Number(b.dataset.v)
       if (b.dataset.say) voice.sayNow(b.dataset.say)
       if (key === 'mode') showHostOptions()
     })

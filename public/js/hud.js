@@ -40,6 +40,25 @@ export function banner(text, sub = '', ms = 1600) {
     clearTimeout(subTimer)
     $('subbanner').classList.remove('show')
   }
+  placeBanners()
+}
+
+/**
+ * Short screens (landscape phones, the store's preview frame) have no spare band: the tank sits in the middle,
+ * the fraction strip or timer at the top and the level panel at the bottom. There the sub-line sits just above
+ * the panel, wherever it really is, and the banner just above the sub-line. Taller screens use style.css.
+ */
+function placeBanners() {
+  const b = $('banner')
+  const s = $('subbanner')
+  if (innerHeight > 520) {
+    b.style.top = b.style.bottom = s.style.top = s.style.bottom = ''
+    return
+  }
+  const above = innerHeight - document.querySelector('#hud .bottom').getBoundingClientRect().top + 6
+  b.style.top = s.style.top = 'auto'
+  s.style.bottom = `${above}px`
+  b.style.bottom = `${above + (s.classList.contains('show') ? s.offsetHeight : 0)}px`
 }
 /** soft: a passing note (a paint bucket) that never replaces a sub-line still on screen. */
 export function subBanner(text, ms = 2000, soft = false) {
@@ -49,6 +68,7 @@ export function subBanner(text, ms = 2000, soft = false) {
   s.classList.add('show')
   clearTimeout(subTimer)
   subTimer = setTimeout(() => s.classList.remove('show'), ms)
+  placeBanners()
 }
 
 let toastTimer = null

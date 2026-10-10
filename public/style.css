@@ -207,16 +207,15 @@ body.seat #periscope { display: block; }
   body.cards #banner, body.cards .top-center { display: none; }
   #upgrades { top: var(--top); bottom: auto; }
   .card .tx, .card .pips { display: none; }
-  /* Banners sit below the middle, where the camera keeps your tank, and clear of the fraction strip above. */
-  #hud { --banner-top: 66%; --sub-gap: clamp(32px, 5vw, 48px); }
-  #banner { font-size: clamp(26px, 5vw, 40px); }
+  /* Banners sit just above the level panel, below your tank (hud.js placeBanners), so they're smaller here. */
+  #banner { font-size: clamp(22px, 4.5vw, 30px); }
+  #subbanner { font-size: 16px; }
   #board .brow:nth-child(n + 4) { display: none; }
   .card { padding: 6px; }
   .card .ic { font-size: 24px; }
 }
 /* A small window (the store's preview frame on a phone): only what's needed to play. */
 @media (max-height: 280px) {
-  #hud { --banner-top: 24%; }
   .hud-left, #board, #timer, .up-title, .bars { display: none; }
   .bottom { transform: translateX(-50%) scale(0.6); }
   #upgrades { top: 6px; bottom: auto; }
