@@ -466,7 +466,12 @@ Design came back clean (real painting to the end on iPad, phones and two devices
 - **Speech opened on a finger landing (correctness):** round 50 opened speech on whichever input came first, and on touch that is the finger landing, which browsers don't count as a gesture; the silent word was dropped and it never tried again, so on an iPad a guest who only drove still heard nothing. Speech now opens on the first event that counts (a finger lifting, a click, a key, a mouse press).
 - **Speech opened with sound (code quality):** the silent word now lives in `unlockAudio` beside the sound unlock it shares a reason with, so each tap runs one listener, not two.
 
+### Fresh audit, round 52
+
+All three reviews came back clean: design (real painting to the end in WebKit and Chromium on iPad, phone, laptop and two devices), correctness (gesture rules per input device, fuzzed rounds, three devices with a late joiner) and code quality. This ends the fresh-audit loop.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
+- On a real iPad: that speech opens when a stick drag ends (headless engines can't show iOS's gesture rule).
 - Not deployed yet. Deploy with `npm run deploy` and then `publish_game` (see README).
