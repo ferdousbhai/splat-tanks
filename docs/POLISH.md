@@ -304,6 +304,12 @@ Cleanup came back clean.
 - **Short laptop windows (600–700 px tall, mouse):** Splat match cards hung into the middle over the tank. Compact top cards now also cover landscape windows up to 700 px tall. Clear at 1024×600, 1366×600, 1280×640 and 1366×657.
 - **Small tidy-ups:** `freeColor` loses an unused default, and `cardsSaid` is declared with the other `game` fields.
 
+### Fresh audit, round 28
+
+- **Own landings as a stream:** a Titan's spray lands six blobs at once, and the player's own sounds were never spaced, so a high-level match made about 134 sound nodes a second. The player's own squirt still always plays, but their own landings are spaced 120 ms apart: about 26 nodes a second in that case, and under 6 sound events a second when painting together.
+- **Top cards on narrow laptop windows:** they now centre in the space right of the minimap, so a card never covers it.
+- **Cleanup:** the touch sticks no longer reset on every resize. That was left over from when they were placed in pixels, and it briefly mis-showed a stick held during rotation.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

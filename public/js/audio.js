@@ -72,15 +72,17 @@ function tone(t, dur, { freq = 440, to = null, type = 'sine', peak = 0.3, attack
 }
 
 /**
- * Sounds from other tanks are spaced out: at most one squirt, splat or bounce every 150 ms, so a floor full
- * of robots is a soft patter rather than a stream. The player's own sounds (mine) always play.
+ * Sounds are spaced out so many blobs make a soft patter rather than a stream: other tanks' squirts, splats and
+ * bounces at most one every 150 ms; the player's own landings (a Titan's spray lands six at once) one every
+ * 120 ms. The player's own squirt always plays, so every press is heard.
  */
-const lastFar = {}
+const last = {}
 function spaced(name, mine) {
-  if (mine) return true
+  if (mine && name === 'shoot') return true
+  const key = mine ? `${name}:mine` : name
   const t = ctx.currentTime
-  if (t - (lastFar[name] ?? -1) < 0.15) return false
-  lastFar[name] = t
+  if (t - (last[key] ?? -1) < (mine ? 0.12 : 0.15)) return false
+  last[key] = t
   return true
 }
 

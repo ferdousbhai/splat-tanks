@@ -139,8 +139,6 @@ function stick(zone, onChange) {
   }
   zone.addEventListener('touchend', end)
   zone.addEventListener('touchcancel', end)
-  addEventListener('resize', rest)
-  rest()
 }
 
 export function bindTouch() {

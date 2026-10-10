@@ -210,7 +210,9 @@ body.seat #periscope { display: block; }
 /* Tablets on their side, short laptop windows and short screens: compact cards at the top in place of the
    timer and strip, clear of your tank in the middle. */
 @media (any-pointer: coarse) and (orientation: landscape), (orientation: landscape) and (max-height: 700px), (max-height: 520px) {
-  #upgrades { top: var(--top); bottom: auto; }
+  /* Centred in the space right of the minimap, so a narrow window never puts a card over it. */
+  #upgrades { top: var(--top); bottom: auto; left: calc(var(--left) + var(--map) + 12px); right: var(--right); transform: none; width: auto; }
+  #up-cards { justify-content: center; }
   body.cards .top-center, body.cards #board { display: none; }
 }
 /* Compact cards (touch screens and short ones): icon and name only. */
