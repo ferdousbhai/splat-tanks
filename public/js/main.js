@@ -833,7 +833,8 @@ function fire(t, mega = false) {
   for (const [sid, x, z, dx, dz] of out) spawnShell({ sid, owner: t.id, x, z, dx, dz, speed, range, splat, bounces: mega ? 0 : s.bounces, mega, color: t.color })
   send({ t: 'f', o: t.id, m: mega ? 1 : 0, d: r2(splat), v: r2(speed), r: r2(range), b: mega ? 0 : s.bounces, s: out })
   t.recoil = 1
-  sound.shoot(t === game.me ? 1 : hearing(t.pos.x, t.pos.z).vol, mega, t === game.me)
+  const ear = hearing(t.pos.x, t.pos.z, t.id)
+  sound.shoot(ear.vol, mega, ear.mine)
 }
 
 /** Shared controls for the player and bots: drive, aim, squirt, zoom, balloon. */

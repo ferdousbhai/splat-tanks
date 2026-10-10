@@ -26,19 +26,25 @@ export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '
 
 let bannerTimer = null
 let subTimer = null
+/** Shows or hides a banner line. body.bannering lets style.css move things out of a showing banner's way. */
+function showLine(el, on) {
+  el.classList.toggle('show', on)
+  document.body.classList.toggle('bannering', $('banner').classList.contains('show') || $('subbanner').classList.contains('show'))
+}
+
 export function banner(text, sub = '', ms = 1600) {
   const b = $('banner')
   b.textContent = text
-  b.classList.remove('show')
+  showLine(b, false)
   void b.offsetWidth
-  b.classList.add('show')
+  showLine(b, true)
   clearTimeout(bannerTimer)
-  bannerTimer = setTimeout(() => b.classList.remove('show'), ms)
+  bannerTimer = setTimeout(() => showLine(b, false), ms)
   // A banner without a sub-line clears the old one, so it never pairs with someone else's words.
   if (sub) subBanner(sub, ms)
   else {
     clearTimeout(subTimer)
-    $('subbanner').classList.remove('show')
+    showLine($('subbanner'), false)
   }
   placeBanners()
 }
@@ -69,9 +75,9 @@ export function subBanner(text, ms = 2000, soft = false) {
   const s = $('subbanner')
   if (soft && s.classList.contains('show')) return
   s.textContent = text
-  s.classList.add('show')
+  showLine(s, true)
   clearTimeout(subTimer)
-  subTimer = setTimeout(() => s.classList.remove('show'), ms)
+  subTimer = setTimeout(() => showLine(s, false), ms)
   placeBanners()
 }
 
@@ -89,8 +95,8 @@ export function clearBanners() {
   clearTimeout(bannerTimer)
   clearTimeout(subTimer)
   clearTimeout(toastTimer)
-  $('banner').classList.remove('show')
-  $('subbanner').classList.remove('show')
+  showLine($('banner'), false)
+  showLine($('subbanner'), false)
   $('toast').classList.add('hidden')
 }
 

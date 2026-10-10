@@ -275,6 +275,22 @@ Checked at tablet and desktop sizes this time, again measuring the tank in all 8
 - **🎲 says the new name** ("You're Cosmic Turtle!"), because the name rides over the child's tank.
 - **Cleanup:** one block for the compact top cards (landscape touch and short screens), no dead upgrade-card position, and the bottom anchor stated once (landscape).
 
+### Fresh audit, round 25
+
+- **Splat match banners on phones:** they still covered the tank in both orientations (round 22 fixed only Paint together). Now:
+  - upright phones put every banner up top, right of the minimap, and the leaderboard makes way while one shows
+  - short landscape screens put match banners up top between the minimap and the leaderboard, and the timer makes way while one shows
+  - a `bannering` class on the page marks when a banner is up
+  - clear in all 8 aim directions at 360×640, 375×667, 414×736, 667×375, 740×360 and 844×390
+  - the 💦 that marks your own tank being splashed in a match still appears on the tank for a second, which is intended
+- **Silent menu choices:** Robots, Speed and Time now speak, like every other menu choice.
+- **News feed:** the wrap rule now reaches 430 px wide, which covers 414×736 phones.
+- **Short screens with cards up:** the toast sits below the cards, and the cards hide the leaderboard.
+- **Cleanup:**
+  - one rule for compact cards
+  - `noise()` lost its dead `out` option
+  - `fire()` asks `hearing()` whether the sound is the player's own
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

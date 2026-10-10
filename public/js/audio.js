@@ -43,7 +43,7 @@ function env(gainNode, t, attack, peak, decay) {
   gainNode.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay)
 }
 
-function noise(t, dur, { freq = 1000, q = 1, type = 'lowpass', peak = 0.5, attack = 0.005, sweepTo = null, out = sfx } = {}) {
+function noise(t, dur, { freq = 1000, q = 1, type = 'lowpass', peak = 0.5, attack = 0.005, sweepTo = null } = {}) {
   const src = ctx.createBufferSource()
   src.buffer = noiseBuf
   src.loop = true
@@ -54,7 +54,7 @@ function noise(t, dur, { freq = 1000, q = 1, type = 'lowpass', peak = 0.5, attac
   f.Q.value = q
   const g = ctx.createGain()
   env(g, t, attack, peak, dur)
-  src.connect(f).connect(g).connect(out)
+  src.connect(f).connect(g).connect(sfx)
   src.start(t, Math.random())
   src.stop(t + attack + dur + 0.05)
 }
