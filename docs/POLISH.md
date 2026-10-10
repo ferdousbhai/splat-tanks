@@ -114,6 +114,18 @@ Test scripts and screenshots are in the session scratchpad `splat/` (`audit/` be
   - one `@media (max-height: 520px)` block
   - `solidAt()` in world.js is the one "what is solid" rule
 
+### Fresh audit, round 5
+
+- **Leftover prompt:** the "🏠 Tap again" toast stayed up for up to 3 s after leaving and covered 🎨 PLAY. Leaving a round now clears toasts too, and toasts never block taps.
+- **Words at the end of a round:** the strip said "four quarters painted · no to go" at the climax; it now says "four quarters make one whole".
+- **Second quarter:** the screen shows both the half fact and the new Roller power, on two lines, matching what is said.
+- **Banners:** a banner without a sub-line clears any old one.
+- **Splat match:** a tier-up also says the new power aloud ("Now you can throw paint balloons!").
+- **Cleanup:**
+  - `setScreen()` is the one way to switch between menu, round and results, and it also clears the driver's-seat vignette on the results
+  - robot brains are made in one place
+  - the dead `skip` and `fresh` parameters are gone
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

@@ -101,7 +101,7 @@ body.together .bars { width: auto; }
 
 #banner { position: absolute; top: 24%; left: 0; right: 0; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; opacity: 0; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; pointer-events: none; padding: 0 16px; }
 #banner.show { opacity: 1; transform: scale(1); }
-#subbanner { position: absolute; top: calc(24% + clamp(44px, 8vw, 90px)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 0 16px; }
+#subbanner { white-space: pre-line; position: absolute; top: calc(24% + clamp(44px, 8vw, 90px)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 0 16px; }
 #subbanner.show { opacity: 1; }
 
 /* While the upgrade cards are up, the sub-banner makes way for them. */
@@ -241,4 +241,4 @@ body.playing { cursor: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-#toast { position: fixed; bottom: 30%; left: 50%; transform: translateX(-50%); background: var(--panel); padding: 10px 18px; border-radius: 12px; font-weight: 800; z-index: 30; }
+#toast { pointer-events: none; position: fixed; bottom: 30%; left: 50%; transform: translateX(-50%); background: var(--panel); padding: 10px 18px; border-radius: 12px; font-weight: 800; z-index: 30; }

@@ -34,7 +34,12 @@ export function banner(text, sub = '', ms = 1600) {
   b.classList.add('show')
   clearTimeout(bannerTimer)
   bannerTimer = setTimeout(() => b.classList.remove('show'), ms)
+  // A banner without a sub-line clears the old one, so it never pairs with someone else's words.
   if (sub) subBanner(sub, ms)
+  else {
+    clearTimeout(subTimer)
+    $('subbanner').classList.remove('show')
+  }
 }
 export function subBanner(text, ms = 2000) {
   const s = $('subbanner')
@@ -57,8 +62,10 @@ export function toast(text, ms = 2500) {
 export function clearBanners() {
   clearTimeout(bannerTimer)
   clearTimeout(subTimer)
+  clearTimeout(toastTimer)
   $('banner').classList.remove('show')
   $('subbanner').classList.remove('show')
+  $('toast').classList.add('hidden')
 }
 
 export function feed(html) {

@@ -104,13 +104,10 @@ function migrateHost() {
   if (!isHost()) return
   hud.toast('👑 The host left. You are running the game now!')
   for (const t of game.tanks.values()) {
-    if (t.bot) {
-      t.local = true
-      if (!game.brains.has(t.id)) game.brains.set(t.id, newBrain())
-    }
+    if (t.bot) t.local = true // the robots drive from here now (battleStep gives them brains)
+    // A player who joined just before the old host left still needs their tank placed.
+    if (!t.alive && !t.respawnAt) t.respawnAt = now() + 800
   }
-  // A player who joined just before the old host left still needs their tank placed.
-  for (const t of game.tanks.values()) if (!t.alive && !t.respawnAt) t.respawnAt = now() + 800
   hello()
   showHostButtons()
 }
@@ -273,11 +270,10 @@ function addTank(e) {
   t.alive = !!e.al
   if (e.x !== undefined) t.place(e.x, e.z, e.h ?? 0)
   if (t.id === game.selfId) game.me = t
-  if (t.bot && isHost()) game.brains.set(t.id, newBrain())
   return t
 }
 
-function snapshot(fresh = false) {
+function snapshot() {
   const n = now()
   const m = game.match
   return {
@@ -289,7 +285,7 @@ function snapshot(fresh = false) {
     done: layout.done.map((d) => (d ? 1 : 0)),
     rem: m.mode === 'match' ? Math.max(0, m.endsAt - n) : 0,
     cd: Math.max(0, m.startAt - n),
-    fresh,
+    fresh: false,
     roster: tankList().map((t) => ({ i: t.id, n: t.name, c: t.color, s: t.slot, b: t.bot ? 1 : 0, lv: t.level, xp: Math.round(t.xp), u: t.upgrades, al: t.alive ? 1 : 0, x: r2(t.pos.x), z: r2(t.pos.z), h: r2(t.heading) })),
     pads: game.pads.map((p) => p.kind),
     barrels: barrels.map((b) => (b.alive ? 1 : 0)),
@@ -365,14 +361,9 @@ function startBattle(msg) {
   else resetPaint()
   for (const e of msg.roster) addTank(e)
   if (!game.me) addTank({ i: game.selfId, n: game.myName, c: game.myColor, s: nextSlot() })
-  game.phase = 'battle'
-  show('menu', false)
-  show('end', false)
-  show('hud')
+  setScreen('battle')
   showHostButtons()
-  document.body.classList.add('playing')
   document.body.classList.toggle('together', mode === 'together')
-  musicIntensity(true)
   if (game.me) {
     camPos.set(game.me.pos.x, 30, game.me.pos.z + 20)
   }
@@ -407,13 +398,19 @@ function toMenu() {
   if (game.match) game.match.over = true
   clearShells()
   if (document.pointerLockElement) document.exitPointerLock()
-  game.phase = 'menu'
-  show('hud', false)
-  show('end', false)
-  document.body.classList.remove('playing', 'together', 'seat')
-  musicIntensity(false)
+  setScreen('menu')
   renderMenu()
-  show('menu')
+}
+
+/** Which screen shows: the menu, a round ('battle') or the results ('end'). */
+function setScreen(phase) {
+  game.phase = phase
+  show('menu', phase === 'menu')
+  show('hud', phase === 'battle')
+  show('end', phase === 'end')
+  document.body.classList.toggle('playing', phase === 'battle')
+  if (phase !== 'battle') document.body.classList.remove('together', 'seat')
+  musicIntensity(phase === 'battle')
 }
 
 // --- Pickups -----------------------------------------------------------------------------
@@ -508,10 +505,10 @@ function splashTank(target, by, sid) {
 }
 
 /** Host: a big splash (balloon or bucket) paints the floor and every tank close by. */
-function bigSplash(x, z, radius, by, skip) {
+function bigSplash(x, z, radius, by) {
   hostPaint(x, z, radius, by)
   for (const t of game.tanks.values()) {
-    if (!t.alive || t === skip || t === by) continue
+    if (!t.alive || t === by) continue
     if (Math.hypot(t.pos.x - x, t.pos.z - z) < radius + TANK_RADIUS) splashTank(t, by, null)
   }
   const match = game.match
@@ -634,6 +631,7 @@ function setLevel(t, lv) {
         const tier = TIERS[t.tier - 1]
         hud.banner(`✨ ${tier.name}!`, tier.perk, 2600)
         voice.say(`You are a ${tier.name}!`)
+        voice.say(tier.say)
       }
     } else {
       sound.levelUp()
@@ -691,12 +689,8 @@ function onEnd(msg) {
   }
   clearTimeout(game.endTimer)
   game.endTimer = setTimeout(() => {
-    game.phase = 'end'
-    show('hud', false)
-    show('end')
+    setScreen('end')
     hud.results(sorted, game.me, Math.round((painted() / CELLS) * 100), together())
-    document.body.classList.remove('playing')
-    musicIntensity(false)
   }, 2400)
   game.phase = 'ending'
 }
@@ -714,8 +708,8 @@ function onPartDone(msg) {
     for (const t of game.tanks.values()) if (t.level < grownLevel(k)) setLevel(t, grownLevel(k))
     if (game.me && game.me.tier !== was) tier = TIERS[game.me.tier - 1]
   }
-  // Shown as said: the fraction, then the half fact when there is one, else the new power.
-  hud.banner(doneTitle(k, n), halfWords(k, n) || (tier ? `✨ ${tier.name}! ${tier.perk}` : ''), 3000)
+  // Shown as said: the fraction, the half fact when there is one, and the new power.
+  hud.banner(doneTitle(k, n), [halfWords(k, n), tier && `✨ ${tier.name}! ${tier.perk}`].filter(Boolean).join('\n'), 3000)
   voice.say(doneWords(k, n))
   if (tier) voice.say(tier.say)
 }

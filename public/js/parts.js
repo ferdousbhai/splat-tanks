@@ -105,7 +105,11 @@ export const doneTitle = (k, n) => `${cap(fractionWords(k, n))} painted!`
 /** The one equivalence a round teaches, shown and said when the second quarter is finished. */
 export const halfWords = (k, n) => (n === 4 && k === 2 ? 'Two quarters make one half!' : '')
 /** Under the fraction strip: "one quarter painted · three to go". */
-export const stripWords = (k, n) => (k ? `${fractionWords(k, n)} painted · ${NUMBERS[n - k]} to go` : `${fractionWords(n, n)} to paint`)
+export function stripWords(k, n) {
+  if (!k) return `${fractionWords(n, n)} to paint`
+  if (k >= n) return `${fractionWords(n, n)} make one whole`
+  return `${fractionWords(k, n)} painted · ${NUMBERS[n - k]} to go`
+}
 
 /** What the game says when the k-th part is finished. */
 export function doneWords(k, n) {
