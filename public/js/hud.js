@@ -2,7 +2,7 @@
 import { ARENA, UPGRADES, BASE, xpToNext, MAX_LEVEL, tierFor, PICKUPS } from './config.js'
 import { colliders, barrels } from './world.js'
 import { canvas as paintCanvas, cellsOf, byPaint, paintVersion, CELLS } from './paint.js'
-import { layout, chalkLines, fractionWords, partsName } from './parts.js'
+import { layout, chalkLines, fractionWords, partsDone, cap } from './parts.js'
 
 /** Share of the arena floor in a tank's colour, as a whole percentage. */
 const pct = (t) => Math.round((cellsOf(t.slot) / CELLS) * 100)
@@ -86,8 +86,23 @@ export function board(tanks, me) {
   return sorted
 }
 
-/** best: the most cells any tank has painted, so the bar is full when you lead. */
-export function bars(me, best, now) {
+/**
+ * best: the most cells any tank has painted, so the bar is full when you lead.
+ * Painting together hides the paint and XP bars and the level badge, so only the rest is kept up to date.
+ */
+export function bars(me, best, now, together) {
+  if (!together) levelBars(me, best)
+  put($('tiername'), 'text', `${tierFor(me.level).name}${me.level >= MAX_LEVEL ? ' · MAX' : ''}`)
+  cooldown($('ab-boost'), me.boostReadyAt, BASE.boostCooldown * 1000, now, true)
+  cooldown($('ab-mega'), me.megaReadyAt, BASE.megaCooldown * 1000, now, me.stats.mega)
+  put($('btn-mega'), 'opacity', String(me.stats.mega ? (now >= me.megaReadyAt ? 1 : 0.4) : 0.15))
+  put($('btn-boost'), 'opacity', String(now >= me.boostReadyAt ? 1 : 0.4))
+  const buffs = []
+  if (now < me.rapidUntil) buffs.push(`💦 ${Math.ceil((me.rapidUntil - now) / 1000)}`)
+  if (now < me.rollerUntil) buffs.push(`🖌️ ${Math.ceil((me.rollerUntil - now) / 1000)}`)
+  put($('buffs'), 'html', buffs.map((b) => `<span class="buff">${b}</span>`).join(''))
+}
+function levelBars(me, best) {
   put($('paintfill'), 'width', cssPct(best ? cellsOf(me.slot) / best : 0))
   put($('paintfill'), 'background', me.color)
   put($('painttext'), 'text', `🎨 ${pct(me)}%`)
@@ -98,15 +113,13 @@ export function bars(me, best, now) {
     void lvl.offsetWidth
     lvl.classList.add('bump')
   }
-  put($('tiername'), 'text', `${tierFor(me.level).name}${me.level >= MAX_LEVEL ? ' · MAX' : ''}`)
-  cooldown($('ab-boost'), me.boostReadyAt, BASE.boostCooldown * 1000, now, true)
-  cooldown($('ab-mega'), me.megaReadyAt, BASE.megaCooldown * 1000, now, me.stats.mega)
-  put($('btn-mega'), 'opacity', String(me.stats.mega ? (now >= me.megaReadyAt ? 1 : 0.4) : 0.15))
-  put($('btn-boost'), 'opacity', String(now >= me.boostReadyAt ? 1 : 0.4))
-  const buffs = []
-  if (now < me.rapidUntil) buffs.push(`💦 ${Math.ceil((me.rapidUntil - now) / 1000)}`)
-  if (now < me.rollerUntil) buffs.push(`🖌️ ${Math.ceil((me.rollerUntil - now) / 1000)}`)
-  put($('buffs'), 'html', buffs.map((b) => `<span class="buff">${b}</span>`).join(''))
+}
+
+/** The aiming ring: at the mouse, or the middle of the screen in the driver's seat. Hidden otherwise. */
+export function crosshair(show, x, y) {
+  const c = $('crosshair')
+  put(c, 'display', show ? 'block' : 'none')
+  if (show) put(c, 'transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`)
 }
 function cooldown(el, readyAt, total, now, unlocked) {
   el.classList.toggle('locked', !unlocked)
@@ -131,16 +144,17 @@ export function fraction(progress, mine) {
   if (box.dataset.key !== key) {
     box.dataset.key = key
     box.classList.toggle('grid', layout.grid)
+    box.style.setProperty('--n', layout.n)
     box.innerHTML = progress.map(() => `<span class="part"><i></i><b><sup>1</sup><sub>${layout.n}</sub></b></span>`).join('')
   }
-  const done = layout.done.filter(Boolean).length
+  const done = partsDone()
   progress.forEach((v, p) => {
     const part = box.children[p]
     part.classList.toggle('done', layout.done[p])
     part.classList.toggle('mine', p === mine)
     put(part.firstChild, 'height', cssPct(Math.min(1, v)))
   })
-  put($('fraction-words'), 'text', `${done ? fractionWords(done, layout.n) : `${layout.n} ${partsName(layout.n)}`} ${done ? 'painted' : 'to paint'}`)
+  put($('fraction-words'), 'text', done ? `${fractionWords(done, layout.n)} painted` : `${fractionWords(layout.n, layout.n)} to paint`)
 }
 
 /** Shows the three upgrade cards; onPick(key) when one is chosen. */
@@ -268,7 +282,7 @@ export function results(sorted, me, total, together) {
   $('results').classList.toggle('together', together)
   if (together) {
     const n = layout.n
-    $('end-sub').innerHTML = `${esc(fractionWords(n, n).replace(/^\w/, (c) => c.toUpperCase()))} make <b>one whole</b> floor!`
+    $('end-sub').innerHTML = `${esc(cap(fractionWords(n, n)))} make <b>one whole</b> floor!`
     const who = document.createElement('div')
     who.className = 'painters'
     who.innerHTML = sorted.map((t) => `<span class="chip${t === me ? ' me' : ''}" style="border-color:${esc(t.color)}"><span class="sw" style="background:${esc(t.color)}"></span>${t.bot ? '🤖 ' : ''}${esc(t.name)}</span>`).join('')

@@ -2,6 +2,9 @@
 import * as THREE from 'three'
 import { scene, camera } from './world.js'
 
+/** Reduced motion: no confetti or ring bursts, and floating words don't grow. Other modules read it too. */
+export const still = matchMedia('(prefers-reduced-motion: reduce)')
+
 const particles = []
 const cube = new THREE.BoxGeometry(1, 1, 1)
 const ball = new THREE.IcosahedronGeometry(1, 1)
@@ -77,6 +80,7 @@ export function sparks(x, z, color = '#ffd36b', n = 6) {
 }
 
 export function confetti(x, z, colors) {
+  if (still.matches) return
   for (let i = 0; i < 26; i++) {
     const a = Math.random() * Math.PI * 2
     const sp = 2 + Math.random() * 6
@@ -105,6 +109,7 @@ export function shellTrail(x, y, z, color, big) {
 }
 
 export function levelBurst(x, z, color) {
+  if (still.matches) return
   for (let i = 0; i < 3; i++) {
     const ring = mesh(ringGeo, i ? color : '#ffffff', 0.9, true)
     ring.position.set(x, 0.2 + i * 0.6, z)
@@ -193,7 +198,7 @@ export function updateFloaters(dt) {
       continue
     }
     v.set(f.x, f.y + f.t * 2.2, f.z).project(camera)
-    f.el.style.transform = `translate(${((v.x + 1) / 2) * innerWidth}px, ${((1 - v.y) / 2) * innerHeight}px) translate(-50%, -50%) scale(${1 + Math.max(0, 0.3 - f.t) * 2})`
+    f.el.style.transform = `translate(${((v.x + 1) / 2) * innerWidth}px, ${((1 - v.y) / 2) * innerHeight}px) translate(-50%, -50%) scale(${still.matches ? 1 : 1 + Math.max(0, 0.3 - f.t) * 2})`
     f.el.style.opacity = String(1 - Math.max(0, f.t - 0.6) / 0.4)
   }
 }

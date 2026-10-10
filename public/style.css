@@ -8,7 +8,6 @@
   --ink: #fff;
   --panel: rgba(14, 18, 30, 0.78);
   --accent: #ffcf33;
-  --hot: #ff4d3d;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #0f1320; font-family: 'Trebuchet MS', system-ui, sans-serif; color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -17,7 +16,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .hidden { display: none !important; }
 
 /* --- Screens ------------------------------------------------------------------------- */
-.screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: var(--top) var(--right) var(--bottom) var(--left); background: radial-gradient(ellipse at center, rgba(15, 19, 32, 0.25), rgba(15, 19, 32, 0.85)); z-index: 20; overflow-y: auto; }
+.screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 14px; padding: var(--top) var(--right) var(--bottom) var(--left); background: radial-gradient(ellipse at center, rgba(15, 19, 32, 0.25), rgba(15, 19, 32, 0.85)); z-index: 20; overflow-y: auto; }
 #menu { justify-content: flex-start; padding-top: calc(var(--top) + 8px); }
 .logo { font-weight: 900; font-size: clamp(44px, 9vw, 96px); letter-spacing: 2px; line-height: 0.9; text-shadow: 0 6px 0 #000, 0 0 40px rgba(255, 110, 199, 0.5); transform: rotate(-3deg); }
 .logo b { color: var(--accent); margin-left: 0.18em; }
@@ -35,10 +34,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .icon-btn { width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.12); font-size: 22px; }
 .icon-btn:active { transform: scale(0.92); }
 .colors { display: flex; gap: 8px; flex-wrap: wrap; }
-.colors button { width: 36px; height: 36px; border-radius: 50%; border: 3px solid transparent; }
+.colors button { width: 44px; height: 44px; border-radius: 50%; border: 3px solid transparent; }
 .colors button.on { border-color: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3); }
 .seg { display: flex; gap: 6px; flex-wrap: wrap; }
-.seg button { padding: 9px 14px; font-size: 18px; border-radius: 10px; background: rgba(255, 255, 255, 0.1); font-weight: 700; min-width: 48px; }
+.seg button { min-height: 44px; padding: 9px 14px; font-size: 18px; border-radius: 10px; background: rgba(255, 255, 255, 0.1); font-weight: 700; min-width: 48px; }
 .seg button.on { background: var(--accent); color: #1b1300; }
 .lobby { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .lobby:empty { display: none; }
@@ -69,10 +68,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 body.together .fraction-box { display: flex; }
 body.together #timer, body.together #board, body.together #lvl, body.together .bar.paint, body.together .bar.xp { display: none; }
 body.together .bars { width: auto; }
-.fraction { display: grid; grid-auto-flow: column; gap: 4px; }
+/* The boxes together make a square, like the floor: a 2 x 2 grid, or n tall strips. */
+.fraction { --side: 84px; display: grid; grid-auto-flow: column; gap: 4px; }
 .fraction.grid { grid-auto-flow: row; grid-template-columns: repeat(2, auto); }
-.fraction .part { position: relative; width: 40px; height: 40px; border-radius: 6px; border: 2px dashed rgba(255, 255, 255, 0.75); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.fraction .part { position: relative; width: calc((var(--side) - 4px * (var(--n) - 1)) / var(--n)); height: var(--side); border-radius: 6px; border: 2px dashed rgba(255, 255, 255, 0.75); overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .fraction .part i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(255, 207, 51, 0.55); transition: height 0.6s ease-out; }
+.fraction.grid .part { width: calc(var(--side) / 2 - 2px); height: calc(var(--side) / 2 - 2px); }
 .fraction .part.done { border-style: solid; border-color: #fff; }
 .fraction .part.done i { background: var(--accent); }
 .fraction .part.mine { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35); }
@@ -83,7 +84,7 @@ body.together .bars { width: auto; }
 /* Narrow screens: the strip moves to the free right corner (no leaderboard when painting together). */
 @media (max-width: 600px) {
   body.together .top-center { left: auto; right: var(--right); transform: none; }
-  .fraction .part { width: 30px; height: 30px; }
+  .fraction { --side: 60px; }
   .fraction b { font-size: 10px; }
 }
 #board { position: absolute; top: calc(var(--top) + 56px); right: var(--right); width: 210px; display: flex; flex-direction: column; gap: 3px; }
@@ -204,7 +205,11 @@ body.playing { cursor: none; }
 /* The end screen: the host's again and menu buttons; painting together shows the floor and its painters. */
 .go-row { display: flex; align-items: center; gap: 14px; }
 .icon-btn.home { width: 64px; height: 64px; border-radius: 18px; font-size: 30px; }
-#results.together { align-items: center; gap: 12px; max-height: none; }
+#results.together { align-items: center; gap: 12px; max-height: none; overflow: visible; flex-shrink: 0; }
+@media (max-height: 520px) {
+  #results.together { flex-direction: row; justify-content: center; }
+  #results.together .floor-pic { width: min(150px, 40vh); }
+}
 .floor-pic { width: min(240px, 56vw, 34vh); height: auto; aspect-ratio: 1; border-radius: 12px; border: 3px solid rgba(255, 255, 255, 0.6); }
 .painters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .painters .chip { display: inline-flex; align-items: center; gap: 6px; }

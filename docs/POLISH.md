@@ -58,6 +58,23 @@ Test scripts and screenshots are in the session scratchpad `splat/` (`audit/` be
   - 🏠 mid-round hushes speech and returns to the menu
 - `smoke.mjs` in Chromium and WebKit: the spoken sequence from the menu to the whole floor is right, and the results show the floor picture.
 
+### Fresh audit, round 1 (design, bugs, cleanup)
+
+- **New host is stuck:** when the host left, the new host still saw the guest UI ("Waiting for the host", no PLAY, no 🏠, no Play again). `showHostButtons()` now runs on start, on migration and in the menu.
+- **Late joiner:** a player joining after parts are finished starts as big as everyone else (`add` carries `lv`).
+- **Pickups:** pads take the new round's respawn times, because the match is set before the pads. Paint together has no 🎈 pickups (balloons come with Splasher). Only one floater per pickup, so two no longer overlap.
+- **Growth at the end:** the last part no longer grows tanks or shows a perk, so "…make one whole" is the moment. A perk shows only when your tank actually grew. One ring burst per growth, not three.
+- **Fraction strip matches the floor:** strips are tall boxes that together make a square, so strip quarters look different from square quarters. Text is in words ("four quarters to paint"), and the goal says "Paint both halves!".
+- **Reduced motion** now also covers the 3D: no confetti or ring bursts, still pickups, no crown sway, no splash wiggle, a still menu camera, and floaters that don't grow.
+- **Landscape phones:** the results show the picture and painters side by side, never clipped. Tap targets are 44 px.
+- **Cleanup:**
+  - `setLevel` decides quietness itself
+  - the paint and XP bars aren't updated while hidden
+  - the crosshair writes only on change
+  - part progress is measured only when the paint changed
+  - one `cap` and one `cellAt`
+  - the dead `--hot` colour is removed
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

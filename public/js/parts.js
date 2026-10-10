@@ -14,8 +14,9 @@ const NAMES = { 2: ['half', 'halves'], 3: ['third', 'thirds'], 4: ['quarter', 'q
 const NUMBERS = ['no', 'one', 'two', 'three', 'four']
 /** "one quarter", "three quarters", "two halves" */
 export const fractionWords = (k, n) => `${NUMBERS[k]} ${NAMES[n][k === 1 ? 0 : 1]}`
-export const partsName = (n) => NAMES[n][1]
-const cap = (s) => s[0].toUpperCase() + s.slice(1)
+export const cap = (s) => s[0].toUpperCase() + s.slice(1)
+/** The menu pill and opening banner: "Paint both halves!", "Paint all four quarters!" */
+export const goalWords = (n) => `Paint ${n === 2 ? 'both' : `all ${NUMBERS[n]}`} ${NAMES[n][1]}!`
 
 const partOf = new Uint8Array(CELLS)
 const open = new Uint8Array(CELLS) // 1 where a tank can reach the floor: not under a wall, crate, rock or tree
@@ -34,12 +35,15 @@ function blocked(x, z) {
   return false
 }
 
-/** Which part a point on the floor is in. */
-export function partAt(x, z) {
+/** The grid cell under a point on the floor. */
+function cellAt(x, z) {
   const cx = Math.min(N - 1, Math.max(0, Math.floor(x + ARENA)))
   const cz = Math.min(N - 1, Math.max(0, Math.floor(z + ARENA)))
-  return partOf[cz * N + cx]
+  return cz * N + cx
 }
+
+/** Which part a point on the floor is in. */
+export const partAt = (x, z) => partOf[cellAt(x, z)]
 
 /** Cuts the floor into n equal parts, after the arena for this match is built. */
 export function setupParts(n, grid, done = []) {
@@ -112,7 +116,7 @@ export function bareSpot() {
     const s = freeSpot()
     const p = partAt(s.x, s.z)
     if (layout.done[p]) continue
-    const bare = !slotAt(Math.floor(s.z + ARENA) * N + Math.floor(s.x + ARENA))
+    const bare = !slotAt(cellAt(s.x, s.z))
     if (bare && p === layout.focus) return s
     if (bare || !fallback) fallback = s
   }

@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { scene, models } from './world.js'
 import { BASE, emptyLoadout, statsFor, tierFor } from './config.js'
-import { emojiTexture } from './fx.js'
+import { emojiTexture, still } from './fx.js'
 
 /**
  * seat: in the driver's seat, labels keep one size on screen instead of filling it up close.
@@ -272,7 +272,7 @@ export class Tank {
     this.paintT = Math.max(0, this.paintT - dt * 0.5)
     this.tintMat.color.copy(this.baseColor).lerp(this.paintColor, Math.min(1, this.paintT * 1.4) * 0.75)
     // A happy wobble after a splash.
-    this.body.rotation.z = Math.sin(now / 45) * this.flash * 0.12
+    this.body.rotation.z = still.matches ? 0 : Math.sin(now / 45) * this.flash * 0.12
 
     const show = this.alive && !this.firstPerson
     if (this.label.material.sizeAttenuation === view.seat) {
@@ -284,7 +284,7 @@ export class Tank {
     this.label.visible = show
     this.crown.visible = show && leader
     this.label.position.set(this.pos.x, y + 0.9, this.pos.z)
-    this.crown.position.set(this.pos.x, y + 2.1 + Math.sin(now / 600) * 0.12, this.pos.z)
+    this.crown.position.set(this.pos.x, y + 2.1 + (still.matches ? 0 : Math.sin(now / 600) * 0.12), this.pos.z)
   }
 
   dispose() {
