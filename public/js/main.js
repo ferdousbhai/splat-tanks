@@ -160,7 +160,7 @@ function handle(msg, from) {
       if (game.phase === 'battle' && !existing && isHost()) {
         flushPaint()
         // A late painter starts as big as everyone else has grown.
-        const c = freeColor(h.color, new Set(tankList().map((t) => t.color)))
+        const c = freeColor(h.color, new Set(tankList().map((t) => t.color)), new Set([...tankList().map((t) => t.color), ...[...game.humans.values()].map((x) => x.color)]))
         broadcast({ t: 'add', e: { i: from, n: h.name, c, s: nextSlot(), ...(together() && { lv: grownLevel(partsDone()) }) } })
         send(snapshot(), from)
         game.tanks.get(from).respawnAt = now() + 800
@@ -312,9 +312,11 @@ function hostStartMatch() {
   const seed = Math.floor(Math.random() * 1e9)
   const ids = [game.selfId, ...(game.room?.peers ?? [])]
   const used = new Set()
+  const who = ids.map((id) => (id === game.selfId ? { name: game.myName, color: game.myColor } : game.humans.get(id) ?? { name: randomName(), color: COLORS[0] }))
+  const wanted = new Set(who.map((h) => h.color))
   const roster = ids.map((id, k) => {
-    const h = id === game.selfId ? { name: game.myName, color: game.myColor } : game.humans.get(id) ?? { name: randomName(), color: COLORS[0] }
-    const c = freeColor(h.color, used)
+    const h = who[k]
+    const c = freeColor(h.color, used, wanted)
     used.add(c)
     return { i: id, n: h.name, c, s: k + 1 }
   })
@@ -349,8 +351,12 @@ function hostStartMatch() {
   })
 }
 
-/** Each child keeps their own colour: one already taken is swapped for the first free one. */
-const freeColor = (want, used) => (used.has(want) ? COLORS.find((c) => !used.has(c)) ?? want : want)
+/**
+ * Each child keeps their own colour. One already taken is swapped for a colour nobody wanted (`wanted`), so a
+ * later child whose colour was free keeps theirs; only if every colour is wanted does it take any free one.
+ */
+const freeColor = (want, used, wanted = used) =>
+  used.has(want) ? COLORS.find((c) => !used.has(c) && !wanted.has(c)) ?? COLORS.find((c) => !used.has(c)) ?? want : want
 
 /** The room's game choices travel with every start, so whoever hosts next keeps the same game. */
 function takeOpts(o) {
