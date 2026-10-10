@@ -174,7 +174,7 @@ export function emojiTexture(emoji, token = null) {
   return t
 }
 
-// --- Floating text (Splat!, +XP) as DOM elements over the canvas ---------------------
+// --- Floating words (💦, pickups, upgrades) as DOM elements over the canvas ---------------------
 
 const layer = document.getElementById('floaters')
 const floaters = []

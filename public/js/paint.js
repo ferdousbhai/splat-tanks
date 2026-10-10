@@ -150,7 +150,7 @@ export function decodePaint(data) {
 }
 
 let lastUpload = 0
-/** Bumped each time the picture is uploaded, so the minimap knows when to redraw it. */
+/** Bumped each time the picture is uploaded, so the minimap and the part progress know when to measure again. */
 export let paintVersion = 0
 /** Uploads the canvas to the GPU at most ~10 times a second. */
 export function updatePaint(now) {

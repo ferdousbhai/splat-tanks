@@ -324,6 +324,13 @@ Cleanup came back clean.
 - **Enter and HUD buttons:** a clicked 🏠, 👀 or 🎵 kept keyboard focus, so Enter, a key young children mash, pressed it again; one 🏠 click plus Enter ended the round. HUD buttons no longer take focus from a click.
 - **Driver's seat hint on hybrid devices:** it now follows the input in use, so a mouse user hears "Click, then move the mouse to look".
 
+### Fresh audit, round 31
+
+Design came back clean.
+- **Toast over the strip or timer on laptop windows (from round 30):** a top toast now measures the top-middle stack (fraction strip, or timer and goal) and sits just below it whenever they'd overlap.
+- **Menu defaults:** they are set once, in `game.opts`, and shown through `setOpt`. The HTML no longer repeats them, so the two can't drift.
+- **Comments:** the floaters comment and the `paintVersion` comment match what the code does.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

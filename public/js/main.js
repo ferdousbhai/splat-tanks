@@ -1251,6 +1251,7 @@ function renderLobby() {
 }
 
 function setupMenu() {
+  takeOpts(game.opts) // the menu shows the defaults in game.opts, the one place they're set
   $('reroll').addEventListener('click', () => {
     game.myName = randomName()
     menuChanged()

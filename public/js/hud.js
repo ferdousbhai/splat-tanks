@@ -93,6 +93,14 @@ export function toast(text, ms = 2500) {
   const t = $('toast')
   t.textContent = text
   t.classList.remove('hidden')
+  // Where style.css hangs the toast from the top (short and landscape-laptop screens), it sits just below
+  // whatever is in the top middle (the fraction strip, or the timer and goal), never over it.
+  t.style.top = ''
+  const r = t.getBoundingClientRect()
+  if (r.top < innerHeight / 2) {
+    const tc = document.querySelector('.top-center').getBoundingClientRect()
+    if (tc.height && tc.left < r.right && tc.right > r.left) t.style.top = `${tc.bottom + 8}px`
+  }
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => t.classList.add('hidden'), ms)
 }
