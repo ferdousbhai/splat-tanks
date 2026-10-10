@@ -207,8 +207,9 @@ body.seat #periscope { display: block; }
   body.cards #banner, body.cards .top-center { display: none; }
   #upgrades { top: var(--top); bottom: auto; }
   .card .tx, .card .pips { display: none; }
-  /* Banners sit below the fraction strip, so the box that just filled stays in view. */
-  body.together #hud { --banner-top: calc(var(--top) + 118px); --sub-gap: clamp(40px, 7vw, 76px); }
+  /* Banners sit below the middle, where the camera keeps your tank, and clear of the fraction strip above. */
+  #hud { --banner-top: 66%; --sub-gap: clamp(32px, 5vw, 48px); }
+  #banner { font-size: clamp(26px, 5vw, 40px); }
   #board .brow:nth-child(n + 4) { display: none; }
   .card { padding: 6px; }
   .card .ic { font-size: 24px; }

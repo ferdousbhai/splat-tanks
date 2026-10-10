@@ -193,6 +193,12 @@ Cleanup came back clean.
 - **Full room:** when every colour is on a tank, a late joiner shares a robot's colour, never another child's, and hears which one.
 - A guest on the results screen hears "Waiting for the host."
 
+### Fresh audit, round 15
+
+The bug and cleanup reviews came back clean.
+- **Banners over your tank on landscape phones:** the camera keeps the tank in the middle of the screen, and Paint together banners sat right on it for about 6 s at each finished part (and match sub-lines did too). On short screens, banners now sit at 66%, below the tank and above the level pill, at a smaller size. Checked at 640×360, 667×375, 844×390 and 932×430.
+- A child who has just joined no longer hears "… is here!" for everyone already in the room.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

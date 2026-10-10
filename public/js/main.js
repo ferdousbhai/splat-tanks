@@ -58,6 +58,7 @@ const game = {
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
+  joinedAt: 0, // when we joined the room
 }
 let homeArmedUntil = 0 // in play, 🏠 needs a second tap before this time
 const isHost = () => game.hostId === game.selfId
@@ -81,6 +82,7 @@ function hello(to) {
 
 function setupRoom(room) {
   game.room = room
+  game.joinedAt = now()
   game.selfId = room.selfId
   game.hostId = room.isHost ? room.selfId : null
   room.on('join', (id) => hello(id))
@@ -148,7 +150,8 @@ function handle(msg, from) {
     case 'hello': {
       const h = { name: safeName(msg.name), color: safeColor(msg.color) }
       // A friend arriving in the menu is said; one joining a round is shown in the feed when their tank arrives.
-      if (!game.humans.has(from) && game.phase === 'menu') voice.say(`${h.name} is here!`)
+      // (Not the players already in the room when we arrive: their hellos all come in the first moments.)
+      if (!game.humans.has(from) && game.phase === 'menu' && now() - game.joinedAt > 3000) voice.say(`${h.name} is here!`)
       game.humans.set(from, h)
       if (msg.host) game.hostId = from
       const existing = game.tanks.get(from)
