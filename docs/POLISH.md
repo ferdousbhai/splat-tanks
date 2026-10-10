@@ -441,6 +441,12 @@ Correctness and code quality came back clean.
 - **Chalk fractions under pads and buckets (design):** label spots avoided walls, crates, rocks and trees but not the pickup pads (not colliders) or the paint buckets (skipped on purpose). In halves nearly every label had a pad 1–3 m from its numerals, its disc and floating icon covering the "1" of "1/2"; in square quarters some sat under a bucket. Labels now keep clear of both, and if no spot with room around it exists they settle for the label alone being clear (0 of 390 labels over 30 arenas touch one).
 - **PLAY over the choices on landscape phones (design):** the sticky PLAY floated over the Robots and Speed rows, so a tap meant for 🚀 started the round. On landscape phones PLAY now stands, smaller, in its own column beside the choices and stays mid-screen while they scroll.
 
+### Fresh audit, round 48
+
+Correctness came back clean.
+- **A ticking countdown in Paint together (design):** a Super squirt or Big brush showed 💦 7, 6, 5 … under the tank, a clock in the mode that promises none (and a number a pre-reader can't use). Powers now show just their icon with a thin bar that drains as they wear off, in both games.
+- **Tidy (code quality):** the landscape-phone PLAY placement states its sticky spot on its own, rather than half relying on the general short-screen rule (`bottom: auto`).
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

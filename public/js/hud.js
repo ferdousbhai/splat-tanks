@@ -171,10 +171,14 @@ export function bars(me, now, together) {
   cooldown($('ab-mega'), me.megaReadyAt, BASE.megaCooldown * 1000, now, me.stats.mega)
   put($('btn-mega'), 'opacity', String(me.stats.mega ? (now >= me.megaReadyAt ? 1 : 0.4) : 0.15))
   put($('btn-boost'), 'opacity', String(now >= me.boostReadyAt ? 1 : 0.4))
-  const buffs = []
-  if (now < me.rapidUntil) buffs.push(`💦 ${Math.ceil((me.rapidUntil - now) / 1000)}`)
-  if (now < me.rollerUntil) buffs.push(`🖌️ ${Math.ceil((me.rollerUntil - now) / 1000)}`)
-  put($('buffs'), 'html', buffs.map((b) => `<span class="buff">${b}</span>`).join(''))
+  // A power's icon with a little bar that drains as it wears off: no ticking seconds.
+  const buffs = [
+    ['💦', me.rapidUntil, PICKUPS.rapid.seconds],
+    ['🖌️', me.rollerUntil, PICKUPS.roller.seconds],
+  ].filter(([, until]) => now < until)
+  const box = $('buffs')
+  put(box, 'html', buffs.map(([icon]) => `<span class="buff">${icon}<i></i></span>`).join(''))
+  box.querySelectorAll('.buff i').forEach((bar, k) => put(bar, 'width', cssPct(Math.min(1, (buffs[k][1] - now) / (buffs[k][2] * 1000)))))
 }
 function levelBars(me) {
   // The bar shows your share of the whole floor, the same number as its label, so it only ever grows as you paint.

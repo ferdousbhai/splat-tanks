@@ -164,7 +164,8 @@ body.cards #subbanner { display: none; }
 .ability.ready { box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(255, 207, 51, 0.6); }
 .ability.locked { opacity: 0.3; filter: grayscale(1); }
 #buffs { display: flex; gap: 6px; }
-.buff { background: rgba(10, 14, 24, 0.75); border-radius: 999px; padding: 3px 10px; font-weight: 900; font-size: 13px; }
+.buff { position: relative; overflow: hidden; background: rgba(10, 14, 24, 0.75); border-radius: 999px; padding: 3px 10px 5px; font-weight: 900; font-size: 13px; }
+.buff i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); }
 
 .corner-btn { width: 44px; height: 44px; border-radius: 12px; background: rgba(10, 14, 24, 0.6); font-size: 20px; }
 .corner-btn.off { opacity: 0.4; }
@@ -341,8 +342,8 @@ body.arriving #end .go-row, body.arriving #go { opacity: 0.3; }
   #menu .logo { grid-area: logo; justify-self: center; }
   #menu .panel { grid-area: panel; width: auto; padding: 10px 12px; }
   #menu .label { width: 64px; font-size: 11px; letter-spacing: 0; }
-  /* It stays in view, mid-screen, while the choices scroll beside it. */
-  #menu #go, #menu #waiting-host { grid-area: go; align-self: start; position: sticky; top: calc(50% - 28px); max-width: 140px; }
+  /* It stays in view, mid-screen, while the choices scroll beside it (not at the bottom, as on other short screens). */
+  #menu #go, #menu #waiting-host { grid-area: go; align-self: start; position: sticky; top: calc(50% - 28px); bottom: auto; max-width: 140px; }
   #menu #go { font-size: 20px; padding: 12px 16px; }
 }
 
