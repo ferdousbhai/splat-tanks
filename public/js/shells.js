@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { scene, shellObstacle } from './world.js'
 import { TANK_RADIUS } from './config.js'
-import { splash, sparks, shellTrail } from './fx.js'
+import { splash, sparks, shellTrail, nearCamera } from './fx.js'
 import { sound } from './audio.js'
 import { yawOf } from './tank.js'
 
@@ -30,7 +30,15 @@ export function spawnShell(o) {
   group.position.set(o.x, 1.1, o.z)
   group.rotation.y = yawOf(o.dx, o.dz)
   scene.add(group)
-  shells.set(o.sid, { ...o, life: o.range / o.speed, t: 0, mesh: group, trail: 0, r: o.mega ? 0.5 : 0.25 })
+  const s = { ...o, life: o.range / o.speed, t: 0, mesh: group, trail: 0, r: o.mega ? 0.5 : 0.25 }
+  hideNear(s)
+  shells.set(o.sid, s)
+}
+
+/** A blob leaving the nozzle right by the driver's seat camera would fill the view, so it shows once clear. */
+function hideNear(s) {
+  const p = s.mesh.position
+  s.mesh.visible = !nearCamera(p.x, p.y, p.z, s.mega ? 3 : 1.5)
 }
 
 export function removeShell(sid, fx = true) {
@@ -114,6 +122,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
     // A little lob: up, then down onto the floor at the end of its range.
     const k = s.t / s.life
     s.mesh.position.set(s.x, 1.1 + 2.4 * k * (1 - k) - 0.8 * k * k, s.z)
+    hideNear(s)
     s.trail += dt
     if (s.trail > 0.04) {
       s.trail = 0

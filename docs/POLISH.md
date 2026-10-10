@@ -357,6 +357,12 @@ Design came back clean. The round 31 design review, which arrived late, and roun
 - **Bursts in the driver's seat:** round 34 calmed only your own squirt. Paint landing on a wall in front of you, or a robot's shot landing on you, still burst its pop ball and white ring across the view. This is now fixed in one place: in `fx.js`, any effect within 6 m of the camera (only the driver's seat gets that close) leaves out its pop, ring, sparks and confetti, and sends a few small low drops. Round 34's per-call flag is gone. The sky view is unchanged.
 - **Tidy:** the `body.arriving` rule no longer repeats `pointer-events: none`, because `inert` already holds the buttons; it only fades them.
 
+### Fresh audit, round 36
+
+- **Big splashes just past 6 m:** a balloon or bucket burst grows several metres wide, so one 7–8 m ahead still filled the seat view. The near distance now grows with the splash's size (6 m plus 3 m per size step: about 13 m for a balloon, 15 m for a bucket). The sky camera stays 30 m away, so the sky view is unchanged.
+- **Your own throw in the seat:** a blob, and especially a 🎈 balloon, starts half a metre from the seat camera and covered most of the view for a few frames on every throw. A blob is now hidden until it is clear of the camera (1.5 m, 3 m for a balloon), and its trail starts there too.
+- **Respawn rings in the seat:** a child joining mid-round, or coming back after a host change, with the seat view saved saw the arrival rings spawn while the camera was still in the sky, then had the camera drop inside them. Your own arrival seen from the seat now has no rings.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

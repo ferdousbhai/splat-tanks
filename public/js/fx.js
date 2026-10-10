@@ -6,11 +6,12 @@ import { scene, camera } from './world.js'
 export const still = matchMedia('(prefers-reduced-motion: reduce)')
 
 /**
- * True when an effect would burst right in front of the camera, which only happens in the driver's seat (the
- * sky camera is 30 m up). Such effects are left out or kept small and low, so the view never flashes.
+ * True when something would fill the view from within r metres of the camera, which only happens in the
+ * driver's seat (the sky camera is 30 m up). Such effects are left out or kept small and low, and blobs are
+ * hidden, so the view never flashes. Big splashes pass a bigger r.
  */
 const at = new THREE.Vector3()
-const nearCamera = (x, y, z) => camera.position.distanceToSquared(at.set(x, y, z)) < 36
+export const nearCamera = (x, y, z, r = 6) => camera.position.distanceToSquared(at.set(x, y, z)) < r * r
 
 const particles = []
 const cube = new THREE.BoxGeometry(1, 1, 1)
@@ -63,8 +64,9 @@ export function muzzleFlash(x, y, z, dx, dz, color, big = false) {
 /** A paint splash: drops of colour fly up and fall. size: 1 = blob, 2.5 = bucket or balloon. */
 export function splash(x, z, size = 1, color = '#ff6ec7') {
   const y = 0.6
-  // By the camera (driver's seat): no pop or ring, and a few small drops that stay low.
-  const near = nearCamera(x, y, z)
+  // By the camera (driver's seat): no pop or ring, and a few small drops that stay low. A balloon's or bucket's
+  // pop and ring grow several metres wide, so they count as near from further away.
+  const near = nearCamera(x, y, z, 6 + 3 * size)
   if (!near) {
     const pop = mesh(ball, color, 0.85)
     pop.position.set(x, y, z)
@@ -117,6 +119,7 @@ export function boostTrail(x, z, color) {
 }
 
 export function shellTrail(x, y, z, color, big) {
+  if (nearCamera(x, y, z, 3)) return
   const f = mesh(ball, color, 0.6)
   f.position.set(x, y, z)
   spawn(f, { life: big ? 0.3 : 0.16, size: big ? 0.3 : 0.12, grow: -0.4, vy: -1.5 })

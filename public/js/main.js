@@ -685,7 +685,8 @@ function onSpawn(msg) {
   if (!t) return
   t.place(msg.x, msg.z, msg.h)
   t.alive = true
-  levelBurst(msg.x, msg.z, t.color)
+  // From the driver's seat the camera drops into this tank in the same frame, inside the rings: no burst then.
+  if (!(t === game.me && seat.on)) levelBurst(msg.x, msg.z, t.color)
 }
 
 function onBucket(msg) {
