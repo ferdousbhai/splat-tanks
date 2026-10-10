@@ -132,6 +132,15 @@ The bug and cleanup reviews came back clean. Design found two problems:
 - **Bucket over the half fact:** picking up a paint bucket replaced the "Two quarters make one half!" sub-line while it was being said. Passing notes are now `soft` and never replace a sub-line that is still showing.
 - **Banners on small phones:** on 375×667, 360×640 and 414×736, 🏠 covered the start of every banner. On narrow screens, banners now start below the left column.
 
+### Fresh audit, round 7
+
+- **Banners in tiny frames:** the round 6 rule pushed banners below the bottom of very short narrow frames, such as the store's 375×260 phone preview. The position is now capped at 45%, and the tiny-frame layout puts banners back at 24%.
+- **Buckets after a host change:** a burst bucket came back on a 25 s timer kept only by the old host, so after a host change it stayed gone. Every device now notes when each bucket is due back (`backAt`), and whoever is host brings it back in `hostStep`.
+- **Upgrade cards and touch (Splat match):**
+  - Upright phones: the cards used to sit on the sticks' resting spots, so a thumb meant for driving picked an upgrade. They now sit below the left column, with the leaderboard and banner hidden while they're up. Every stick base now hits the stick at 360×640, 375×667 and 390×844.
+  - Landscape phones: the cards are compact, at the top in place of the timer, and no longer cover the tank.
+- A stale CSS comment was fixed. Keeping part progress in `parts.js` was suggested but skipped as marginal.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

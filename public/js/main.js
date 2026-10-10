@@ -244,10 +244,13 @@ function setPose(t, x, z, h, ty, vx, vz, boosting) {
   if (boosting) t.boostUntil = now() + 120
 }
 
+/** A burst bucket comes back after 25 s: every device notes when, so a new host can bring it back too. */
+const BUCKET_BACK_MS = 25000
 function setBarrel(b, alive) {
   if (!b) return
   b.alive = alive
   b.mesh.visible = alive
+  b.backAt = alive ? 0 : now() + BUCKET_BACK_MS
 }
 
 // --- Match setup -------------------------------------------------------------------------
@@ -526,9 +529,6 @@ function hostBucket(i, by, match = game.match) {
   broadcast({ t: 'bx', i, by: by.id })
   addXp(by, XP.bucket)
   bigSplash(b.x, b.z, 5.5, by)
-  setTimeout(() => {
-    if (isHost() && game.match === match && game.phase === 'battle') broadcast({ t: 'bu', i })
-  }, 25000)
 }
 
 /** XP and levels belong to the splat match; painting together grows tanks by finished parts instead. */
@@ -1077,6 +1077,7 @@ function hostStep(dt, n) {
     }
   }
   for (const p of game.pads) if (!p.kind && n >= p.respawnAt) broadcast({ t: 'pu', i: p.i, k: randomPickup() })
+  barrels.forEach((b, i) => !b.alive && n >= b.backAt && broadcast({ t: 'bu', i }))
   if (together()) {
     // A part is finished once most of it is painted; the whole floor ends the round.
     const p = game.progress.findIndex((v, i) => !layout.done[i] && v >= DONE)

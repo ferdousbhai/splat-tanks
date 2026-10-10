@@ -86,10 +86,9 @@ body.together .bars { width: auto; }
 @media (max-width: 600px) {
   body.together .top-center { left: auto; right: var(--right); transform: none; }
   .fraction { --side: 60px; }
-  /* Below the leaderboard's six rows. */
-  /* …and below the left column (minimap and three buttons) on short phones. */
-  #hud #banner { top: max(32%, calc(var(--top) + var(--map) + 164px)); }
-  #hud #subbanner { top: calc(max(32%, calc(var(--top) + var(--map) + 164px)) + clamp(44px, 8vw, 90px)); }
+  /* Banners start below the left column (minimap and three buttons), but never lower than 45%. */
+  #hud #banner { top: min(max(32%, calc(var(--top) + var(--map) + 164px)), 45%); }
+  #hud #subbanner { top: calc(min(max(32%, calc(var(--top) + var(--map) + 164px)), 45%) + clamp(44px, 8vw, 90px)); }
   .fraction b { font-size: 12px; }
 }
 #board { position: absolute; top: calc(var(--top) + 56px); right: var(--right); width: 210px; display: flex; flex-direction: column; gap: 3px; }
@@ -176,6 +175,13 @@ body.seat #periscope { display: block; }
   #upgrades { bottom: calc(var(--bottom) + 160px); }
   .card { width: min(104px, 28vw); }
 }
+/* Phones upright: the cards sit below the left column, clear of where thumbs rest on the sticks, so a
+   thumb meant for driving never picks one. While they're up, the leaderboard and banner make way. */
+@media (any-pointer: coarse) and (orientation: portrait) {
+  #upgrades { top: min(calc(var(--top) + var(--map) + 164px), 45%); bottom: auto; }
+  .card .tx { display: none; }
+  body.cards #board, body.cards #banner { display: none; }
+}
 @media (any-pointer: coarse) and (max-width: 400px) {
   :root { --map: 92px; }
   .bottom { left: calc(50% - 36px); }
@@ -186,17 +192,21 @@ body.seat #periscope { display: block; }
   #menu .tagline, #menu .controls-help { display: none; }
   #results.together { flex-direction: row; justify-content: center; }
   #results.together .floor-pic { width: min(150px, 40vh); }
-  body.cards #banner { top: 6%; }
+  /* The cards sit at the top, in place of the timer, so they never cover the tank in the middle. */
+  body.cards #banner, body.cards .top-center { display: none; }
+  #upgrades { top: var(--top); bottom: auto; }
+  .card .tx, .card .pips { display: none; }
   /* Banners sit below the fraction strip, so the box that just filled stays in view. */
   body.together #banner { top: calc(var(--top) + 118px); }
   body.together #subbanner { top: calc(var(--top) + 118px + clamp(40px, 7vw, 76px)); }
   #board .brow:nth-child(n + 4) { display: none; }
-  #upgrades { bottom: calc(var(--bottom) + 84px); }
   .card { padding: 6px; }
   .card .ic { font-size: 24px; }
 }
 /* A small window (the store's preview frame on a phone): only what's needed to play. */
 @media (max-height: 280px) {
+  #hud #banner { top: 24%; }
+  #hud #subbanner { top: calc(24% + clamp(44px, 8vw, 90px)); }
   .hud-left, #board, #timer, .up-title, .card .tx, .card .pips, .bars { display: none; }
   .bottom { transform: translateX(-50%) scale(0.6); }
   #upgrades { top: 6px; bottom: auto; }
