@@ -415,6 +415,13 @@ Code quality came back clean.
 - **A stale cursor spot (correctness):** the sweep tally remembered the cursor's last spot on the game for good, so after a round, a menu or a HUD button, the first 1 px brush counted the whole jump back and took the keys. Only moves close together add up now, and leaving the game's surface starts afresh.
 - **Tidy (code quality):** a mouse press and a chorded press share one `press`, and the sky view and the seat share one `drivingAlone()`.
 
+### Fresh audit, round 44
+
+- **The bigger tanks had no turret (design):** the four tanks share one GLB with the same node names, and the loader renames repeats (`turret_1`, `barrel_1`, …), so only the Squirter found its turret, barrel and muzzle. From the Splasher up, the whole tank swivelled to the aim and slid sideways while driving (robots and friends too), blobs and puffs started from the tank's middle at floor height, and in the seat the camera sat low with the Titan's barrels hanging over the view. Nodes are now found by their original name (`userData.name`), so every tier's turret turns on its hull and the seat eye sits above its own nozzle.
+- **Muzzle drops in the seat (design):** the near-camera muzzle skipped its puff but still threw full-size drops up toward eye height twice a second. Beside the camera it now shows nothing; the blob shows once it's clear.
+- **After a card pick (correctness):** the quiet moment around the cards was only refreshed by moves over the game, so it had run out by the time a child who'd looked at the cards picked one, and moving off the card handed the aim to the mouse. It now runs from any move or press on the page while the cards are up.
+- **Tidy (code quality):** `handsFree` is private to `input.js`.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

@@ -45,14 +45,13 @@ function spawn(m, p) {
   particles.push({ m, t: 0, life: 1, vx: 0, vy: 0, vz: 0, g: 0, spin: 0, grow: 0, fade: true, size: 1, base: m.material.opacity, ...p })
 }
 
-/** A puff of paint at the nozzle (just the little drops when it's right by the camera). */
+/** A puff of paint at the nozzle. None right by the camera (the driver's seat): there the blob itself shows. */
 export function muzzleFlash(x, y, z, dx, dz, color, big = false) {
+  if (nearCamera(x, y, z)) return
   const s = big ? 1.8 : 1
-  if (!nearCamera(x, y, z)) {
-    const f = mesh(ball, color, 0.9)
-    f.position.set(x, y, z)
-    spawn(f, { life: 0.12, size: 0.45 * s, grow: 3 * s })
-  }
+  const f = mesh(ball, color, 0.9)
+  f.position.set(x, y, z)
+  spawn(f, { life: 0.12, size: 0.45 * s, grow: 3 * s })
   for (let i = 0; i < (big ? 6 : 3); i++) {
     const d = mesh(ball, color)
     d.position.set(x + dx * 0.3, y, z + dz * 0.3)

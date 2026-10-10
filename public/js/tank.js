@@ -160,11 +160,20 @@ export class Tank {
       o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material)
     })
     this.body.add(this.model)
-    this.turret = this.model.getObjectByName('turret') ?? this.model
+    // The four tanks share one GLB with the same node names, which the loader makes unique (turret_1, …) while
+    // keeping the original in userData.name: look nodes up by that.
+    const find = (name) => {
+      let found = null
+      this.model.traverse((o) => {
+        if (!found && (o.userData.name ?? o.name) === name) found = o
+      })
+      return found
+    }
+    this.turret = find('turret') ?? this.model
     this.turretBase = this.turret.rotation.y
-    this.barrels = ['barrel', 'barrel_L', 'barrel_R'].map((n) => this.model.getObjectByName(n)).filter(Boolean)
+    this.barrels = ['barrel', 'barrel_L', 'barrel_R'].map(find).filter(Boolean)
     for (const b of this.barrels) b.userData.rest ??= b.position.clone()
-    this.muzzleNodes = ['muzzle', 'muzzle_L', 'muzzle_R'].map((n) => this.model.getObjectByName(n)).filter(Boolean)
+    this.muzzleNodes = ['muzzle', 'muzzle_L', 'muzzle_R'].map(find).filter(Boolean)
     if (!this.muzzleNodes.length) this.muzzleNodes = [this.turret]
     this.setFirstPerson(this.firstPerson)
     // Bigger tiers sit a little taller in the label.

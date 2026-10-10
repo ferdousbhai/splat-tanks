@@ -20,14 +20,13 @@ const handlers = {}
 export const onKey = (key, fn) => (handlers[key] = fn)
 
 /**
- * Driving alone paints: on touch, or on keys until the mouse is used in a round (a young child, or someone
- * playing with the keyboard only). Driving then squirts paint ahead; in the driver's seat left and right turn
- * the view. Once the mouse is used it keeps the aim for the round, even resting.
+ * No mouse in hand: on touch, or on keys until the mouse is used in a round (a young child, or someone playing
+ * with the keyboard only). Once the mouse is used it keeps the aim for the round, even resting.
  */
-export const handsFree = () => input.touch || !input.mouseUsed
+const handsFree = () => input.touch || !input.mouseUsed
 /** The mouse is aiming (and its crosshair shows) in the sky view. */
 export const mouseAims = () => input.mouse.active && !handsFree()
-/** Driving with nothing else in hand: the tank squirts ahead (and in the seat, left and right turn). */
+/** Driving with nothing else in hand: the tank squirts ahead, and in the driver's seat left and right turn the view. */
 export const drivingAlone = () => handsFree() && !input.aimStick.active && Math.hypot(input.moveX, input.moveZ) > 0.2
 
 function updateMoveFromKeys() {
@@ -78,11 +77,14 @@ export function bindMouse(canvas) {
   let since = 0
   let last = null
   let quietUntil = 0
+  // Anywhere on the page (the cards are outside the game's surfaces, and their press stops propagation), so the
+  // quiet moment runs from the pick.
+  const hush = () => document.body.classList.contains('cards') && (quietUntil = performance.now() + 1000)
+  for (const type of ['pointermove', 'pointerdown', 'pointerup']) addEventListener(type, hush, { capture: true })
   on('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return
     input.touch = false // an iPad trackpad or mouse takes over aiming
     const t = performance.now()
-    if (document.body.classList.contains('cards')) quietUntil = t + 600
     if (t < quietUntil) ((travel = 0), (last = null))
     else {
       if (t - since > 500) ((since = t), (travel = 0), (last = null)) // only moves close together add up
