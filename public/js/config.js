@@ -34,7 +34,7 @@ export const BASE = {
 // Upgrade cards offered on every level up (pick 1 of 3).
 export const UPGRADES = {
   big: { icon: '🎨', name: 'Big Splats', text: 'Bigger paint splats', max: 5 },
-  reload: { icon: '⚡', name: 'Quick Squirt', text: 'Squirt faster', max: 5 },
+  reload: { icon: '💦', name: 'Quick Squirt', text: 'Squirt faster', max: 5 },
   speed: { icon: '🛞', name: 'Zoomy Wheels', text: 'Drive faster', max: 4 },
   velocity: { icon: '🎯', name: 'Long Squirt', text: 'Paint flies farther', max: 4 },
   multi: { icon: '🌈', name: 'Spray', text: '+1 blob per squirt', max: 2 },

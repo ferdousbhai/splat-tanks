@@ -256,6 +256,17 @@ A stricter check this round: the child's own tank, measured in all 8 aim directi
   - **Strip rules:** the small-screen strip rules are written once, in one media block.
 - **Result:** no banner, sub-line, strip or card covers the tank in any aim direction at 360×640, 375×667, 390×844, 414×736, 568×320, 667×320 or 740×290.
 
+### Fresh audit, round 23
+
+Checked at tablet and desktop sizes this time, again measuring the tank in all 8 aim directions.
+- **Banners on landscape tablets and desktops:** they covered the tank when it rode down the screen. On every landscape screen, banners now hang just above the bottom panel, at a moderate size. 0 hits at 1024×768, 1194×834, 1366×1024, 1280×720, 1366×768 and 1440×900.
+- **Splat match cards on landscape tablets:** compact, at the top in place of the timer. On upright tablets, the goal pill hides while the cards are up, so their title no longer prints over it.
+- **News feed on small upright phones:** "… came to paint" rows wrap under the minimap, two at most, instead of running across the tank.
+- **Quick Squirt card:** it now uses 💦, so ⚡ only ever means zoom.
+- **Regressions from round 22:**
+  - the very-short-screen top banners now skip the store's preview frame, which has no minimap to sit beside and uses full-width small banners above the panel
+  - the banner CSS shares one rule for what both lines have in common
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

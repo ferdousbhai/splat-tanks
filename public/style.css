@@ -119,10 +119,10 @@ body.together .bars { width: auto; }
 .brow .k { min-width: 22px; text-align: right; color: var(--accent); }
 
 /* Banners are a soft dark pill around their words, so they read over anything behind (labels, paint, sky). */
-#banner, #subbanner { width: fit-content; max-width: calc(100% - 16px); margin: 0 auto; box-sizing: border-box; background: rgba(10, 14, 24, 0.55); border-radius: 14px; }
-#banner { position: absolute; top: var(--banner-top); left: 0; right: 0; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; opacity: 0; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; pointer-events: none; padding: 4px 12px; }
+#banner, #subbanner { position: absolute; left: 0; right: 0; width: fit-content; max-width: calc(100% - 16px); margin: 0 auto; padding: 4px 12px; text-align: center; background: rgba(10, 14, 24, 0.55); border-radius: 14px; opacity: 0; pointer-events: none; }
+#banner { top: var(--banner-top); font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; }
 #banner.show { opacity: 1; transform: scale(1); }
-#subbanner { position: absolute; top: calc(var(--banner-top) + var(--sub-gap)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 4px 12px; }
+#subbanner { top: calc(var(--banner-top) + var(--sub-gap)); font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; transition: opacity 0.2s; }
 #subbanner.show { opacity: 1; }
 
 /* While the upgrade cards are up, the sub-banner makes way for them. */
@@ -208,7 +208,19 @@ body.seat #periscope { display: block; }
   .card { flex: 1; width: auto; padding: 6px 4px; }
   .card .ic { font-size: 22px; }
   .card .tx, .card .pips { display: none; }
-  body.cards #board, body.cards #banner { display: none; }
+  body.cards #board, body.cards #banner, body.cards #goal { display: none; }
+}
+/* Tablets on their side: compact cards at the top in place of the timer, clear of your tank in the middle. */
+@media (any-pointer: coarse) and (orientation: landscape) {
+  #upgrades { top: var(--top); bottom: auto; }
+  body.cards #banner, body.cards .top-center { display: none; }
+  .card .tx, .card .pips { display: none; }
+}
+/* Upright phones: news of friends arriving or leaving wraps under the minimap, two lines at most. */
+@media (max-width: 400px) {
+  #feed { max-width: var(--map); }
+  .news { white-space: normal; }
+  #feed .news:nth-child(n + 3) { display: none; }
 }
 /* Landscape phones: the drive stick's area starts right of the 🎵 👀 🏠 column, so a thumb can't land on them.
    (The store's preview frame, 280 px tall or less, hides that column, so the stick keeps the whole corner.) */
@@ -218,6 +230,11 @@ body.seat #periscope { display: block; }
 @media (any-pointer: coarse) and (max-width: 400px) {
   :root { --map: 92px; }
   .bottom { left: calc(50% - 36px); }
+}
+/* Landscape screens: the camera keeps your tank in the middle, so banners hang just above the bottom panel. */
+@media (orientation: landscape) {
+  #hud { --banner-anchor: bottom; }
+  #banner { font-size: clamp(26px, 4vw, 44px); }
 }
 /* Landscape phones: everything that changes for a short screen, in one place. */
 @media (max-height: 520px) {
@@ -244,8 +261,9 @@ body.seat #periscope { display: block; }
   .card .ic { font-size: 24px; }
 }
 /* Very short screens (a landscape phone with its toolbar showing): even just above the panel is where your
-   tank sits, so painting together, banners go up top between the minimap and the fraction strip. */
-@media (max-height: 340px) {
+   tank sits, so painting together, banners go up top between the minimap and the fraction strip. (The store's
+   preview frame, 280 px or less, has no minimap to sit beside and keeps the bottom anchor.) */
+@media (max-height: 340px) and (min-height: 281px) {
   body.together #hud { --banner-anchor: top; --banner-top: var(--top); }
   body.together #banner, body.together #subbanner { left: calc(var(--left) + var(--map) + 12px); right: calc(var(--right) + 100px); }
   /* The strip keeps just its boxes here (the voice says the words), leaving the banner room beside it. */
@@ -255,6 +273,10 @@ body.seat #periscope { display: block; }
 }
 /* A small window (the store's preview frame on a phone): only what's needed to play. */
 @media (max-height: 280px) {
+  /* No minimap here to sit beside: banners span the frame, small, just above the panel. */
+  body.together #banner, body.together #subbanner { left: var(--left); right: var(--right); }
+  #hud #banner { font-size: 18px; }
+  #hud #subbanner { font-size: 12px; }
   .hud-left, #board, #timer, .up-title, .bars { display: none; }
   .bottom { transform: translateX(-50%) scale(0.6); }
   #upgrades { top: 6px; bottom: auto; }
