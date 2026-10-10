@@ -41,9 +41,7 @@ scene.add(sun.target)
 function resize() {
   renderer.setSize(innerWidth, innerHeight)
   camera.aspect = innerWidth / innerHeight
-  // Show more of the arena on portrait phones.
-  camera.fov = camera.aspect < 1 ? 62 : 45
-  camera.updateProjectionMatrix()
+  camera.updateProjectionMatrix() // the game's camera sets the field of view for each view (main.js setLens)
 }
 addEventListener('resize', resize)
 resize()

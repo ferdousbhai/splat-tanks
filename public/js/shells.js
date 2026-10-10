@@ -41,6 +41,11 @@ function hideNear(s) {
   s.mesh.visible = !nearCamera(p.x, p.y, p.z, s.mega ? 3 : 1.5)
 }
 
+/** Hides blobs by the camera once it has moved into the driver's seat. */
+export function hideNearCamera() {
+  for (const s of shells.values()) hideNear(s)
+}
+
 export function removeShell(sid, fx = true) {
   const s = shells.get(sid)
   if (!s) return

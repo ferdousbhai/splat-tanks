@@ -369,6 +369,14 @@ Design and correctness came back clean.
 - **Tidy:** a blob's trail now starts when the blob itself shows (one check, one radius), instead of a second near-camera check in `shellTrail` with its own 3 m. The `splash` size comment now matches its callers (0.8 blob, 2.5 balloon, 3 bucket).
 - **Shown matches said:** the upgrade cards' title reads "Level up! Pick a new power", as the voice says it.
 
+### Fresh audit, round 38
+
+Code quality came back clean.
+- **Seat lens after a resize:** `world.js` reset the field of view to the sky view's on every resize, and `setLens` skipped its work when the shape hadn't changed (browser zoom, or a window resized in proportion), so the driver's seat narrowed to 45°. Only `setLens` sets the field of view now.
+- **Cards at "Time's up!":** an unpicked level-up kept the cards up through the match's ending, hiding the "Time's up!" banner and letting a pick talk over it. The cards now go away when the round is over.
+- **Mouse-look in the countdown:** with the pointer locked during the countdown, mouse moves built up and turned the view in one jump at "Paint!". They're now let go until you can drive.
+- **Switching into the seat mid-burst:** puffs and blobs spawned that frame were judged from the sky camera, then the camera dropped in among them. On the frame the camera enters the seat, effects and blobs around it are cleared or hidden.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

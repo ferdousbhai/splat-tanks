@@ -133,6 +133,17 @@ export function levelBurst(x, z, color) {
   }
 }
 
+/** Clears effects already around the camera when it moves into the driver's seat (they were spawned seen from the sky). */
+export function clearNearCamera() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const { position: p } = particles[i].m
+    if (!nearCamera(p.x, p.y, p.z)) continue
+    release(particles[i].m)
+    particles[i] = particles[particles.length - 1]
+    particles.pop()
+  }
+}
+
 export function updateFx(dt) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i]

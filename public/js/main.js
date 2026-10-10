@@ -12,8 +12,8 @@ import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.j
 import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
-import { spawnShell, removeShell, updateShells, clearShells } from './shells.js'
-import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
+import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera } from './shells.js'
+import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey, mouseSurfaces } from './input.js'
@@ -990,13 +990,22 @@ function updateCamera(dt) {
   const portrait = innerHeight > innerWidth
   const inside = firstPerson()
   view.seat = !!inside
+  const entering = inside && !game.me.firstPerson
   if (game.me && game.me.firstPerson !== inside) {
     game.me.setFirstPerson(inside)
     if (inside) seat.yaw = game.me.turretYaw
   }
   if (!inside && document.pointerLockElement) document.exitPointerLock()
   setLens(inside ? (portrait ? 80 : 70) : portrait ? 62 : 45, inside ? 0.1 : 0.5)
-  if (inside) return seatCamera(dt)
+  if (inside) {
+    seatCamera(dt)
+    // This frame's puffs and blobs were judged from the sky camera: clear the ones now around the seat.
+    if (entering) {
+      clearNearCamera()
+      hideNearCamera()
+    }
+    return
+  }
   if (game.phase === 'menu' || game.phase === 'loading') {
     if (!still.matches) menuAngle += dt * 0.08
     camera.position.set(Math.sin(menuAngle) * 58, 34, Math.cos(menuAngle) * 58)
@@ -1081,7 +1090,10 @@ function battleStep(dt, n) {
 
   // Our tank and (on the host) the bots.
   if (me?.alive && live) control(me, playerControls(me, dt), dt)
-  else if (me) me.vel.x = me.vel.z = 0
+  else if (me) {
+    me.vel.x = me.vel.z = 0
+    input.look.dx = input.look.dy = 0 // mouse-look counts only while you drive, so the view can't jump at "Paint!"
+  }
   if (isHost() && live) {
     for (const t of game.tanks.values()) {
       if (!t.bot || !t.alive) continue
@@ -1109,8 +1121,8 @@ function battleStep(dt, n) {
   if (isHost() && live) hostStep(dt, n)
   if (isHost() && n - game.lastPaintSend > 100) flushPaint()
 
-  // Upgrade cards.
-  if (me) {
+  // Upgrade cards, while the round is on (they'd hide "Time's up!").
+  if (me && !m.over) {
     if (input.pick && game.offer) pickUpgrade(game.offer[input.pick - 1])
     const pending = pendingPoints(me)
     // The cards are said once when they come up, so a child who can't read knows what they're for.
@@ -1119,6 +1131,9 @@ function battleStep(dt, n) {
     game.offer = pending > 0 ? (game.offer ?? offerFor(me)) : null
     hud.showUpgrades(game.offer, me.upgrades, pending, pickUpgrade)
     if (game.offer && document.pointerLockElement) document.exitPointerLock() // free the cursor for the cards
+  } else if (game.offer) {
+    game.offer = null
+    hud.showUpgrades(null)
   }
 
   // Network: our tank, and on the host the bots too, in one batch.
