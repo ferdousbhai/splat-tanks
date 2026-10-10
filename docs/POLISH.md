@@ -380,6 +380,13 @@ Code quality came back clean.
 - **Chalk fractions from the seat (design):** each label was fixed to face the sky camera, so from the driver's seat facing south "1 over 4" read upside down as "4 over 1", and facing east or west it lay sideways. The labels now turn to the quarter turn nearest the seat's heading (`parts.js turnLabels`), and back for the sky view.
 - **Cards by keyboard and assistive tech (design):** the cards answered only a press, so Enter, Space and screen readers couldn't pick one. They now answer a click too; a press's own click finds the offer already taken.
 
+### Fresh audit, round 39
+
+Code quality came back clean.
+- **A friend's splash in Paint together (design):** round 17 calmed robot hits only, so one child squirting another flashed and wiggled the friend's tank about twice a second, with sparks, 💦 and a boing each time. In Paint together every tank hit now just tints the tank; the floor under it is still painted. Splat match is unchanged.
+- **One tap, two powers (correctness):** with more points waiting, the click that follows a tap landed on the next set of cards and took a second, unchosen power. A press's own click is now skipped; Enter and assistive tech still pick by click.
+- **Chalk labels near a diagonal (correctness):** looking along a diagonal from the seat flipped every label back and forth. They now turn only once the view is a little past the diagonal.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

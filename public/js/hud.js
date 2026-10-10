@@ -226,6 +226,7 @@ export function fraction(progress, mine) {
   put($('fraction-words'), 'text', stripWords(done, layout.n))
 }
 
+let pressing = false // a card is being pressed (its click is not a second pick)
 /** Shows the three upgrade cards; onPick(key) when one is chosen. */
 export function showUpgrades(offer, upgrades, pending, onPick) {
   const box = $('upgrades')
@@ -251,14 +252,16 @@ export function showUpgrades(offer, upgrades, pending, onPick) {
     const b = document.createElement('button')
     b.className = 'card'
     b.innerHTML = `<span class="key">${i + 1}</span><span class="ic">${u.icon}</span><span class="nm">${u.name}</span><span class="tx">${u.text}</span><span class="pips">${Array.from({ length: u.max }, (_, j) => `<i class="${j < upgrades[k] ? 'on' : ''}"></i>`).join('')}</span>`
-    // Picked on the press, so a drive doesn't wait for the release; click covers Enter, Space and assistive tech
-    // (a press's own click finds the offer already taken, and does nothing).
+    // Picked on the press, so a drive doesn't wait for the release. Click covers Enter and assistive tech; a
+    // press's own click is skipped, since it can land on the next set of cards when more points are waiting.
     b.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
       e.preventDefault()
+      pressing = true
+      for (const end of ['pointerup', 'pointercancel']) addEventListener(end, () => setTimeout(() => (pressing = false)), { once: true })
       onPick(k)
     })
-    b.addEventListener('click', () => onPick(k))
+    b.addEventListener('click', () => pressing || onPick(k))
     cards.appendChild(b)
   })
 }

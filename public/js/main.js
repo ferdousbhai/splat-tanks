@@ -667,8 +667,9 @@ function onHit(msg) {
     t.paintColor.set(by.color)
     t.paintT = 1
   }
-  // Painting together, a robot's stray blob just tints you: no flash, splash word or boing.
-  if (together() && by?.bot) return
+  // Painting together, a stray blob (a robot's or a friend's) just tints you: no flash, splash word or boing,
+  // so squirting each other is never the fun part.
+  if (together()) return
   t.flash = 1
   sparks(t.pos.x, t.pos.z, by?.color ?? '#ffffff', 5)
   const ear = hearing(t.pos.x, t.pos.z, by?.id)

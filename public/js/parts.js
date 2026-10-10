@@ -171,8 +171,10 @@ let labelTurn = 0
  * never reads upside down or sideways from the driver's seat. A quarter turn keeps each label square on its spot.
  */
 export function turnLabels(yaw) {
+  // Only once the view is a little past the diagonal, so looking along one doesn't flip them back and forth.
+  const off = Math.atan2(Math.sin(yaw - labelTurn), Math.cos(yaw - labelTurn))
+  if (Math.abs(off) < Math.PI / 4 + 0.2) return
   const q = Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2)
-  if (q === labelTurn) return
   labelTurn = q
   for (const l of labels) l.rotation.y = q
 }
