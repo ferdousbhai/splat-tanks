@@ -465,6 +465,13 @@ function toMenu() {
   clearShells()
   if (document.pointerLockElement) document.exitPointerLock()
   setScreen('menu')
+  // Tanks stay parked in the menu's arena: draw them once more from the sky, so a round left from the
+  // driver's seat doesn't leave seat-sized name labels (or our own hidden one) behind.
+  view.seat = false
+  for (const t of game.tanks.values()) {
+    if (t.firstPerson) t.setFirstPerson(false)
+    t.render(0, false)
+  }
   renderMenu()
   if (!isHost()) voice.say('Waiting for the host to start.')
 }

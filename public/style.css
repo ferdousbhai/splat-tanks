@@ -10,7 +10,7 @@
   --accent: #ffcf33;
   /* Where banners sit. Layouts override these on #hud, which always beats this inherited default. */
   --banner-top: 24%;
-  --sub-gap: clamp(44px, 8vw, 90px);
+  --sub-gap: clamp(52px, 8.5vw, 98px);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #0f1320; font-family: 'Trebuchet MS', system-ui, sans-serif; color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -108,9 +108,11 @@ body.together .bars { width: auto; }
 .brow .l { opacity: 0.7; font-size: 11px; }
 .brow .k { min-width: 22px; text-align: right; color: var(--accent); }
 
-#banner { position: absolute; top: var(--banner-top); left: 0; right: 0; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; opacity: 0; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; pointer-events: none; padding: 0 16px; }
+/* Banners are a soft dark pill around their words, so they read over anything behind (labels, paint, sky). */
+#banner, #subbanner { width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; box-sizing: border-box; background: rgba(10, 14, 24, 0.55); border-radius: 14px; }
+#banner { position: absolute; top: var(--banner-top); left: 0; right: 0; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; opacity: 0; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; pointer-events: none; padding: 4px 16px; }
 #banner.show { opacity: 1; transform: scale(1); }
-#subbanner { position: absolute; top: calc(var(--banner-top) + var(--sub-gap)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 0 16px; }
+#subbanner { position: absolute; top: calc(var(--banner-top) + var(--sub-gap)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 4px 16px; }
 #subbanner.show { opacity: 1; }
 
 /* While the upgrade cards are up, the sub-banner makes way for them. */
@@ -179,6 +181,7 @@ body.seat #periscope { display: block; }
   .touch-btn.mega { bottom: calc(var(--bottom) + 84px); background: rgba(199, 125, 255, 0.85); }
   /* The aim stick rests up and in from its corner, so its ring is clear of the ⚡ and 🎈 buttons. */
   .stick.aim .stick-base { top: 35%; left: 40%; }
+  @media (max-width: 600px) and (max-height: 520px) { .stick.aim .stick-base { left: 30%; } }
   .bottom { transform: translateX(-50%) scale(0.8); transform-origin: bottom center; }
   .abilities { display: none; }
   :root { --map: 110px; }
@@ -207,7 +210,13 @@ body.seat #periscope { display: block; }
   #menu .logo { font-size: 40px; }
   #menu .tagline, #menu .controls-help { display: none; }
   #results.together { flex-direction: row; justify-content: center; }
-  #results.together .floor-pic { width: min(150px, 40vh); }
+  /* The picture, title and buttons fit without Play again floating over the picture, toolbar and all. */
+  #results.together .floor-pic { width: min(150px, 40vh, calc(100vh - 200px)); }
+  #end .logo.small { font-size: 28px; }
+  #end .tagline { font-size: 15px; }
+  #end .painters { gap: 4px; }
+  #end .painters .chip { padding: 2px 8px; font-size: 12px; }
+  #end .panel { padding: 8px 12px; }
   /* The cards sit at the top, in place of the timer, so they never cover the tank in the middle. */
   body.cards #banner, body.cards .top-center { display: none; }
   #upgrades { top: var(--top); bottom: auto; }

@@ -228,6 +228,14 @@ Cleanup found only a comment to fix.
 - **Giant name labels after the driver's seat (from before today):** switching views changed the labels' `sizeAttenuation` without rebuilding the material, so the change only took effect when a label was next redrawn. In Paint together every tank grows (and redraws) at each part, so after the driver's seat, names could fill the screen in the sky view, or vanish in the seat. The materials now rebuild on every switch.
 - **Store preview frame:** the drive stick's offset (round 18) applied there too, where the button column is hidden, losing the left 68 px of the drive area. It now applies only above 280 px tall.
 
+### Fresh audit, round 20
+
+Cleanup came back clean.
+- **Leaving from the driver's seat:** labels in the menu's arena stayed seat-sized and your own stayed hidden. `toMenu` now draws the parked tanks once more from the sky.
+- **Banner backing:** banners and sub-lines sit on a soft dark pill, so they read over anything behind them. On tablets in the driver's seat, "Two quarters make one half!" used to print over robots' name labels.
+- **Results on landscape phones with the toolbar showing (about 290–340 px tall):** a smaller title, a capped picture and compact painter chips keep the floor picture, all eight painters and the buttons in view, so Play again no longer floats over the picture.
+- **Aim stick on 568-wide phones:** its ring rests further in, clear of 🎈.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
