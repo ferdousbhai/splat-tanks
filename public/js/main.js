@@ -752,6 +752,7 @@ function pickUpgrade(key) {
   game.statsDirty = true
   sound.click()
   floatText(me.pos.x, me.pos.z, `${UPGRADES[key].icon} ${UPGRADES[key].name}`, 'xp')
+  voice.say(`${UPGRADES[key].name}. ${UPGRADES[key].text}.`)
   game.offer = null
 }
 
@@ -1096,6 +1097,9 @@ function battleStep(dt, n) {
   if (me) {
     if (input.pick && game.offer) pickUpgrade(game.offer[input.pick - 1])
     const pending = pendingPoints(me)
+    // The cards are said once when they come up, so a child who can't read knows what they're for.
+    if (pending > 0 && !game.cardsSaid) voice.say('Level up! Pick a new power.')
+    game.cardsSaid = pending > 0
     game.offer = pending > 0 ? (game.offer ?? offerFor(me)) : null
     hud.showUpgrades(game.offer, me.upgrades, pending, pickUpgrade)
     if (game.offer && document.pointerLockElement) document.exitPointerLock() // free the cursor for the cards

@@ -44,18 +44,19 @@ export function banner(text, sub = '', ms = 1600) {
 }
 
 /**
- * Taller screens: the banner sits where style.css puts it and the sub-line just below it, however many lines
- * the banner wrapped to. Short screens (landscape phones, the store's preview frame) have no spare band: the
- * tank sits in the middle, the fraction strip or timer at the top and the level panel at the bottom. There the
- * sub-line sits just above the panel, wherever it really is, and the banner just above the sub-line.
+ * style.css says where banners hang from (--banner-anchor). From the top: the banner sits where style.css puts
+ * it and the sub-line just below it, however many lines the banner wrapped to. From the bottom (landscape
+ * phones, the store's preview frame, where the tank fills the middle): the sub-line sits just above the level
+ * panel, wherever it really is, and the banner just above the sub-line.
  */
 addEventListener('resize', () => placeBanners()) // a phone turned while a banner shows
 function placeBanners() {
   const b = $('banner')
   const s = $('subbanner')
-  if (innerHeight > 520) {
+  if (getComputedStyle($('hud')).getPropertyValue('--banner-anchor').trim() !== 'bottom') {
     b.style.top = b.style.bottom = s.style.bottom = ''
-    s.style.top = `${b.offsetTop + b.offsetHeight + 6}px`
+    // A banner hidden for the upgrade cards can't be measured: then style.css places the sub-line.
+    s.style.top = b.offsetParent ? `${b.offsetTop + b.offsetHeight + 6}px` : ''
     return
   }
   const above = innerHeight - document.querySelector('#hud .bottom').getBoundingClientRect().top + 6
@@ -193,7 +194,10 @@ export function fraction(progress, mine) {
 export function showUpgrades(offer, upgrades, pending, onPick) {
   const box = $('upgrades')
   // While the cards are up, banners make way for them (style.css body.cards).
-  document.body.classList.toggle('cards', !!offer)
+  if (document.body.classList.contains('cards') !== !!offer) {
+    document.body.classList.toggle('cards', !!offer)
+    placeBanners()
+  }
   if (!offer) {
     box.classList.add('hidden')
     box.dataset.key = ''

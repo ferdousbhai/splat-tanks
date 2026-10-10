@@ -10,6 +10,7 @@
   --accent: #ffcf33;
   /* Where banners sit. Layouts override these on #hud, which always beats this inherited default. */
   --banner-top: 24%;
+  --banner-anchor: top; /* where banners hang from: top (style.css) or bottom (just above the level panel, hud.js) */
   --sub-gap: clamp(52px, 8.5vw, 98px);
 }
 * { box-sizing: border-box; }
@@ -92,13 +93,22 @@ body.together .bars { width: auto; }
 .fraction sup { border-bottom: 2px solid currentColor; padding: 0 2px 1px; }
 .fraction sub { padding-top: 1px; }
 #fraction-words { font-size: 12px; font-weight: 800; opacity: 0.85; }
-/* Narrow screens: the strip moves to the free right corner (no leaderboard when painting together). */
-@media (max-width: 600px) {
+/* Narrow or short screens: the strip moves to the free top-right corner (no leaderboard when painting
+   together), smaller, so it never covers your tank when the camera looks ahead of it. */
+@media (max-width: 600px), (max-height: 520px) {
   body.together .top-center { left: auto; right: var(--right); transform: none; }
   .fraction { --side: 60px; }
+  .fraction b { font-size: 12px; }
+}
+@media (max-width: 600px) {
   /* Banners start below the left column (minimap and three buttons), but never lower than 45%. */
   #hud { --banner-top: min(max(32%, calc(var(--top) + var(--map) + 164px)), 45%); }
-  .fraction b { font-size: 12px; }
+  /* Painting together on upright phones: the middle is where the camera keeps your tank, so banners sit up
+     top instead, under the strip and right of the minimap. */
+  body.together #hud { --banner-top: calc(var(--top) + 106px); }
+  body.together #banner, body.together #subbanner { left: calc(var(--left) + var(--map) + 12px); right: var(--right); }
+  body.together #banner { font-size: 26px; }
+  body.together #subbanner { font-size: 15px; }
 }
 #board { position: absolute; top: calc(var(--top) + 56px); right: var(--right); width: 210px; display: flex; flex-direction: column; gap: 3px; }
 .brow { display: flex; align-items: center; gap: 6px; background: rgba(10, 14, 24, 0.65); padding: 4px 8px; border-radius: 8px; font-size: 13px; font-weight: 800; border-left: 5px solid; }
@@ -189,11 +199,15 @@ body.seat #periscope { display: block; }
   #upgrades { bottom: calc(var(--bottom) + 160px); }
   .card { width: min(104px, 28vw); }
 }
-/* Phones upright: the cards sit below the left column, clear of where thumbs rest on the sticks, so a
-   thumb meant for driving never picks one. While they're up, the leaderboard and banner make way. */
+/* Phones upright: compact cards sit up top, under the timer and right of the minimap, clear of your tank in
+   the middle and of where thumbs rest on the sticks. While they're up, the leaderboard and banner make way. */
 @media (any-pointer: coarse) and (orientation: portrait) {
-  #upgrades { top: min(calc(var(--top) + var(--map) + 164px), 45%); bottom: auto; }
-  .card .tx { display: none; }
+  #upgrades { top: calc(var(--top) + 52px); bottom: auto; left: calc(var(--left) + var(--map) + 8px); right: var(--right); transform: none; width: auto; }
+  .up-title { font-size: 13px; }
+  #up-cards { gap: 6px; width: 100%; }
+  .card { flex: 1; width: auto; padding: 6px 4px; }
+  .card .ic { font-size: 22px; }
+  .card .tx, .card .pips { display: none; }
   body.cards #board, body.cards #banner { display: none; }
 }
 /* Landscape phones: the drive stick's area starts right of the 🎵 👀 🏠 column, so a thumb can't land on them.
@@ -221,17 +235,23 @@ body.seat #periscope { display: block; }
   body.cards #banner, body.cards .top-center { display: none; }
   #upgrades { top: var(--top); bottom: auto; }
   .card .tx, .card .pips { display: none; }
-  /* The fraction strip goes to the free top-right corner (no leaderboard when painting together), so it never
-     covers your tank when the camera looks ahead of it toward the top of the screen. */
-  body.together .top-center { left: auto; right: var(--right); transform: none; }
-  .fraction { --side: 60px; }
-  .fraction b { font-size: 12px; }
   /* Banners sit just above the level panel, below your tank (hud.js placeBanners), so they're smaller here. */
+  #hud { --banner-anchor: bottom; }
   #banner { font-size: clamp(22px, 4.5vw, 30px); }
   #subbanner { font-size: 16px; }
   #board .brow:nth-child(n + 4) { display: none; }
   .card { padding: 6px; }
   .card .ic { font-size: 24px; }
+}
+/* Very short screens (a landscape phone with its toolbar showing): even just above the panel is where your
+   tank sits, so painting together, banners go up top between the minimap and the fraction strip. */
+@media (max-height: 340px) {
+  body.together #hud { --banner-anchor: top; --banner-top: var(--top); }
+  body.together #banner, body.together #subbanner { left: calc(var(--left) + var(--map) + 12px); right: calc(var(--right) + 100px); }
+  /* The strip keeps just its boxes here (the voice says the words), leaving the banner room beside it. */
+  #fraction-words { display: none; }
+  body.together #banner { font-size: 20px; }
+  body.together #subbanner { font-size: 13px; }
 }
 /* A small window (the store's preview frame on a phone): only what's needed to play. */
 @media (max-height: 280px) {

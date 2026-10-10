@@ -243,6 +243,19 @@ Cleanup came back clean.
 - **Wrapped banners (from round 20):** the pill's extra width made "Two quarters painted!" wrap on 360–375 px phones, onto the half fact below. On taller screens the sub-line is now placed below the banner's real height, however many lines it wraps to, and the pill is a little wider again.
 - **Match leaderboard:** it could show the previous round's names (robot ids repeat) until a percentage changed. Names and colours are now part of its redraw key.
 
+### Fresh audit, round 22
+
+A stricter check this round: the child's own tank, measured in all 8 aim directions. The camera looks ahead of the tank, so the tank moves around the middle of the screen, and HUD placed in that middle band will cover it.
+- **Paint together banners on upright phones:** they covered the tank in about 6 of 8 directions. Banners now sit up top, under the strip and right of the minimap.
+- **Very short landscape screens (toolbar showing, 340 px or less):** banners sit up top between the minimap and the strip. The strip keeps just its boxes there, because the voice says the words.
+- **Splat match cards on upright phones:** they covered the tank until picked. They are now a compact row under the timer, right of the minimap.
+- **Cards spoken:** "Level up! Pick a new power." when they come up, and each pick's name and what it does.
+- **Layout mechanics:**
+  - **Anchor:** style.css now says where banners hang from (`--banner-anchor`), and `placeBanners()` follows it.
+  - **Sub-line after cards:** the sub-line is no longer measured from a banner the cards have hidden; it used to jump to the top edge once the cards closed. Banners are re-placed when the cards open or close.
+  - **Strip rules:** the small-screen strip rules are written once, in one media block.
+- **Result:** no banner, sub-line, strip or card covers the tank in any aim direction at 360×640, 375×667, 390×844, 414×736, 568×320, 667×320 or 740×290.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
