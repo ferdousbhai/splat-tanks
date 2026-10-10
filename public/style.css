@@ -250,7 +250,8 @@ body.seat #periscope { display: block; }
   #banner { font-size: clamp(26px, 4vw, 44px); }
   body.cards #banner { display: none; }
 }
-/* Landscape phones: everything that changes for a short screen, in one place. */
+/* Short screens (landscape phones): the menu, the results and the match banners. Other short-screen rules sit
+   beside the parts they move (the strip, goal, sticks, cards, toast and the PLAY column). */
 @media (max-height: 520px) {
   #menu .logo { font-size: 40px; }
   #menu .tagline, #menu .controls-help { display: none; }

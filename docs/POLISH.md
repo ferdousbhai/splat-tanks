@@ -452,6 +452,14 @@ Correctness came back clean.
 Design and correctness came back clean (real painting to the end on iPad, phones and two devices, reduced motion on for one run; three devices with a mid-round joiner; 28 fuzzed rounds).
 - **Tidy (code quality):** the power pills take their icon and length from `PICKUPS`, as the pickups themselves do, and find their bars directly rather than querying each frame.
 
+### Fresh audit, round 50
+
+Correctness came back clean (12 rounds back to back with steady geometries, textures and heap; three devices; a host leaving mid-match).
+- **A guest who hasn't touched yet hears nothing (design):** iOS drops every spoken line until one is spoken inside a tap (Chrome likewise on an untouched page). A host's first line comes from the PLAY tap, but a guest's round starts from the network, so a guest child who only drove heard none of the fraction lines. The first gesture now opens speech with a silent word, and if it comes mid-round in Paint together, the opening line is said again.
+- **Space on buttons (design):** Space was stopped on every screen, so it couldn't press a focused menu choice, PLAY or Play again (Space is the usual button key, and many switch setups send it). It now presses a focused button; in play it still zooms, and never picks a card.
+- **Two robots with one name (design):** robots drew names at random, so with 7 robots two could both be "Twinkly Hippo", or share the child's name. Every tank's name is now its own.
+- **Tidy (code quality):** the short-screen CSS comment no longer claims to hold every short-screen rule.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

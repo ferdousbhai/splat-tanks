@@ -329,7 +329,16 @@ function hostStartMatch() {
     return { i: id, n: h.name, c, s: k + 1 }
   })
   const free = COLORS.filter((c) => !used.has(c))
-  for (let i = 0; i < game.opts.bots; i++) roster.push({ i: `bot${i}`, n: randomName(), c: free[i % free.length] ?? COLORS[i % COLORS.length], s: roster.length + 1, b: 1 })
+  // Every tank's name is its own, so "which one is Twinkly Hippo?" has one answer.
+  const names = new Set(roster.map((e) => e.n))
+  const botName = () => {
+    let n
+    do n = randomName()
+    while (names.has(n))
+    names.add(n)
+    return n
+  }
+  for (let i = 0; i < game.opts.bots; i++) roster.push({ i: `bot${i}`, n: botName(), c: free[i % free.length] ?? COLORS[i % COLORS.length], s: roster.length + 1, b: 1 })
   const spots = [...SPAWNS].sort(() => Math.random() - 0.5)
   roster.forEach((e, k) => {
     const [x, z] = spots[k % spots.length]
@@ -1362,7 +1371,25 @@ function setupMenu() {
     })
   }
   // iOS Safari only unlocks audio from certain gestures, and the sticks cancel clicks.
-  for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, { capture: true, passive: true })
+  for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) {
+    addEventListener(ev, unlockAudio, { capture: true, passive: true })
+    addEventListener(ev, openSpeech, { capture: true, passive: true })
+  }
+}
+
+/**
+ * Speech, like sound, waits for a first gesture (iOS drops every line until one is spoken inside a tap, and
+ * Chrome too on a page not yet touched): that gesture speaks a silent word to open it. A guest's round starts
+ * from the network, so if the first touch comes mid-round, the opening line went unheard: it's said again.
+ */
+let speechOpen = false
+function openSpeech() {
+  if (speechOpen || !('speechSynthesis' in window)) return
+  speechOpen = true
+  const hush = new SpeechSynthesisUtterance(' ')
+  hush.volume = 0
+  speechSynthesis.speak(hush)
+  if (game.phase === 'battle' && together()) voice.say(introWords(layout.n))
 }
 
 // --- Boot --------------------------------------------------------------------------------

@@ -43,6 +43,8 @@ function updateMoveFromKeys() {
 
 addEventListener('keydown', (e) => {
   if (e.repeat) return
+  // Space presses a focused button (menu choices, PLAY, Play again); in play it zooms, and never picks a card.
+  if (e.code === 'Space' && e.target.closest?.('button:not(.card)')) return
   keys.add(e.code)
   if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.boost = true
   if (e.code === 'KeyE' || e.code === 'KeyQ') input.mega = true
