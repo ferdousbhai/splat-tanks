@@ -205,6 +205,16 @@ Design came back clean.
 - **Short-screen banners are placed by measurement:** the round 15 fixed 66% put Splat match sub-lines on the level and paint panel on landscape phones, and in the store's tiny preview frame it put Paint together banners back over the fraction strip. On screens 520 px tall or less, `hud.placeBanners()` now puts the sub-line just above wherever the bottom panel really is, and the banner just above that, in smaller type. The banner clears the tank, the panel and the strip at 640×360, 667×375, 740×360, 844×390, 932×430, 1024×500 and in 900×280, 568×270 and 480×270 frames.
 - **The menu buttons are the one list of game choices:** `setOpt()` serves both taps and choices arriving with a start, so a new button can't be dropped by other devices.
 
+### Fresh audit, round 17
+
+Cleanup came back clean.
+- **Robot noise:** robot squirts and splats played with no limit. With the child near the robots there were about 9 sounds a second with 2 robots and about 30 with 7: a constant stream, which the calm standard rules out.
+  - Other tanks' sounds now carry only 24 m, at half volume.
+  - At most one squirt, splat or bounce plays every 150 ms. The player's own sounds always play.
+  - Now: about 4.5 a second with 2 robots and about 8 with 7, the player's own sounds included.
+- **Robot hits in Paint together:** a robot's stray blob hitting the child just tints the tank, with no flash, 💦 word or boing (it was up to 11 a minute).
+- **Rotation:** turning the phone while a banner shows now re-places it, so it never lands on the fraction strip.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

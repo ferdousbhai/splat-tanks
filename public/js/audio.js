@@ -71,11 +71,24 @@ function tone(t, dur, { freq = 440, to = null, type = 'sine', peak = 0.3, attack
   o.stop(t + attack + dur + 0.05)
 }
 
-/** vol: 0..1 by distance from the listener. */
+/**
+ * Sounds from other tanks (vol < 1) are spaced out: at most one squirt, splat or bounce every 150 ms, so a
+ * floor full of robots is a soft patter rather than a stream. The player's own sounds always play.
+ */
+const lastFar = {}
+function spaced(name, vol) {
+  if (vol >= 1) return true
+  const t = ctx.currentTime
+  if (t - (lastFar[name] ?? -1) < 0.15) return false
+  lastFar[name] = t
+  return true
+}
+
+/** vol: 0..1 by distance from the listener (1 = the player's own). */
 export const sound = {
   /** A squirt: a quick rising bloop. */
   shoot(vol = 1, big = false) {
-    if (!ctx || vol < 0.03) return
+    if (!ctx || vol < 0.03 || !spaced('shoot', vol)) return
     const t = now()
     tone(t, big ? 0.3 : 0.12, { freq: big ? 220 : 380, to: big ? 520 : 760, type: 'sine', peak: 0.22 * vol })
     noise(t, 0.06, { freq: 1800, type: 'bandpass', q: 3, peak: 0.05 * vol })
@@ -90,7 +103,7 @@ export const sound = {
   },
   /** A blob landing. */
   splat(vol = 1) {
-    if (!ctx || vol < 0.03) return
+    if (!ctx || vol < 0.03 || !spaced('splat', vol)) return
     const t = now()
     noise(t, 0.12, { freq: 900 + Math.random() * 500, sweepTo: 250, type: 'bandpass', q: 1.2, peak: 0.35 * vol })
     tone(t, 0.08, { freq: 200, to: 120, type: 'sine', peak: 0.2 * vol })
@@ -101,7 +114,7 @@ export const sound = {
     tone(now(), 0.3, { freq: 180, to: 420, type: 'sine', peak: 0.12 })
   },
   bounce(vol = 1) {
-    if (!ctx || vol < 0.05) return
+    if (!ctx || vol < 0.05 || !spaced('bounce', vol)) return
     tone(now(), 0.08, { freq: 900, to: 1400, type: 'triangle', peak: 0.12 * vol })
   },
   boost() {

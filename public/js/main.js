@@ -626,9 +626,10 @@ function endMatch() {
 
 // --- Events everyone shows --------------------------------------------------------------
 
+/** Volume for a sound somewhere else on the floor: quiet, and only from close by, so busy robots stay in the background. */
 function hearing(x, z) {
   const c = game.me?.alive ? game.me.pos : { x: camTarget.x, z: camTarget.z }
-  return Math.max(0, 1 - Math.hypot(x - c.x, z - c.z) / 50)
+  return Math.max(0, 1 - Math.hypot(x - c.x, z - c.z) / 24) * 0.5
 }
 
 function onHit(msg) {
@@ -636,11 +637,13 @@ function onHit(msg) {
   const by = game.tanks.get(msg.by)
   if (msg.s) removeShell(msg.s)
   if (!t) return
-  t.flash = 1
   if (by) {
     t.paintColor.set(by.color)
     t.paintT = 1
   }
+  // Painting together, a robot's stray blob just tints you: no flash, splash word or boing.
+  if (together() && by?.bot) return
+  t.flash = 1
   sparks(t.pos.x, t.pos.z, by?.color ?? '#ffffff', 5)
   sound.splat(hearing(t.pos.x, t.pos.z))
   if (t === game.me) {

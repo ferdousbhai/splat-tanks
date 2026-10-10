@@ -48,6 +48,7 @@ export function banner(text, sub = '', ms = 1600) {
  * the fraction strip or timer at the top and the level panel at the bottom. There the sub-line sits just above
  * the panel, wherever it really is, and the banner just above the sub-line. Taller screens use style.css.
  */
+addEventListener('resize', () => placeBanners()) // a phone turned while a banner shows
 function placeBanners() {
   const b = $('banner')
   const s = $('subbanner')
