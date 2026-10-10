@@ -435,6 +435,12 @@ Design came back clean: every tier turns its turret on a still hull, fires from 
 - **Splashing yourself (correctness, older; more often since round 45):** with ricochet, squirting at a nearby wall bounced the blob back onto your own tank: in Splat match a flash, 💦 and boing on every shot. Your own blob coming back now just tints you with a soft splat, as in Paint together.
 - **Tidy (code quality):** `muzzles()` no longer updates every matrix in the tank per shot; `getWorldPosition` updates each nozzle's own chain.
 
+### Fresh audit, round 47
+
+Correctness and code quality came back clean.
+- **Chalk fractions under pads and buckets (design):** label spots avoided walls, crates, rocks and trees but not the pickup pads (not colliders) or the paint buckets (skipped on purpose). In halves nearly every label had a pad 1–3 m from its numerals, its disc and floating icon covering the "1" of "1/2"; in square quarters some sat under a bucket. Labels now keep clear of both, and if no spot with room around it exists they settle for the label alone being clear (0 of 390 labels over 30 arenas touch one).
+- **PLAY over the choices on landscape phones (design):** the sticky PLAY floated over the Robots and Speed rows, so a tap meant for 🚀 started the round. On landscape phones PLAY now stands, smaller, in its own column beside the choices and stays mid-screen while they scroll.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

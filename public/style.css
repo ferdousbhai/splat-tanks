@@ -335,6 +335,16 @@ body.arriving #end .go-row, body.arriving #go { opacity: 0.3; }
 @media (max-height: 700px) {
   #menu #go, #end .go-row { position: sticky; bottom: 0; z-index: 1; flex: none; }
 }
+/* Landscape phones: PLAY stands beside the choices rather than floating over the last rows of them. */
+@media (max-height: 520px) and (orientation: landscape) and (min-width: 540px) {
+  #menu { display: grid; grid-template-columns: min(560px, 100vw - var(--left) - var(--right) - 152px) 140px; grid-template-areas: 'logo logo' 'panel go'; justify-content: center; align-content: start; column-gap: 12px; }
+  #menu .logo { grid-area: logo; justify-self: center; }
+  #menu .panel { grid-area: panel; width: auto; padding: 10px 12px; }
+  #menu .label { width: 64px; font-size: 11px; letter-spacing: 0; }
+  /* It stays in view, mid-screen, while the choices scroll beside it. */
+  #menu #go, #menu #waiting-host { grid-area: go; align-self: start; position: sticky; top: calc(50% - 28px); max-width: 140px; }
+  #menu #go { font-size: 20px; padding: 12px 16px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
