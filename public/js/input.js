@@ -5,7 +5,7 @@ export const input = {
   moveX: 0,
   moveZ: 0,
   mouse: { x: 0, y: 0, active: false }, // NDC
-  mouseUsed: false, // the mouse has been moved or pressed over the game this round (cleared at each start)
+  mouseUsed: false, // the mouse has been pressed, or clearly moved, over the game this round (cleared at each start)
   look: { dx: 0, dy: 0 }, // mouse movement while the pointer is locked (driver's seat view), read and cleared by the game
   firing: false,
   aimStick: { x: 0, y: 0, active: false },
@@ -70,10 +70,22 @@ export const mouseSurfaces = (canvas) => [canvas, ...document.querySelectorAll('
 export function bindMouse(canvas) {
   const surfaces = mouseSurfaces(canvas)
   const on = (type, fn) => surfaces.forEach((el) => el.addEventListener(type, fn))
+  // A brush of the mouse or trackpad doesn't take a keyboard child's controls: only a press, or about 40 px of
+  // movement within half a second.
+  let travel = 0
+  let since = 0
+  let last = null
   on('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return
     input.touch = false // an iPad trackpad or mouse takes over aiming
-    input.mouseUsed = true
+    const t = performance.now()
+    if (t - since > 500) ((since = t), (travel = 0))
+    if (last) travel += Math.hypot(e.clientX - last.x, e.clientY - last.y)
+    last = { x: e.clientX, y: e.clientY }
+    if (travel > 40) input.mouseUsed = true
+    // A second button pressed while one is held arrives as a move, not a press.
+    if (e.button === 0 && e.buttons & 1) input.firing = input.mouseUsed = true
+    if (e.button === 2 && e.buttons & 2) input.mega = input.mouseUsed = true
     if (document.pointerLockElement === canvas) {
       input.look.dx += e.movementX
       input.look.dy += e.movementY

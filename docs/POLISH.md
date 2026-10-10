@@ -402,6 +402,13 @@ Code quality came back clean.
 - **Squirting stuck on (correctness):** with left and right buttons held together, letting go of left arrived as a move and the last release named the right button, so squirting stayed on into later rounds. Squirting now follows the left button's state, and stops on leaving a round.
 - **Tidy (code quality):** the crosshair and the aim share one `mouseAims()`, and toggle buttons (menu choices, colours, 👀) go through one `hud.press`, which gave 👀 its `aria-pressed` too.
 
+### Fresh audit, round 42
+
+- **A brush of the mouse (design):** any 1 px mouse or trackpad move took the keys' painting and toy-tank steering away for the rest of the round. Only a press, or about 40 px of movement within half a second, hands the aim to the mouse now. When it takes over from the keys in the driver's seat, the child hears how the mouse looks around.
+- **Backwards in the toy-tank seat (correctness):** ← → turned the view but not the hull, so after a big turn ↑ took the tank's reverse path at 75% speed for good. The hull now turns with the view, so ↑ always drives forward.
+- **A second mouse button (correctness, older than today):** pressing right while holding left (or left while holding right) arrives as a move, so the balloon or the squirt didn't start. Such a press is now heard.
+- **Tidy (code quality):** the toy-tank steering shares the seat's driving code, and the seat comment describes both ways of steering.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

@@ -386,7 +386,7 @@ function takeOpts(o) {
 
 function startBattle(msg) {
   leaveRound()
-  input.mouseUsed = false
+  input.mouseUsed = seat.keys = false
   takeOpts(msg.opts)
   const mode = msg.mode === 'match' ? 'match' : 'together'
   view.levels = mode === 'match'
@@ -918,12 +918,13 @@ function playerControls(me, dt) {
 }
 
 // --- Driver's seat view --------------------------------------------------------------------
-// The camera rides in the turret and looks where the paint squirts. Driving is relative to the view:
-// up drives where you look, left and right steer. The mouse looks around once the pointer is locked;
-// on touch the right stick turns the view.
+// The camera rides in the turret and looks where the paint squirts. Driving is relative to the view. Driving
+// alone (keys or the drive stick), left and right turn the view and up drives along it. With the mouse in use,
+// it looks around once the pointer is locked and left and right move sideways; on touch the right stick turns
+// the view.
 
 const VIEW_KEY = 'splat-tanks.view'
-const seat = { on: false, yaw: 0, pitch: 0 }
+const seat = { on: false, yaw: 0, pitch: 0, keys: false } // keys: this round, keys alone have been steering
 try {
   seat.on = localStorage.getItem(VIEW_KEY) === 'seat'
 } catch {}
@@ -962,25 +963,29 @@ function sayView() {
 }
 
 function seatControls(me, c, dt) {
+  // The mouse has just taken over from the keys: say how it looks around now.
+  if (seat.keys && input.mouseUsed) {
+    seat.keys = false
+    sayView()
+  }
   const look = input.look
   seat.yaw -= look.dx * 0.0028
   seat.pitch = Math.max(-0.35, Math.min(0.2, seat.pitch - look.dy * 0.002))
   look.dx = look.dy = 0
+  // Driving only, like a toy tank: left and right turn the view gently, up and down drive along it, and paint
+  // squirts ahead.
+  const toyTank = !input.aimStick.active && handsFree() && Math.hypot(input.moveX, input.moveZ) > 0.2
   if (input.aimStick.active) seat.yaw -= input.aimStick.x * 2.4 * dt
-  else if (handsFree() && Math.hypot(input.moveX, input.moveZ) > 0.2) {
-    // Driving only, like a toy tank: left and right turn the view gently, up and down drive along it, and paint
-    // squirts ahead.
+  else if (toyTank) {
     seat.yaw -= input.moveX * 1.3 * dt
-    const d = dirOf(seat.yaw)
-    c.mx = -d.x * input.moveZ
-    c.mz = -d.z * input.moveZ
-    c.aimYaw = seat.yaw
+    // The hull turns with the view, so up always drives forward (never the tank's reverse) and down backs up.
+    me.heading += angleDiff(me.heading, seat.yaw) * Math.min(1, dt * 8)
     c.fire = true
-    return c
+    seat.keys = !input.touch
   }
   const d = dirOf(seat.yaw)
   const ahead = -input.moveZ
-  const right = input.moveX
+  const right = toyTank ? 0 : input.moveX
   c.mx = d.x * ahead - d.z * right
   c.mz = d.z * ahead + d.x * right
   c.aimYaw = seat.yaw
