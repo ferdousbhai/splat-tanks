@@ -186,6 +186,13 @@ The cleanup review came back clean.
 
 Design and cleanup came back clean. The one bug: a child whose colour was free could still be moved, because a clashing child before them took it. Duplicates now go to a colour nobody chose, so only the child who clashed is moved (checked with three devices).
 
+### Fresh audit, round 14
+
+Cleanup came back clean.
+- **Results buttons on small phones:** with many robots, the Paint together results pushed "Play again" and 🏠 below the screen at 360×640 and 375×667. On short screens they now stay at the bottom, as the menu's PLAY does.
+- **Full room:** when every colour is on a tank, a late joiner shares a robot's colour, never another child's, and hears which one.
+- A guest on the results screen hears "Waiting for the host."
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

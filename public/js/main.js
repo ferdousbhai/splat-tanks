@@ -160,7 +160,10 @@ function handle(msg, from) {
       if (game.phase === 'battle' && !existing && isHost()) {
         flushPaint()
         // A late painter starts as big as everyone else has grown.
-        const c = freeColor(h.color, new Set(tankList().map((t) => t.color)), new Set([...tankList().map((t) => t.color), ...[...game.humans.values()].map((x) => x.color)]))
+        // With every colour on a tank, share a robot's colour, never another child's.
+        const kids = new Set(tankList().filter((t) => !t.bot).map((t) => t.color))
+        let c = freeColor(h.color, new Set(tankList().map((t) => t.color)), new Set([...tankList().map((t) => t.color), ...[...game.humans.values()].map((x) => x.color)]))
+        if (kids.has(c)) c = COLORS.find((x) => !kids.has(x)) ?? c
         broadcast({ t: 'add', e: { i: from, n: h.name, c, s: nextSlot(), ...(together() && { lv: grownLevel(partsDone()) }) } })
         send(snapshot(), from)
         game.tanks.get(from).respawnAt = now() + 800
@@ -747,6 +750,7 @@ function onEnd(msg) {
   game.endTimer = setTimeout(() => {
     setScreen('end')
     hud.results(sorted, game.me, Math.round((painted() / CELLS) * 100), together())
+    if (!isHost()) voice.say('Waiting for the host.')
   }, 2400)
   game.phase = 'ending'
 }

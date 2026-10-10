@@ -187,7 +187,7 @@ export const PADS = [
 
 /** Static colliders: boxes {x,z,hx,hz} and circles {x,z,r}. Paint buckets are circles with `barrel` set. */
 export const colliders = { boxes: [], circles: [] }
-export const barrels = [] // paint buckets: { x, z, alive, mesh }
+export const barrels = [] // paint buckets: { x, z, alive, mesh, backAt } (backAt: when a burst one comes back)
 
 let arenaGroup = null
 

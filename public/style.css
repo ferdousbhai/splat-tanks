@@ -252,9 +252,9 @@ body.playing { cursor: none; }
 .cut.c3 { background: linear-gradient(90deg, transparent calc(33.3% - 1px), currentColor 0 calc(33.3% + 1px), transparent 0 calc(66.7% - 1px), currentColor 0 calc(66.7% + 1px), transparent 0); }
 .cut.c4 { background: linear-gradient(90deg, transparent calc(50% - 1px), currentColor 0 calc(50% + 1px), transparent 0), linear-gradient(0deg, transparent calc(50% - 1px), currentColor 0 calc(50% + 1px), transparent 0); }
 
-/* Short screens: 🎨 PLAY always in view at the bottom of the menu. */
+/* Short screens: 🎨 PLAY, and the results' again and 🏠, always in view at the bottom. */
 @media (max-height: 700px) {
-  #menu #go { position: sticky; bottom: 0; z-index: 1; flex: none; }
+  #menu #go, #end .go-row { position: sticky; bottom: 0; z-index: 1; flex: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
