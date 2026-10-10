@@ -5,6 +5,13 @@ import { scene, camera } from './world.js'
 /** Reduced motion: no confetti or ring bursts, and floating words don't grow. Other modules read it too. */
 export const still = matchMedia('(prefers-reduced-motion: reduce)')
 
+/**
+ * True when an effect would burst right in front of the camera, which only happens in the driver's seat (the
+ * sky camera is 30 m up). Such effects are left out or kept small and low, so the view never flashes.
+ */
+const at = new THREE.Vector3()
+const nearCamera = (x, y, z) => camera.position.distanceToSquared(at.set(x, y, z)) < 36
+
 const particles = []
 const cube = new THREE.BoxGeometry(1, 1, 1)
 const ball = new THREE.IcosahedronGeometry(1, 1)
@@ -37,13 +44,10 @@ function spawn(m, p) {
   particles.push({ m, t: 0, life: 1, vx: 0, vy: 0, vz: 0, g: 0, spin: 0, grow: 0, fade: true, size: 1, base: m.material.opacity, ...p })
 }
 
-/**
- * A puff of paint at the nozzle. close: seen from the driver's seat, just behind the nozzle, where the growing
- * puff would fill the view on every squirt; then only the little drops fly.
- */
-export function muzzleFlash(x, y, z, dx, dz, color, big = false, close = false) {
+/** A puff of paint at the nozzle (just the little drops when it's right by the camera). */
+export function muzzleFlash(x, y, z, dx, dz, color, big = false) {
   const s = big ? 1.8 : 1
-  if (!close) {
+  if (!nearCamera(x, y, z)) {
     const f = mesh(ball, color, 0.9)
     f.position.set(x, y, z)
     spawn(f, { life: 0.12, size: 0.45 * s, grow: 3 * s })
@@ -59,23 +63,28 @@ export function muzzleFlash(x, y, z, dx, dz, color, big = false, close = false) 
 /** A paint splash: drops of colour fly up and fall. size: 1 = blob, 2.5 = bucket or balloon. */
 export function splash(x, z, size = 1, color = '#ff6ec7') {
   const y = 0.6
-  const pop = mesh(ball, color, 0.85)
-  pop.position.set(x, y, z)
-  spawn(pop, { life: 0.18, size: 0.5 * size, grow: 5 * size })
-  const ring = mesh(ringGeo, '#ffffff', 0.7, true)
-  ring.position.set(x, 0.15, z)
-  spawn(ring, { life: 0.3, size: 0.5 * size, grow: 8 * size })
-  const n = Math.round(8 * size)
+  // By the camera (driver's seat): no pop or ring, and a few small drops that stay low.
+  const near = nearCamera(x, y, z)
+  if (!near) {
+    const pop = mesh(ball, color, 0.85)
+    pop.position.set(x, y, z)
+    spawn(pop, { life: 0.18, size: 0.5 * size, grow: 5 * size })
+    const ring = mesh(ringGeo, '#ffffff', 0.7, true)
+    ring.position.set(x, 0.15, z)
+    spawn(ring, { life: 0.3, size: 0.5 * size, grow: 8 * size })
+  }
+  const n = near ? 3 : Math.round(8 * size)
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2
-    const sp = (2 + Math.random() * 5) * Math.sqrt(size)
+    const sp = (near ? 1.5 : 2 + Math.random() * 5) * Math.sqrt(size)
     const d = mesh(ball, i % 4 ? color : '#ffffff')
-    d.position.set(x, y, z)
-    spawn(d, { life: 0.6 + Math.random() * 0.5, size: 0.12 + Math.random() * 0.12 * size, vx: Math.cos(a) * sp, vy: 4 + Math.random() * 5 * Math.sqrt(size), vz: Math.sin(a) * sp, g: 20, fade: false })
+    d.position.set(x, near ? 0.3 : y, z)
+    spawn(d, { life: 0.6 + Math.random() * 0.5, size: near ? 0.08 : 0.12 + Math.random() * 0.12 * size, vx: Math.cos(a) * sp, vy: near ? 1 + Math.random() : 4 + Math.random() * 5 * Math.sqrt(size), vz: Math.sin(a) * sp, g: 20, fade: false })
   }
 }
 
 export function sparks(x, z, color = '#ffd36b', n = 6) {
+  if (nearCamera(x, 1, z)) return
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2
     const s = mesh(cube, color, 1, true)
@@ -85,7 +94,7 @@ export function sparks(x, z, color = '#ffd36b', n = 6) {
 }
 
 export function confetti(x, z, colors) {
-  if (still.matches) return
+  if (still.matches || nearCamera(x, 1.5, z)) return
   for (let i = 0; i < 26; i++) {
     const a = Math.random() * Math.PI * 2
     const sp = 2 + Math.random() * 6
@@ -114,7 +123,7 @@ export function shellTrail(x, y, z, color, big) {
 }
 
 export function levelBurst(x, z, color) {
-  if (still.matches) return
+  if (still.matches || nearCamera(x, 0.8, z)) return
   for (let i = 0; i < 3; i++) {
     const ring = mesh(ringGeo, i ? color : '#ffffff', 0.9, true)
     ring.position.set(x, 0.2 + i * 0.6, z)

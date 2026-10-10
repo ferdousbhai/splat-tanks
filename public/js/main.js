@@ -837,7 +837,7 @@ function fire(t, mega = false) {
     for (const a of spread) {
       const { x: dx, z: dz } = dirOf(t.turretYaw + a)
       out.push([`${t.id}.${game.shotCount++}`, r2(m.x), r2(m.z), r5(dx), r5(dz)])
-      muzzleFlash(m.x, m.y, m.z, dx, dz, t.color, mega, t === game.me && view.seat)
+      muzzleFlash(m.x, m.y, m.z, dx, dz, t.color, mega)
     }
   }
   const splat = mega ? BASE.megaSplat * (1 + 0.1 * t.upgrades.big) : s.splat * (s.twin ? 0.85 : 1)

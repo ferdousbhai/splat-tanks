@@ -352,6 +352,11 @@ Design came back clean. The round 31 design review, which arrived late, and roun
 - **The button hold and the keyboard (from round 33):** `pointer-events: none` stopped taps but not Tab and Enter, so a child mashing keys could still skip the ending. The held buttons are now `inert` for the hold, which blocks keys too.
 - **Comment fix:** the `cardsSaid` and `arriveTimer` comments are back on their own lines.
 
+### Fresh audit, round 35
+
+- **Bursts in the driver's seat:** round 34 calmed only your own squirt. Paint landing on a wall in front of you, or a robot's shot landing on you, still burst its pop ball and white ring across the view. This is now fixed in one place: in `fx.js`, any effect within 6 m of the camera (only the driver's seat gets that close) leaves out its pop, ring, sparks and confetti, and sends a few small low drops. Round 34's per-call flag is gone. The sky view is unchanged.
+- **Tidy:** the `body.arriving` rule no longer repeats `pointer-events: none`, because `inert` already holds the buttons; it only fades them.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
