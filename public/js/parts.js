@@ -164,6 +164,18 @@ const DASH = 1.8
 const GAP = 1
 let chalk = null
 const labels = []
+let labelTurn = 0
+
+/**
+ * Turns the chalk fractions to the quarter turn nearest the view's heading (0 from the sky), so "1 over 4"
+ * never reads upside down or sideways from the driver's seat. A quarter turn keeps each label square on its spot.
+ */
+export function turnLabels(yaw) {
+  const q = Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2)
+  if (q === labelTurn) return
+  labelTurn = q
+  for (const l of labels) l.rotation.y = q
+}
 
 function drawChalk() {
   if (chalk) {
@@ -201,6 +213,7 @@ function drawChalk() {
     const [x, z] = labelSpot(p, sx / layout.cells[p].length, sz / layout.cells[p].length)
     const mesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial(onPaint))
     mesh.position.set(x, 0.06, z)
+    mesh.rotation.y = labelTurn
     mesh.renderOrder = 3
     scene.add(mesh)
     labels[p] = mesh

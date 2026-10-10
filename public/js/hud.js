@@ -251,11 +251,14 @@ export function showUpgrades(offer, upgrades, pending, onPick) {
     const b = document.createElement('button')
     b.className = 'card'
     b.innerHTML = `<span class="key">${i + 1}</span><span class="ic">${u.icon}</span><span class="nm">${u.name}</span><span class="tx">${u.text}</span><span class="pips">${Array.from({ length: u.max }, (_, j) => `<i class="${j < upgrades[k] ? 'on' : ''}"></i>`).join('')}</span>`
+    // Picked on the press, so a drive doesn't wait for the release; click covers Enter, Space and assistive tech
+    // (a press's own click finds the offer already taken, and does nothing).
     b.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
       e.preventDefault()
       onPick(k)
     })
+    b.addEventListener('click', () => onPick(k))
     cards.appendChild(b)
   })
 }

@@ -18,7 +18,7 @@ import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint,
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey, mouseSurfaces } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
-import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE } from './parts.js'
+import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
@@ -997,6 +997,7 @@ function updateCamera(dt) {
   }
   if (!inside && document.pointerLockElement) document.exitPointerLock()
   setLens(inside ? (portrait ? 80 : 70) : portrait ? 62 : 45, inside ? 0.1 : 0.5)
+  turnLabels(inside ? game.me.turretYaw : 0)
   if (inside) {
     seatCamera(dt)
     // This frame's puffs and blobs were judged from the sky camera: clear the ones now around the seat.
