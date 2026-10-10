@@ -160,21 +160,13 @@ export class Tank {
       o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material)
     })
     this.body.add(this.model)
-    // The four tanks share one GLB with the same node names, which the loader makes unique (turret_1, …) while
-    // keeping the original in userData.name: look nodes up by that.
-    const find = (name) => {
-      let found = null
-      this.model.traverse((o) => {
-        if (!found && (o.userData.name ?? o.name) === name) found = o
-      })
-      return found
-    }
-    this.turret = find('turret') ?? this.model
+    // Every model (and fallbackTank) has a turret and at least one muzzle.
+    const find = (name) => this.model.getObjectByName(name)
+    this.turret = find('turret')
     this.turretBase = this.turret.rotation.y
     this.barrels = ['barrel', 'barrel_L', 'barrel_R'].map(find).filter(Boolean)
     for (const b of this.barrels) b.userData.rest ??= b.position.clone()
     this.muzzleNodes = ['muzzle', 'muzzle_L', 'muzzle_R'].map(find).filter(Boolean)
-    if (!this.muzzleNodes.length) this.muzzleNodes = [this.turret]
     this.setFirstPerson(this.firstPerson)
     // Bigger tiers sit a little taller in the label.
     this.labelHeight = 3 + tier * 0.35
@@ -201,6 +193,7 @@ export class Tank {
 
   /** World positions of the muzzles. */
   muzzles() {
+    this.pose() // this frame's place and aim: render() comes later in the frame
     this.root.updateMatrixWorld(true)
     return this.muzzleNodes.map((m) => m.getWorldPosition(new THREE.Vector3()))
   }
@@ -263,12 +256,17 @@ export class Tank {
     this.turretYaw += angleDiff(this.turretYaw, t.ty) * Math.min(1, dt * 20)
   }
 
-  render(dt, leader) {
-    const now = performance.now()
-    this.root.visible = this.alive
+  /** Puts the model where the tank is, facing its heading, with the turret on its aim. */
+  pose() {
     this.root.position.set(this.pos.x, 0, this.pos.z)
     this.root.rotation.y = this.heading
     this.turret.rotation.y = this.turretBase + angleDiff(this.heading, this.turretYaw)
+  }
+
+  render(dt, leader) {
+    const now = performance.now()
+    this.root.visible = this.alive
+    this.pose()
     this.body.rotation.x = this.tilt
     this.recoil = Math.max(0, this.recoil - dt * 5)
     for (const b of this.barrels) {

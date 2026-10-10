@@ -10,7 +10,7 @@
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
 import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
-import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, barrels, PADS, SPAWNS } from './world.js'
+import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, lineOfSight, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera } from './shells.js'
 import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
@@ -842,6 +842,8 @@ function fire(t, mega = false) {
   const spread = mega ? [0] : Array.from({ length: s.shells }, (_, i) => (i - (s.shells - 1) / 2) * 0.16)
   const from = mega ? [muzzles[0]] : muzzles
   for (const m of from) {
+    // A big tank's nozzle can reach into (or past) a wall it's pressed against: squirt from its middle then.
+    if (!lineOfSight(t.pos.x, t.pos.z, m.x, m.z)) m.set(t.pos.x, m.y, t.pos.z)
     for (const a of spread) {
       const { x: dx, z: dz } = dirOf(t.turretYaw + a)
       out.push([`${t.id}.${game.shotCount++}`, r2(m.x), r2(m.z), r5(dx), r5(dz)])

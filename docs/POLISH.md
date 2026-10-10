@@ -417,10 +417,17 @@ Code quality came back clean.
 
 ### Fresh audit, round 44
 
-- **The bigger tanks had no turret (design):** the four tanks share one GLB with the same node names, and the loader renames repeats (`turret_1`, `barrel_1`, …), so only the Squirter found its turret, barrel and muzzle. From the Splasher up, the whole tank swivelled to the aim and slid sideways while driving (robots and friends too), blobs and puffs started from the tank's middle at floor height, and in the seat the camera sat low with the Titan's barrels hanging over the view. Nodes are now found by their original name (`userData.name`), so every tier's turret turns on its hull and the seat eye sits above its own nozzle.
+- **The bigger tanks had no turret (design):** the four tanks share one GLB with the same node names, and the loader renames repeats (`turret_1`, `barrel_1`, …), so only the Squirter found its turret, barrel and muzzle. From the Splasher up, the whole tank swivelled to the aim and slid sideways while driving (robots and friends too), blobs and puffs started from the tank's middle at floor height, and in the seat the camera sat low with the Titan's barrels hanging over the view. Nodes are now found by their original name (`userData.name`; restored at load since round 45), so every tier's turret turns on its hull and the seat eye sits above its own nozzle.
 - **Muzzle drops in the seat (design):** the near-camera muzzle skipped its puff but still threw full-size drops up toward eye height twice a second. Beside the camera it now shows nothing; the blob shows once it's clear.
 - **After a card pick (correctness):** the quiet moment around the cards was only refreshed by moves over the game, so it had run out by the time a child who'd looked at the cards picked one, and moving off the card handed the aim to the mouse. It now runs from any move or press on the page while the cards are up.
 - **Tidy (code quality):** `handsFree` is private to `input.js`.
+
+### Fresh audit, round 45
+
+Design came back clean: every tier turns its turret on a still hull, fires from its own barrels, and sits its seat eye above its nozzle.
+- **Squirting through walls (correctness, from round 44):** the bigger tanks' nozzles reach about 2.5 m out, so a Roller or Titan pressed against a thin wall started its blobs inside or past the wall, and the paint landed on the far side. When the way from the tank's middle to a nozzle isn't clear, the blob now starts from the middle (`lineOfSight` also checks its end point).
+- **Blobs from last frame's aim (correctness):** the nozzles were read before the frame had turned the turret, so a quick flick fired from where it pointed before, behind the tank. `muzzles()` now poses the tank first (`Tank.pose`, shared with `render`).
+- **Renamed parts, fixed once (code quality):** the loader's renamed nodes now get their own names back when the models load, so `setModel` finds parts with plain `getObjectByName`. The fallbacks that had quietly hidden the missing parts (whole model as turret, turret as muzzle) are gone.
 
 ### Open
 

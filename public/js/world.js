@@ -128,7 +128,12 @@ export async function loadModels(onProgress) {
     const node = gltf?.scene.getObjectByName(name)
     if (!node) return
     node.position.set(0, 0, 0)
-    node.traverse(prepMesh)
+    node.traverse((o) => {
+      // The four tanks share node names (turret, barrel, muzzle), which the loader makes unique (turret_1, …);
+      // give each its own name back, so the game finds its parts by name.
+      if (o.userData.name) o.name = o.userData.name
+      prepMesh(o)
+    })
     into[key] = node
   }
   for (const t of [1, 2, 3, 4]) take(tanks, `tank_${t}`, models.tanks, t)
@@ -451,13 +456,13 @@ export function solidAt(x, z) {
   return false
 }
 
-/** True if nothing solid is between two points (for bots). */
+/** True if nothing solid is between two points, or at the second (for bots, and a nozzle against a wall). */
 export function lineOfSight(ax, az, bx, bz) {
   const d = Math.hypot(bx - ax, bz - az)
   const steps = Math.ceil(d / 0.8)
   let px = ax
   let pz = az
-  for (let i = 1; i < steps; i++) {
+  for (let i = 1; i <= steps; i++) {
     const x = ax + ((bx - ax) * i) / steps
     const z = az + ((bz - az) * i) / steps
     const hit = shellObstacle(x, z, px, pz, 0.25)
