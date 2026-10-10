@@ -102,11 +102,17 @@ export const partsDone = () => layout.done.filter(Boolean).length
 /** How a round starts: "The floor is cut into four equal parts. Each part is one quarter. …" */
 export const introWords = (n) => `The floor is cut into ${NUMBERS[n]} equal parts. Each part is one ${NAMES[n][0]}. Let's paint ${n === 2 ? 'both' : 'them all'} together!`
 
+/** The k-th part is finished: what the banner shows. */
+export const doneTitle = (k, n) => `${cap(fractionWords(k, n))} painted!`
+/** The one equivalence a round teaches, shown and said when the second quarter is finished. */
+export const halfWords = (k, n) => (n === 4 && k === 2 ? 'Two quarters make one half!' : '')
+/** Under the fraction strip: "one quarter painted · three to go". */
+export const stripWords = (k, n) => (k ? `${fractionWords(k, n)} painted · ${NUMBERS[n - k]} to go` : `${fractionWords(n, n)} to paint`)
+
 /** What the game says when the k-th part is finished. */
 export function doneWords(k, n) {
   if (k >= n) return `${cap(fractionWords(n, n))} make one whole! We painted the whole floor together!`
-  const half = n === 4 && k === 2 ? ' Two quarters make one half!' : ''
-  return `${cap(fractionWords(k, n))} painted!${half} ${cap(fractionWords(n - k, n))} to go.`
+  return [doneTitle(k, n), halfWords(k, n), `${cap(fractionWords(n - k, n))} to go.`].filter(Boolean).join(' ')
 }
 
 /** A robot's next place to paint: bare floor in the focus part, else in any part that isn't finished. */

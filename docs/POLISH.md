@@ -86,6 +86,24 @@ Test scripts and screenshots are in the session scratchpad `splat/` (`audit/` be
 - **Cleanup:** one `dab()` draws a whole cell. Progress is measured whenever the paint changes, and the strip updates every frame through change-only writes.
 - **Test note:** headless WebKit's WebRTC in `dev/two.html` connects only about 1 time in 3, on the original code as well, so a failed WebKit connect in `duo.mjs` is the environment. When it connects, the test passes.
 
+### Fresh audit, round 3
+
+- **Bucket loop (high, introduced in round 2):** a host 🏠 within 150 ms of a bucket chain made the bucket burst itself endlessly. The round 2 message filter dropped the host's own `bx`, so the bucket never counted as burst; up to 322,000 messages in 4 s, and match XP kept climbing in the menu. `hostBucket` now stops once the round is over and marks the bucket burst before it broadcasts: 0 messages after 🏠.
+- **🏠 in play asks for a second tap** ("Tap the house again to stop painting."), so a stray tap from a 4-year-old host can't throw away everyone's floor. The results screen 🏠 is still one tap.
+- **Short screens:** 🎨 PLAY stays in view at the bottom of the menu, with a smaller title on landscape phones (it was below the screen on all landscape phones).
+- **Touch sticks** rest in the middle of their zones from the start. They used to sit half off-screen, and the aim stick sat on top of the player's tank.
+- **Banners:** they make way for the upgrade cards, and on narrow screens sit below the leaderboard.
+- **Paint together, shown as said:**
+  - the strip reads "one quarter painted · three to go"
+  - each new power is also spoken ("Now you can throw paint balloons!")
+  - the half fact shares one helper with the spoken line
+- **Readability:** the strip's fraction digits are larger and dark on finished boxes. "Level up!" is in sentence case.
+- **Cleanup:**
+  - `announce` was folded into `voice.say`
+  - robots take a plain `together` flag
+  - a duplicate host check was dropped
+  - the README lists `dev/cover.html`
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

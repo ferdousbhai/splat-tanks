@@ -88,9 +88,9 @@ function stick(zone, onChange) {
     base.style.left = `${x}px`
     base.style.top = `${y}px`
   }
+  // At rest the base sits in the middle of its zone (style.css), even while the HUD is hidden.
   const rest = () => {
-    const r = zone.getBoundingClientRect()
-    place(r.width / 2, r.height / 2)
+    base.style.left = base.style.top = ''
     knob.style.transform = 'translate(-50%, -50%)'
     zone.classList.remove('held')
   }

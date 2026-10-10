@@ -76,8 +76,9 @@ body.together .bars { width: auto; }
 .fraction.grid .part { width: calc(var(--side) / 2 - 2px); height: calc(var(--side) / 2 - 2px); }
 .fraction .part.done { border-style: solid; border-color: #fff; }
 .fraction .part.done i { background: var(--accent); }
+.fraction .part.done b { color: #1b1300; text-shadow: none; }
 .fraction .part.mine { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35); }
-.fraction b { position: relative; display: flex; flex-direction: column; align-items: center; font-size: 12px; line-height: 1; font-weight: 900; text-shadow: 0 1px 0 #000; }
+.fraction b { position: relative; display: flex; flex-direction: column; align-items: center; font-size: 14px; line-height: 1; font-weight: 900; text-shadow: 0 1px 0 #000; }
 .fraction sup { border-bottom: 2px solid currentColor; padding: 0 2px 1px; }
 .fraction sub { padding-top: 1px; }
 #fraction-words { font-size: 12px; font-weight: 800; opacity: 0.85; }
@@ -85,7 +86,10 @@ body.together .bars { width: auto; }
 @media (max-width: 600px) {
   body.together .top-center { left: auto; right: var(--right); transform: none; }
   .fraction { --side: 60px; }
-  .fraction b { font-size: 10px; }
+  /* Below the leaderboard's six rows. */
+  #hud #banner { top: 32%; }
+  #hud #subbanner { top: calc(32% + clamp(44px, 8vw, 90px)); }
+  .fraction b { font-size: 12px; }
 }
 #board { position: absolute; top: calc(var(--top) + 56px); right: var(--right); width: 210px; display: flex; flex-direction: column; gap: 3px; }
 .brow { display: flex; align-items: center; gap: 6px; background: rgba(10, 14, 24, 0.65); padding: 4px 8px; border-radius: 8px; font-size: 13px; font-weight: 800; border-left: 5px solid; }
@@ -100,6 +104,8 @@ body.together .bars { width: auto; }
 #subbanner { position: absolute; top: calc(24% + clamp(44px, 8vw, 90px)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 0 16px; }
 #subbanner.show { opacity: 1; }
 
+/* While the upgrade cards are up, the sub-banner makes way for them. */
+body.cards #subbanner { display: none; }
 #upgrades { position: absolute; z-index: 5; left: 50%; bottom: calc(var(--bottom) + 108px); transform: translateX(-50%); width: max-content; display: flex; flex-direction: column; align-items: center; gap: 8px; animation: fadein 0.4s ease-out; }
 @keyframes fadein { from { opacity: 0; } }
 .up-title { font-weight: 900; font-size: 16px; text-shadow: 0 2px 0 #000; color: var(--accent); }
@@ -156,7 +162,7 @@ body.seat #periscope { display: block; }
   .stick { position: absolute; bottom: 0; width: 42vw; height: 55vh; }
   .stick:not(.aim) { left: 0; }
   .stick.aim { right: 0; }
-  .stick-base { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); border: 3px solid rgba(255, 255, 255, 0.25); opacity: 0.6; }
+  .stick-base { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); border: 3px solid rgba(255, 255, 255, 0.25); opacity: 0.6; }
   .stick.held .stick-base { opacity: 1; }
   .stick-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); transform: translate(-50%, -50%); }
   .stick.aim .stick-knob { background: rgba(255, 90, 60, 0.75); }
@@ -174,6 +180,7 @@ body.seat #periscope { display: block; }
   .bottom { left: calc(50% - 36px); }
 }
 @media (max-height: 520px) {
+  body.cards #banner { top: 6%; }
   /* Banners sit below the fraction strip, so the box that just filled stays in view. */
   body.together #banner { top: calc(var(--top) + 118px); }
   body.together #subbanner { top: calc(var(--top) + 118px + clamp(40px, 7vw, 76px)); }
@@ -223,6 +230,15 @@ body.playing { cursor: none; }
 .cut.c2 { background: linear-gradient(90deg, transparent calc(50% - 1px), currentColor 0 calc(50% + 1px), transparent 0); }
 .cut.c3 { background: linear-gradient(90deg, transparent calc(33.3% - 1px), currentColor 0 calc(33.3% + 1px), transparent 0 calc(66.7% - 1px), currentColor 0 calc(66.7% + 1px), transparent 0); }
 .cut.c4 { background: linear-gradient(90deg, transparent calc(50% - 1px), currentColor 0 calc(50% + 1px), transparent 0), linear-gradient(0deg, transparent calc(50% - 1px), currentColor 0 calc(50% + 1px), transparent 0); }
+
+/* Short screens: a smaller title, and 🎨 PLAY always in view at the bottom of the menu. */
+@media (max-height: 700px) {
+  #menu #go { position: sticky; bottom: 0; z-index: 1; flex: none; }
+}
+@media (max-height: 520px) {
+  #menu .logo { font-size: 40px; }
+  #menu .tagline, #menu .controls-help { display: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

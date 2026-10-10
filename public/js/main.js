@@ -17,8 +17,8 @@ import { updateFx, updateFloaters, splash, muzzleFlash, floatText, sparks, confe
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey } from './input.js'
-import { unlockAudio, sound, announce, voice, toggleMusic, musicIntensity } from './audio.js'
-import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, bareSpot, doneWords, introWords, fractionWords, goalWords, cap, DONE } from './parts.js'
+import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
+import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, DONE } from './parts.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
@@ -57,6 +57,7 @@ const game = {
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
 }
+let homeArmedUntil = 0 // in play, 🏠 needs a second tap before this time
 const isHost = () => game.hostId === game.selfId
 const together = () => game.match?.mode === 'together'
 const tankList = () => [...game.tanks.values()]
@@ -380,6 +381,7 @@ function startBattle(msg) {
 /** Every way out of a round goes through here: nothing from it keeps talking, waiting or showing. */
 function leaveRound() {
   clearTimeout(game.endTimer)
+  homeArmedUntil = 0
   voice.hush()
   hud.clearBanners()
   game.offer = null
@@ -509,7 +511,9 @@ function bigSplash(x, z, radius, by, skip) {
 /** match: the round this bucket burst in; a timer from an earlier round does nothing. */
 function hostBucket(i, by, match = game.match) {
   const b = barrels[i]
-  if (!b?.alive || !isHost() || !by || game.match !== match) return
+  if (!b?.alive || !isHost() || !by || game.match !== match || match.over) return
+  // Burst it here first: a burst bucket can never set off its own chain again.
+  setBarrel(b, false)
   broadcast({ t: 'bx', i, by: by.id })
   addXp(by, XP.bucket)
   bigSplash(b.x, b.z, 5.5, by)
@@ -617,7 +621,7 @@ function setLevel(t, lv) {
       if (!quiet) {
         const tier = TIERS[t.tier - 1]
         hud.banner(`✨ ${tier.name}!`, tier.perk, 2600)
-        announce(`You are a ${tier.name}!`)
+        voice.say(`You are a ${tier.name}!`)
       }
     } else {
       sound.levelUp()
@@ -671,7 +675,7 @@ function onEnd(msg) {
   if (together()) hud.banner('🎉 The whole floor!', '', 2200)
   else {
     hud.banner("Time's up!", '', 2200)
-    announce("Time's up! Great painting!")
+    voice.say("Time's up! Great painting!")
   }
   clearTimeout(game.endTimer)
   game.endTimer = setTimeout(() => {
@@ -692,17 +696,16 @@ function onPartDone(msg) {
   const k = partsDone()
   const n = layout.n
   // The last part ends the round: nobody grows then, so the whole floor is the moment.
-  let sub = ''
+  let tier = null
   if (k < n) {
     const was = game.me?.tier
     for (const t of game.tanks.values()) if (t.level < grownLevel(k)) setLevel(t, grownLevel(k))
-    const tier = TIERS[(game.me?.tier ?? 1) - 1]
-    if (game.me && game.me.tier !== was && tier.perk) sub = `✨ ${tier.name}! ${tier.perk}`
+    if (game.me && game.me.tier !== was) tier = TIERS[game.me.tier - 1]
   }
-  // Show the one equivalence the round says aloud, rather than the perk.
-  if (n === 4 && k === 2) sub = 'Two quarters make one half!'
-  hud.banner(`${cap(fractionWords(k, n))} painted!`, sub, 3000)
-  announce(doneWords(k, n))
+  // Shown as said: the fraction, then the half fact when there is one, else the new power.
+  hud.banner(doneTitle(k, n), halfWords(k, n) || (tier ? `✨ ${tier.name}! ${tier.perk}` : ''), 3000)
+  voice.say(doneWords(k, n))
+  if (tier) voice.say(tier.say)
 }
 
 // --- Squirting ---------------------------------------------------------------------------
@@ -944,7 +947,7 @@ function battleStep(dt, n) {
     m.countdown = 0
     hud.banner('🎨 Paint!', 'Paint the floor your colour!', 1400)
     sound.countdown(true)
-    announce('Paint the floor your colour!')
+    voice.say('Paint the floor your colour!')
   }
 
   // Our tank and (on the host) the bots.
@@ -954,7 +957,7 @@ function battleStep(dt, n) {
     for (const t of game.tanks.values()) {
       if (!t.bot || !t.alive) continue
       const brain = game.brains.get(t.id) ?? game.brains.set(t.id, newBrain()).get(t.id)
-      control(t, botControls(t, brain, tanks, game.pads, game.opts.difficulty, dt, together() ? { together: true, wanderTo: bareSpot } : undefined), dt)
+      control(t, botControls(t, brain, tanks, game.pads, game.opts.difficulty, dt, together()), dt)
     }
   }
   for (const t of game.tanks.values()) if (!t.local) t.follow(dt)
@@ -970,7 +973,7 @@ function battleStep(dt, n) {
   }
   updateShells(dt, tanks, {
     tank: landed,
-    barrel: (s, i) => isHost() && hostBucket(i, game.tanks.get(s.owner)),
+    barrel: (s, i) => hostBucket(i, game.tanks.get(s.owner)),
     land: landed,
   }, hearing)
 
@@ -1144,7 +1147,14 @@ function setupMenu() {
   $('go').addEventListener('click', start)
   $('again').addEventListener('click', start)
   const home = () => isHost() && broadcast({ t: 'menu' })
-  $('home').addEventListener('click', home)
+  // In play, 🏠 ends the round for everyone, so it asks for a second tap: a stray tap loses nothing.
+  $('home').addEventListener('click', () => {
+    if (!isHost()) return
+    if (now() < homeArmedUntil) return home()
+    homeArmedUntil = now() + 3000
+    hud.subBanner('🏠 Tap again for the menu', 3000)
+    voice.sayNow('Tap the house again to stop painting.')
+  })
   $('to-menu').addEventListener('click', home)
   const flipMusic = () => $('music').classList.toggle('off', !toggleMusic())
   $('music').addEventListener('click', flipMusic)

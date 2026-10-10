@@ -2,7 +2,7 @@
 import { ARENA, UPGRADES, BASE, xpToNext, MAX_LEVEL, tierFor, PICKUPS } from './config.js'
 import { colliders, barrels } from './world.js'
 import { canvas as paintCanvas, cellsOf, byPaint, paintVersion, CELLS } from './paint.js'
-import { layout, chalkLines, fractionWords, partsDone, cap } from './parts.js'
+import { layout, chalkLines, fractionWords, partsDone, stripWords, cap } from './parts.js'
 
 /** Share of the arena floor in a tank's colour, as a whole percentage. */
 const pct = (t) => Math.round((cellsOf(t.slot) / CELLS) * 100)
@@ -154,12 +154,14 @@ export function fraction(progress, mine) {
     part.classList.toggle('mine', p === mine)
     put(part.firstChild, 'height', cssPct(Math.min(1, v)))
   })
-  put($('fraction-words'), 'text', done ? `${fractionWords(done, layout.n)} painted` : `${fractionWords(layout.n, layout.n)} to paint`)
+  put($('fraction-words'), 'text', stripWords(done, layout.n))
 }
 
 /** Shows the three upgrade cards; onPick(key) when one is chosen. */
 export function showUpgrades(offer, upgrades, pending, onPick) {
   const box = $('upgrades')
+  // While the cards are up, banners make way for them (style.css body.cards).
+  document.body.classList.toggle('cards', !!offer)
   if (!offer) {
     box.classList.add('hidden')
     box.dataset.key = ''

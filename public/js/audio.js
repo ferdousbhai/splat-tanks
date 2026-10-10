@@ -147,7 +147,6 @@ export const sound = {
 
 // Lines wait their turn instead of cutting each other off.
 export const voice = createVoice({ rate: 0.9, pitch: 1.1 })
-export const announce = (text) => voice.say(text)
 
 // --- Music: an easy 96 bpm loop in C major, built from the same synths --------------------
 

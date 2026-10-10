@@ -32,6 +32,7 @@ stay `tank-clash` from the game's first version.
 - `dev/`: local test pages (not deployed). Serve the repo root (`python3 -m http.server 5181`) and open:
   - `dev/two.html`: two players in one page, relaying WebRTC like the BitGames lobby does.
   - `dev/ipad.html`: iPad landscape and portrait layouts.
+  - `dev/cover.html`: the store cover picture.
 - Local solo play: serve `public/` and open `index.html?solo` (add `&autostart&debug` for testing; exposes `window.__tank`).
 
 ## Shipping (needs the bitgames MCP)

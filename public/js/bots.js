@@ -3,6 +3,7 @@
 import { BOT_LEVELS, ARENA } from './config.js'
 import { lineOfSight, pushOut, freeSpot } from './world.js'
 import { yawOf, angleDiff } from './tank.js'
+import { bareSpot } from './parts.js'
 
 const PRIORITY = ['big', 'reload', 'wide', 'multi', 'speed', 'velocity', 'ricochet']
 
@@ -17,10 +18,10 @@ export function newBrain() {
 }
 
 /**
- * Decides one bot's controls for this frame. Painting together (`together`), bots never aim at
- * tanks and head for bare floor in parts that aren't finished (`wanderTo`).
+ * Decides one bot's controls for this frame. Painting together, bots never aim at tanks and head
+ * for bare floor in the parts that aren't finished.
  */
-export function botControls(bot, brain, tanks, pickups, difficulty, dt, { together = false, wanderTo = freeSpot } = {}) {
+export function botControls(bot, brain, tanks, pickups, difficulty, dt, together = false) {
   const cfg = BOT_LEVELS[difficulty]
   const out = { mx: 0, mz: 0, aimYaw: bot.turretYaw, fire: false, boost: false, mega: false }
   const me = bot.pos
@@ -50,7 +51,7 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, { togeth
   }
   brain.wanderT -= dt
   if (!brain.wander || brain.wanderT <= 0 || Math.hypot(brain.wander.x - me.x, brain.wander.z - me.z) < 4) {
-    brain.wander = wanderTo()
+    brain.wander = together ? bareSpot() : freeSpot()
     brain.wanderT = 5 + Math.random() * 4
   }
   goal ??= brain.wander

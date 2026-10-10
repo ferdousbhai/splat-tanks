@@ -10,9 +10,9 @@ export const MATCH = {
 // Tiers grow your tank at these levels. Each one has its own Blender model.
 export const TIERS = [
   { tier: 1, name: 'Squirter', level: 1, splat: 1, speed: 1.08, reload: 1 },
-  { tier: 2, name: 'Splasher', level: 4, splat: 1.12, speed: 1.04, reload: 0.95, perk: '🎈 Paint balloons!' },
-  { tier: 3, name: 'Roller', level: 8, splat: 1.24, speed: 1.0, reload: 0.95, perk: '🖌️ Zoom paints a giant stripe!' },
-  { tier: 4, name: 'Titan', level: 12, splat: 1.36, speed: 0.98, reload: 0.9, perk: '🌈 Two paint squirters!' },
+  { tier: 2, name: 'Splasher', level: 4, splat: 1.12, speed: 1.04, reload: 0.95, perk: '🎈 Paint balloons!', say: 'Now you can throw paint balloons!' },
+  { tier: 3, name: 'Roller', level: 8, splat: 1.24, speed: 1.0, reload: 0.95, perk: '🖌️ Zoom paints a giant stripe!', say: 'Now zooming paints a giant stripe!' },
+  { tier: 4, name: 'Titan', level: 12, splat: 1.36, speed: 0.98, reload: 0.9, perk: '🌈 Two paint squirters!', say: 'Now you have two paint squirters!' },
 ]
 
 export const tierFor = (level) => TIERS.filter((t) => level >= t.level).pop()
