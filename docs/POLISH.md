@@ -25,7 +25,7 @@ The standard and audit are in [AUDIT_2026-10-10.md](AUDIT_2026-10-10.md). It is 
 - The round opens with "The floor is cut into four equal parts. Each part is one quarter. Let's paint them all together!" There is no clock and no ranking: no leaderboard, no crown, and no XP, levels or upgrade cards.
 - A fraction strip at the top is laid out like the floor (2×2 or a row). Each box fills as its part is painted, and the box for the part you're in is outlined.
 - At 85% of a part's open floor, the host says the part is finished (`pd` message). Every device fills the gaps with the paint most of that part already wears, so everyone's grid stays identical. The game names the fraction: "One quarter painted! Three quarters to go." / "Two quarters painted! Two quarters make one half! …" / "Four quarters make one whole! We painted the whole floor together!"
-- **Growing is the reward for finishing a part.** Every tank grows a tier per finished part (Squirter → Splasher → Roller → Titan), and the banner names the new perk (🎈 balloons, 🖌️ zoom stripe, 🌈 twin squirters).
+- **Growing is the reward for finishing a part.** Every tank grows a tier per finished part except the last (Squirter → Splasher → Roller → Titan with quarters), and the banner names the new perk (🎈 balloons, 🖌️ zoom stripe, 🌈 twin squirters).
 - Robots never aim at tanks. They paint bare floor in the unfinished part nearest to done, so parts finish one after another and the fraction moments are spaced out.
 - The results screen says "Four quarters make one whole floor!" and shows a picture of the floor with its chalk lines, plus everyone who painted it, in join order.
 - Pickups are the ones that help paint (big brush, super squirt), with a slower respawn.
@@ -166,6 +166,14 @@ The cleanup review came back clean.
 - **Two powers close together:** if two parts finished within about 3 s, the first new power was never shown or said. Powers now wait in `game.powers` and are announced together: the newest tier's name, every new power on screen, and each power's line said.
 - **Joining mid-round:** a player who joins part way through hears how the round works, as everyone did at the start: the intro, "One quarter is painted already.", and the power they have already grown into. A match joiner hears "Paint the floor your colour!".
 - **Spoken status:** a guest at the menu hears "Waiting for the host to start." A new host hears "The host left. You're the host now."
+
+### Fresh audit, round 11
+
+- **Match joiner heard the opening line twice** (from round 10): `startBattle` no longer says it, and the countdown's last step says it once.
+- **🎈 on the aim stick:** on small phones the balloon button sat on the aim stick's resting ring, so a thumb there threw a balloon or did nothing. The aim stick now rests up and in from its corner, and no point on the ring hits a button at 360×640, 375×667, 390×844 or 667×375.
+- **Same colour for two children:** the host now gives a child whose colour is taken the first free one, at the start and when joining mid-round. That child hears "You're Blue!". The menu dims colours a friend already has.
+- **A friend arriving:** the feed shows "… came to paint 👋", mirroring "went home", and in the menu the game says "… is here!".
+- The README and this log now say tanks grow at every part except the last.
 
 ### Open
 

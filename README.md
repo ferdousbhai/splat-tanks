@@ -11,7 +11,7 @@ Two ways to play, chosen on the menu:
   quarters (square quarters and strip quarters take turns). Everyone paints together with no clock;
   the fraction strip at the top shows each part filling. When a part is nearly painted its gaps fill in
   and the game names the fraction ("Two quarters painted! Two quarters make one half!"), and every
-  tank grows a tier (Squirter → Splasher → Roller → Titan). The round ends with "Four quarters make
+  tank grows a tier, except at the last part (Squirter → Splasher → Roller → Titan with quarters). The round ends with "Four quarters make
   one whole!" and a picture of the floor everyone painted. Robots help with the part nearest to done.
 - **⏱️ Splat match.** The original round: 2, 3 or 5 minutes, each tank paints its own colour, levels up
   and picks upgrade cards. Splashing another tank just turns it your colour for a moment: there is no

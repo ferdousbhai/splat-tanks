@@ -93,7 +93,7 @@ function setupRoom(room) {
       game.tanks.delete(id)
     }
     if (id === game.hostId) migrateHost()
-    renderLobby()
+    renderRoom()
   })
   room.on('message', (msg, from) => handle(msg, from))
   hello()
@@ -147,6 +147,11 @@ function handle(msg, from) {
   switch (msg.t) {
     case 'hello': {
       const h = { name: safeName(msg.name), color: safeColor(msg.color) }
+      // A friend arriving is said and shown, as a friend leaving is.
+      if (!game.humans.has(from)) {
+        hud.feed(`${hud.tag(h)} came to paint 👋`)
+        if (game.phase === 'menu') voice.say(`${h.name} is here!`)
+      }
       game.humans.set(from, h)
       if (msg.host) game.hostId = from
       const existing = game.tanks.get(from)
@@ -158,11 +163,12 @@ function handle(msg, from) {
       if (game.phase === 'battle' && !existing && isHost()) {
         flushPaint()
         // A late painter starts as big as everyone else has grown.
-        broadcast({ t: 'add', e: { i: from, n: h.name, c: h.color, s: nextSlot(), ...(together() && { lv: grownLevel(partsDone()) }) } })
+        const c = freeColor(h.color, new Set(tankList().map((t) => t.color)))
+        broadcast({ t: 'add', e: { i: from, n: h.name, c, s: nextSlot(), ...(together() && { lv: grownLevel(partsDone()) }) } })
         send(snapshot(), from)
         game.tanks.get(from).respawnAt = now() + 800
       }
-      renderLobby()
+      renderRoom()
       break
     }
     case 'add':
@@ -307,8 +313,9 @@ function hostStartMatch() {
   const used = new Set()
   const roster = ids.map((id, k) => {
     const h = id === game.selfId ? { name: game.myName, color: game.myColor } : game.humans.get(id) ?? { name: randomName(), color: COLORS[0] }
-    used.add(h.color)
-    return { i: id, n: h.name, c: h.color, s: k + 1 }
+    const c = freeColor(h.color, used)
+    used.add(c)
+    return { i: id, n: h.name, c, s: k + 1 }
   })
   const free = COLORS.filter((c) => !used.has(c))
   for (let i = 0; i < game.opts.bots; i++) roster.push({ i: `bot${i}`, n: randomName(), c: free[i % free.length] ?? COLORS[i % COLORS.length], s: roster.length + 1, b: 1 })
@@ -339,6 +346,9 @@ function hostStartMatch() {
     barrels: [],
   })
 }
+
+/** Each child keeps their own colour: one already taken is swapped for the first free one. */
+const freeColor = (want, used) => (used.has(want) ? COLORS.find((c) => !used.has(c)) ?? want : want)
 
 function startBattle(msg) {
   leaveRound()
@@ -388,11 +398,13 @@ function startBattle(msg) {
     if (k) voice.say(`${cap(fractionWords(k, n))} ${k === 1 ? 'is' : 'are'} painted already.`)
     if (game.me?.tier > 1) voice.say(TIERS[game.me.tier - 1].say)
   } else {
+    // The countdown (or, for a joiner, its last step on the next frame) says the opening line.
     $('goal').textContent = '🎨 Paint the floor your colour!'
-    if (msg.cd <= 0) {
-      hud.banner('🎨 Paint!')
-      voice.sayNow('Paint the floor your colour!')
-    }
+  }
+  // A friend already had this colour, so the host gave us another: say which, as a child knows their tank by it.
+  if (game.me && game.me.color !== game.myColor) {
+    game.myColor = game.me.color
+    voice.say(`You're ${COLOR_NAMES[COLORS.indexOf(game.myColor)]}!`)
   }
   // The driver's seat is remembered between rounds: say so, after the round's own opening line.
   if (msg.fresh && seat.on) voice.say("You're in the driver's seat.")
@@ -1142,7 +1154,10 @@ function renderMenu() {
     const b = document.createElement('button')
     b.style.background = c
     b.classList.toggle('on', c === game.myColor)
-    b.setAttribute('aria-label', COLOR_NAMES[k])
+    // A colour a friend already has is dimmed: picking it would swap you to another one at the start.
+    const taken = [...game.humans.values()].some((h) => h.color === c)
+    b.classList.toggle('taken', taken)
+    b.setAttribute('aria-label', taken ? `${COLOR_NAMES[k]}, a friend has it` : COLOR_NAMES[k])
     b.setAttribute('aria-pressed', String(c === game.myColor))
     b.addEventListener('click', () => {
       game.myColor = c
@@ -1153,6 +1168,9 @@ function renderMenu() {
   })
   showHostOptions()
 }
+
+/** Someone joined, left or changed: in the menu the colour buttons show who has which colour too. */
+const renderRoom = () => (game.phase === 'menu' ? renderMenu() : renderLobby())
 
 /** The player changed their name or colour: show it and tell the room. */
 function menuChanged() {
