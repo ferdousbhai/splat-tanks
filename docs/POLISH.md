@@ -118,7 +118,7 @@ Test scripts and screenshots are in the session scratchpad `splat/` (`audit/` be
 
 - **Leftover prompt:** the "🏠 Tap again" toast stayed up for up to 3 s after leaving and covered 🎨 PLAY. Leaving a round now clears toasts too, and toasts never block taps.
 - **Words at the end of a round:** the strip said "four quarters painted · no to go" at the climax; it now says "four quarters make one whole".
-- **Second quarter:** the screen shows both the half fact and the new Roller power, on two lines, matching what is said.
+- **Second quarter:** the screen shows both the half fact and the new Roller power, matching what is said. Round 8 changed this into two beats, one after the other.
 - **Banners:** a banner without a sub-line clears any old one.
 - **Splat match:** a tier-up also says the new power aloud ("Now you can throw paint balloons!").
 - **Cleanup:**
@@ -151,6 +151,14 @@ The bug and cleanup reviews came back clean. Design found two problems:
   - banner placement is one `--banner-top` / `--sub-gap` pair, defaulted on `:root` and set per layout, instead of rules competing on specificity
   - a dead tiny-frame selector was removed
   - the chalk label comment says "ring", not "tick"
+
+### Fresh audit, round 9
+
+- **The power beat is now timer-based:** the round 8 version waited for the fraction line's speech to end, and that caused two bugs:
+  - **Over the ending:** if the last part finished soon after, the power banner replaced "🎉 The whole floor!" and the power was said over the results, for a power that could never be used.
+  - **Interrupted speech:** if speech was cut short (driver's seat toggle, 🏠 prompt, switching tabs), the power never showed.
+  It now uses its own timer (at least 3 s, or about 75 ms per letter of the fraction line), whatever speech does, and `onEnd` cancels it.
+- A `pre-line` sub-banner rule left over from round 5 was removed.
 
 ### Open
 

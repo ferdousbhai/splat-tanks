@@ -688,6 +688,7 @@ function onEnd(msg) {
     if (t && t.level !== lv) setLevel(t, lv)
   }
   const sorted = msg.a.map(([i]) => game.tanks.get(i)).filter(Boolean)
+  clearTimeout(game.powerTimer) // a power that can no longer be used isn't announced over the ending
   sound.cheer()
   if (together()) hud.banner('🎉 The whole floor!', '', 2200)
   else {
@@ -715,20 +716,18 @@ function onPartDone(msg) {
     for (const t of game.tanks.values()) if (t.level < grownLevel(k)) setLevel(t, grownLevel(k))
     if (game.me && game.me.tier !== was) tier = TIERS[game.me.tier - 1]
   }
-  // Two beats, each shown while it is said: the fraction (and the half fact), then the new power once
-  // that line has finished, and never sooner than the first banner's 3 s.
+  // Two beats, each shown while it is said: the fraction (and the half fact), then the new power once the
+  // fraction line has had time to be said (about 75 ms a letter), whether or not speech finishes or is cut short.
+  const words = doneWords(k, n)
   hud.banner(doneTitle(k, n), halfWords(k, n), 3000)
-  const shownAt = now()
-  voice.say(doneWords(k, n), {
-    onend: () => {
-      if (!tier) return
-      clearTimeout(game.powerTimer)
-      game.powerTimer = setTimeout(() => {
-        hud.banner(`✨ ${tier.name}!`, tier.perk, 3000)
-        voice.say(tier.say)
-      }, Math.max(0, 3000 - (now() - shownAt)))
-    },
-  })
+  voice.say(words)
+  clearTimeout(game.powerTimer)
+  if (tier) {
+    game.powerTimer = setTimeout(() => {
+      hud.banner(`✨ ${tier.name}!`, tier.perk, 3000)
+      voice.say(tier.say)
+    }, Math.max(3000, words.length * 75))
+  }
 }
 
 // --- Squirting ---------------------------------------------------------------------------

@@ -109,7 +109,7 @@ body.together .bars { width: auto; }
 
 #banner { position: absolute; top: var(--banner-top); left: 0; right: 0; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--accent); text-shadow: 0 4px 0 #000; opacity: 0; transform: scale(0.94); transition: opacity 0.4s ease-out, transform 0.5s ease-out; pointer-events: none; padding: 0 16px; }
 #banner.show { opacity: 1; transform: scale(1); }
-#subbanner { white-space: pre-line; position: absolute; top: calc(var(--banner-top) + var(--sub-gap)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 0 16px; }
+#subbanner { position: absolute; top: calc(var(--banner-top) + var(--sub-gap)); left: 0; right: 0; text-align: center; font-size: clamp(16px, 2.6vw, 24px); font-weight: 800; text-shadow: 0 2px 0 #000; opacity: 0; transition: opacity 0.2s; padding: 0 16px; }
 #subbanner.show { opacity: 1; }
 
 /* While the upgrade cards are up, the sub-banner makes way for them. */
