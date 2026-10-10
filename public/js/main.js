@@ -16,7 +16,7 @@ import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera } fr
 import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
-import { input, bindMouse, bindTouch, onKey, mouseSurfaces, handsFree, mouseAims } from './input.js'
+import { input, bindMouse, bindTouch, onKey, mouseSurfaces, mouseAims, drivingAlone } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import * as hud from './hud.js'
@@ -909,7 +909,7 @@ function playerControls(me, dt) {
     if (ray.ray.intersectPlane(aimPlane, aimPoint)) c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   } else if (input.aimStick.active) {
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, yawOf(input.aimStick.x, input.aimStick.y)) * Math.min(1, dt * 18)
-  } else if (handsFree() && Math.hypot(input.moveX, input.moveZ) > 0.2) {
+  } else if (drivingAlone()) {
     // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically.
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, me.heading) * Math.min(1, dt * 4)
     c.fire = true
@@ -974,7 +974,7 @@ function seatControls(me, c, dt) {
   look.dx = look.dy = 0
   // Driving only, like a toy tank: left and right turn the view gently, up and down drive along it, and paint
   // squirts ahead.
-  const toyTank = !input.aimStick.active && handsFree() && Math.hypot(input.moveX, input.moveZ) > 0.2
+  const toyTank = drivingAlone()
   if (input.aimStick.active) seat.yaw -= input.aimStick.x * 2.4 * dt
   else if (toyTank) {
     seat.yaw -= input.moveX * 1.3 * dt

@@ -27,6 +27,8 @@ export const onKey = (key, fn) => (handlers[key] = fn)
 export const handsFree = () => input.touch || !input.mouseUsed
 /** The mouse is aiming (and its crosshair shows) in the sky view. */
 export const mouseAims = () => input.mouse.active && !handsFree()
+/** Driving with nothing else in hand: the tank squirts ahead (and in the seat, left and right turn). */
+export const drivingAlone = () => handsFree() && !input.aimStick.active && Math.hypot(input.moveX, input.moveZ) > 0.2
 
 function updateMoveFromKeys() {
   let x = 0
@@ -71,21 +73,25 @@ export function bindMouse(canvas) {
   const surfaces = mouseSurfaces(canvas)
   const on = (type, fn) => surfaces.forEach((el) => el.addEventListener(type, fn))
   // A brush of the mouse or trackpad doesn't take a keyboard child's controls: only a press, or about 40 px of
-  // movement within half a second.
+  // movement within half a second. Reaching for the upgrade cards (and a moment after) doesn't count either.
   let travel = 0
   let since = 0
   let last = null
+  let quietUntil = 0
   on('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return
     input.touch = false // an iPad trackpad or mouse takes over aiming
     const t = performance.now()
-    if (t - since > 500) ((since = t), (travel = 0))
-    if (last) travel += Math.hypot(e.clientX - last.x, e.clientY - last.y)
-    last = { x: e.clientX, y: e.clientY }
-    if (travel > 40) input.mouseUsed = true
+    if (document.body.classList.contains('cards')) quietUntil = t + 600
+    if (t < quietUntil) ((travel = 0), (last = null))
+    else {
+      if (t - since > 500) ((since = t), (travel = 0), (last = null)) // only moves close together add up
+      if (last) travel += Math.hypot(e.clientX - last.x, e.clientY - last.y)
+      last = { x: e.clientX, y: e.clientY }
+      if (travel > 40) input.mouseUsed = true
+    }
     // A second button pressed while one is held arrives as a move, not a press.
-    if (e.button === 0 && e.buttons & 1) input.firing = input.mouseUsed = true
-    if (e.button === 2 && e.buttons & 2) input.mega = input.mouseUsed = true
+    if (e.button >= 0 && e.buttons & (e.button === 2 ? 2 : 1)) press(e)
     if (document.pointerLockElement === canvas) {
       input.look.dx += e.movementX
       input.look.dy += e.movementY
@@ -95,13 +101,14 @@ export function bindMouse(canvas) {
     input.mouse.y = -(e.clientY / innerHeight) * 2 + 1
     input.mouse.active = true
   })
-  on('pointerdown', (e) => {
-    if (e.pointerType !== 'mouse') return
+  const press = (e) => {
     input.mouse.active = true
     input.mouseUsed = true
     if (e.button === 0) input.firing = true
     if (e.button === 2) input.mega = true
-  })
+  }
+  on('pointerdown', (e) => e.pointerType === 'mouse' && press(e))
+  on('pointerleave', () => (last = null)) // coming back from the HUD, a menu or outside isn't a sweep
   // The left button's state, not the button named by the event: with both buttons down, letting go of the left
   // one arrives as a move, and the last release names the right one.
   const leftUp = (e) => {

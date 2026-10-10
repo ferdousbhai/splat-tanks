@@ -409,6 +409,12 @@ Code quality came back clean.
 - **A second mouse button (correctness, older than today):** pressing right while holding left (or left while holding right) arrives as a move, so the balloon or the squirt didn't start. Such a press is now heard.
 - **Tidy (code quality):** the toy-tank steering shares the seat's driving code, and the seat comment describes both ways of steering.
 
+### Fresh audit, round 43
+
+- **Reaching for the cards (design):** a keyboard child who picked an upgrade card with the mouse swept the cursor across the game on the way, which handed the aim to the mouse for the rest of the round; in the seat the mouse line also cut off "Pick a new power". Mouse movement while the cards are up, and for a moment after, no longer counts.
+- **A stale cursor spot (correctness):** the sweep tally remembered the cursor's last spot on the game for good, so after a round, a menu or a HUD button, the first 1 px brush counted the whole jump back and took the keys. Only moves close together add up now, and leaving the game's surface starts afresh.
+- **Tidy (code quality):** a mouse press and a chorded press share one `press`, and the sky view and the seat share one `drivingAlone()`.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
