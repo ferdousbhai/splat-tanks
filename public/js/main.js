@@ -18,7 +18,7 @@ import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint,
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
-import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, DONE } from './parts.js'
+import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE } from './parts.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
@@ -44,7 +44,8 @@ const game = {
   progress: [], // painting together: each part's painted share, measured when the paint changes
   progressVersion: -1, // the paintVersion it was measured at
   endTimer: 0,
-  powerTimer: 0, // painting together: the new power's banner, after the fraction line
+  powerTimer: 0, // painting together: the new powers' banner, after the fraction line
+  powers: [], // the tiers grown into that haven't been announced yet
   pads: [],
   offer: null,
   shotCount: 0,
@@ -104,6 +105,7 @@ function migrateHost() {
   game.hostId = ids[0]
   if (!isHost()) return
   hud.toast('👑 The host left. You are running the game now!')
+  voice.say("The host left. You're the host now.")
   for (const t of game.tanks.values()) {
     if (t.bot) t.local = true // the robots drive from here now (battleStep gives them brains)
     // A player who joined just before the old host left still needs their tank placed.
@@ -376,15 +378,21 @@ function startBattle(msg) {
   if (game.me) {
     camPos.set(game.me.pos.x, 30, game.me.pos.z + 20)
   }
+  // Everyone hears how the round works, including a player joining part way through.
   if (mode === 'together') {
-    $('goal').textContent = `🎨 ${goalWords(layout.n)}`
-    if (msg.fresh) {
-      hud.banner('🤝 Paint together!', goalWords(layout.n), 2600)
-      voice.sayNow(introWords(layout.n))
-    }
+    const n = layout.n
+    const k = partsDone()
+    $('goal').textContent = `🎨 ${goalWords(n)}`
+    hud.banner('🤝 Paint together!', goalWords(n), 2600)
+    voice.sayNow(introWords(n))
+    if (k) voice.say(`${cap(fractionWords(k, n))} ${k === 1 ? 'is' : 'are'} painted already.`)
+    if (game.me?.tier > 1) voice.say(TIERS[game.me.tier - 1].say)
   } else {
     $('goal').textContent = '🎨 Paint the floor your colour!'
-    if (msg.cd <= 0) hud.banner('🎨 Paint!')
+    if (msg.cd <= 0) {
+      hud.banner('🎨 Paint!')
+      voice.sayNow('Paint the floor your colour!')
+    }
   }
   // The driver's seat is remembered between rounds: say so, after the round's own opening line.
   if (msg.fresh && seat.on) voice.say("You're in the driver's seat.")
@@ -394,6 +402,7 @@ function startBattle(msg) {
 function leaveRound() {
   clearTimeout(game.endTimer)
   clearTimeout(game.powerTimer)
+  game.powers.length = 0
   homeArmedUntil = 0
   voice.hush()
   hud.clearBanners()
@@ -410,6 +419,7 @@ function toMenu() {
   if (document.pointerLockElement) document.exitPointerLock()
   setScreen('menu')
   renderMenu()
+  if (!isHost()) voice.say('Waiting for the host to start.')
 }
 
 /** Which screen shows: the menu, a round ('battle') or the results ('end'). */
@@ -688,7 +698,9 @@ function onEnd(msg) {
     if (t && t.level !== lv) setLevel(t, lv)
   }
   const sorted = msg.a.map(([i]) => game.tanks.get(i)).filter(Boolean)
-  clearTimeout(game.powerTimer) // a power that can no longer be used isn't announced over the ending
+  // A power that can no longer be used isn't announced over the ending.
+  clearTimeout(game.powerTimer)
+  game.powers.length = 0
   sound.cheer()
   if (together()) hud.banner('🎉 The whole floor!', '', 2200)
   else {
@@ -718,14 +730,17 @@ function onPartDone(msg) {
   }
   // Two beats, each shown while it is said: the fraction (and the half fact), then the new power once the
   // fraction line has had time to be said (about 75 ms a letter), whether or not speech finishes or is cut short.
+  // Two parts can finish close together: their powers wait in game.powers and are announced together.
   const words = doneWords(k, n)
   hud.banner(doneTitle(k, n), halfWords(k, n), 3000)
   voice.say(words)
+  if (tier) game.powers.push(tier)
   clearTimeout(game.powerTimer)
-  if (tier) {
+  if (game.powers.length) {
     game.powerTimer = setTimeout(() => {
-      hud.banner(`✨ ${tier.name}!`, tier.perk, 3000)
-      voice.say(tier.say)
+      const grown = game.powers.splice(0)
+      hud.banner(`✨ ${grown.at(-1).name}!`, grown.map((t) => t.perk).join(' '), 3000)
+      for (const t of grown) voice.say(t.say)
     }, Math.max(3000, words.length * 75))
   }
 }
@@ -1233,6 +1248,7 @@ async function boot() {
   game.phase = 'menu'
   renderMenu()
   show('menu')
+  if (!isHost()) voice.say('Waiting for the host to start.')
   if (params.has('autostart')) hostStartMatch()
   if (params.has('debug')) window.__tank = { game, hud, input, camera, addXp, setLevel, step: () => frame(), renderer, layout, partProgress, broadcast, voice }
 }

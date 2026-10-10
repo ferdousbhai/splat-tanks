@@ -160,6 +160,13 @@ The bug and cleanup reviews came back clean. Design found two problems:
   It now uses its own timer (at least 3 s, or about 75 ms per letter of the fraction line), whatever speech does, and `onEnd` cancels it.
 - A `pre-line` sub-banner rule left over from round 5 was removed.
 
+### Fresh audit, round 10
+
+The cleanup review came back clean.
+- **Two powers close together:** if two parts finished within about 3 s, the first new power was never shown or said. Powers now wait in `game.powers` and are announced together: the newest tier's name, every new power on screen, and each power's line said.
+- **Joining mid-round:** a player who joins part way through hears how the round works, as everyone did at the start: the intro, "One quarter is painted already.", and the power they have already grown into. A match joiner hears "Paint the floor your colour!".
+- **Spoken status:** a guest at the menu hears "Waiting for the host to start." A new host hears "The host left. You're the host now."
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
