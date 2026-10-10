@@ -1371,25 +1371,10 @@ function setupMenu() {
     })
   }
   // iOS Safari only unlocks audio from certain gestures, and the sticks cancel clicks.
-  for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) {
-    addEventListener(ev, unlockAudio, { capture: true, passive: true })
-    addEventListener(ev, openSpeech, { capture: true, passive: true })
-  }
-}
-
-/**
- * Speech, like sound, waits for a first gesture (iOS drops every line until one is spoken inside a tap, and
- * Chrome too on a page not yet touched): that gesture speaks a silent word to open it. A guest's round starts
- * from the network, so if the first touch comes mid-round, the opening line went unheard: it's said again.
- */
-let speechOpen = false
-function openSpeech() {
-  if (speechOpen || !('speechSynthesis' in window)) return
-  speechOpen = true
-  const hush = new SpeechSynthesisUtterance(' ')
-  hush.volume = 0
-  speechSynthesis.speak(hush)
-  if (game.phase === 'battle' && together()) voice.say(introWords(layout.n))
+  // A guest's round starts from the network, so if their first touch comes mid-round, the opening line went
+  // unheard: it's said again.
+  const wake = (e) => unlockAudio(e) && game.phase === 'battle' && together() && voice.say(introWords(layout.n))
+  for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) addEventListener(ev, wake, { capture: true, passive: true })
 }
 
 // --- Boot --------------------------------------------------------------------------------

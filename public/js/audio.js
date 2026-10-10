@@ -7,8 +7,28 @@ let master, sfx, musicBus
 let noiseBuf = null
 let musicOn = true
 let musicTimer = null
+let speechOpen = false
 
-export function unlockAudio() {
+/**
+ * Sound and speech wait for a gesture (iOS drops every spoken line until one is spoken inside a tap, and Chrome
+ * too on a page not yet touched): call on each input event. The first one that counts as a gesture (a finger
+ * lifting, a click, a key or a mouse press; not a finger landing) speaks a silent word to open speech, and returns
+ * true, so the caller can repeat a line that went unheard before it.
+ */
+export function unlockAudio(e) {
+  const gesture = ['touchend', 'click', 'keydown'].includes(e?.type) || (e?.type === 'pointerdown' && e.pointerType === 'mouse')
+  const opening = !speechOpen && gesture
+  if (opening && 'speechSynthesis' in window) {
+    const hush = new SpeechSynthesisUtterance(' ')
+    hush.volume = 0
+    speechSynthesis.speak(hush)
+  }
+  speechOpen ||= gesture
+  startSound()
+  return opening
+}
+
+function startSound() {
   if (ctx) {
     if (ctx.state === 'suspended') ctx.resume().catch(() => {})
     return

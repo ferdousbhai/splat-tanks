@@ -455,10 +455,16 @@ Design and correctness came back clean (real painting to the end on iPad, phones
 ### Fresh audit, round 50
 
 Correctness came back clean (12 rounds back to back with steady geometries, textures and heap; three devices; a host leaving mid-match).
-- **A guest who hasn't touched yet hears nothing (design):** iOS drops every spoken line until one is spoken inside a tap (Chrome likewise on an untouched page). A host's first line comes from the PLAY tap, but a guest's round starts from the network, so a guest child who only drove heard none of the fraction lines. The first gesture now opens speech with a silent word, and if it comes mid-round in Paint together, the opening line is said again.
+- **A guest who hasn't touched yet hears nothing (design):** iOS drops every spoken line until one is spoken inside a tap (Chrome likewise on an untouched page). A host's first line comes from the PLAY tap, but a guest's round starts from the network, so a guest child who only drove heard none of the fraction lines. The first gesture now opens speech with a silent word (the first that counts as one, since round 51), and if it comes mid-round in Paint together, the opening line is said again.
 - **Space on buttons (design):** Space was stopped on every screen, so it couldn't press a focused menu choice, PLAY or Play again (Space is the usual button key, and many switch setups send it). It now presses a focused button; in play it still zooms, and never picks a card.
 - **Two robots with one name (design):** robots drew names at random, so with 7 robots two could both be "Twinkly Hippo", or share the child's name. Every tank's name is now its own.
 - **Tidy (code quality):** the short-screen CSS comment no longer claims to hold every short-screen rule.
+
+### Fresh audit, round 51
+
+Design came back clean (real painting to the end on iPad, phones and two devices; keyboard only; every menu button reachable at seven sizes).
+- **Speech opened on a finger landing (correctness):** round 50 opened speech on whichever input came first, and on touch that is the finger landing, which browsers don't count as a gesture; the silent word was dropped and it never tried again, so on an iPad a guest who only drove still heard nothing. Speech now opens on the first event that counts (a finger lifting, a click, a key, a mouse press).
+- **Speech opened with sound (code quality):** the silent word now lives in `unlockAudio` beside the sound unlock it shares a reason with, so each tap runs one listener, not two.
 
 ### Open
 
