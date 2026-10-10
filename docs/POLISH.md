@@ -267,6 +267,14 @@ Checked at tablet and desktop sizes this time, again measuring the tank in all 8
   - the very-short-screen top banners now skip the store's preview frame, which has no minimap to sit beside and uses full-width small banners above the panel
   - the banner CSS shares one rule for what both lines have in common
 
+### Fresh audit, round 24
+
+- **Splat match XP for splashing a tank:** 12 XP per hit (about 8 times a floor squirt) made aiming at friends the fastest way to level up. That was a hook the original audit named, but only its effects had been removed. It is now 2, about one floor splat's worth, so painting the floor is how you grow.
+- **Desktop banners under the cards (from round 23):** on landscape desktops the bottom-anchored banner sat behind the upgrade cards. On every landscape screen, the banner now makes way while the cards are up; the voice still says it.
+- **Toast on landscape phones:** "The host left…" and "Tap again for the menu" covered the tank when aiming down. On short screens toasts now sit at the top middle.
+- **🎲 says the new name** ("You're Cosmic Turtle!"), because the name rides over the child's tank.
+- **Cleanup:** one block for the compact top cards (landscape touch and short screens), no dead upgrade-card position, and the bottom anchor stated once (landscape).
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

@@ -174,8 +174,8 @@ body.seat #periscope { display: block; }
 /* Narrow or short screens: the goal pill would run under the leaderboard. */
 @media (max-width: 700px), (max-height: 520px) { #goal { display: none; } }
 
-/* Touch: twin sticks, with the action buttons stacked in the bottom-right corner and the upgrade
-   cards above them, so nothing covers the leaderboard or each other. */
+/* Touch: twin sticks, with the action buttons stacked in the bottom-right corner. (The upgrade cards go up
+   top on touch screens; see below.) */
 .touch { display: none; }
 @media (any-pointer: coarse) {
   .touch { display: block; position: absolute; inset: 0; z-index: 1; pointer-events: none; }
@@ -196,7 +196,6 @@ body.seat #periscope { display: block; }
   .abilities { display: none; }
   :root { --map: 110px; }
   #board { width: 160px; }
-  #upgrades { bottom: calc(var(--bottom) + 160px); }
   .card { width: min(104px, 28vw); }
 }
 /* Phones upright: compact cards sit up top, under the timer and right of the minimap, clear of your tank in
@@ -210,10 +209,11 @@ body.seat #periscope { display: block; }
   .card .tx, .card .pips { display: none; }
   body.cards #board, body.cards #banner, body.cards #goal { display: none; }
 }
-/* Tablets on their side: compact cards at the top in place of the timer, clear of your tank in the middle. */
-@media (any-pointer: coarse) and (orientation: landscape) {
+/* Tablets on their side and short screens: compact cards at the top in place of the timer and strip, clear of
+   your tank in the middle. */
+@media (any-pointer: coarse) and (orientation: landscape), (max-height: 520px) {
   #upgrades { top: var(--top); bottom: auto; }
-  body.cards #banner, body.cards .top-center { display: none; }
+  body.cards .top-center { display: none; }
   .card .tx, .card .pips { display: none; }
 }
 /* Upright phones: news of friends arriving or leaving wraps under the minimap, two lines at most. */
@@ -231,10 +231,13 @@ body.seat #periscope { display: block; }
   :root { --map: 92px; }
   .bottom { left: calc(50% - 36px); }
 }
-/* Landscape screens: the camera keeps your tank in the middle, so banners hang just above the bottom panel. */
+/* Landscape screens: the camera keeps your tank in the middle, so banners hang just above the bottom panel,
+   which is also where upgrade cards sit on a desktop: while they're up, the banner makes way (the voice
+   still says it). */
 @media (orientation: landscape) {
   #hud { --banner-anchor: bottom; }
   #banner { font-size: clamp(26px, 4vw, 44px); }
+  body.cards #banner { display: none; }
 }
 /* Landscape phones: everything that changes for a short screen, in one place. */
 @media (max-height: 520px) {
@@ -248,12 +251,9 @@ body.seat #periscope { display: block; }
   #end .painters { gap: 4px; }
   #end .painters .chip { padding: 2px 8px; font-size: 12px; }
   #end .panel { padding: 8px 12px; }
-  /* The cards sit at the top, in place of the timer, so they never cover the tank in the middle. */
-  body.cards #banner, body.cards .top-center { display: none; }
-  #upgrades { top: var(--top); bottom: auto; }
-  .card .tx, .card .pips { display: none; }
-  /* Banners sit just above the level panel, below your tank (hud.js placeBanners), so they're smaller here. */
-  #hud { --banner-anchor: bottom; }
+  /* Banners hang just above the level panel (landscape, above), so they're smaller here. A short toast goes
+     to the top middle, never over your tank. */
+  body #toast { top: var(--top); bottom: auto; font-size: 14px; padding: 6px 12px; }
   #banner { font-size: clamp(22px, 4.5vw, 30px); }
   #subbanner { font-size: 16px; }
   #board .brow:nth-child(n + 4) { display: none; }

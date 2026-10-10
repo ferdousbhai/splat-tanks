@@ -1251,6 +1251,7 @@ function setupMenu() {
   $('reroll').addEventListener('click', () => {
     game.myName = randomName()
     menuChanged()
+    voice.sayNow(`You're ${game.myName}!`) // the name rides over your tank; a child who can't read hears it
   })
   for (const seg of document.querySelectorAll('.seg')) {
     seg.addEventListener('click', (e) => {

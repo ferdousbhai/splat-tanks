@@ -68,7 +68,7 @@ export const xpToNext = (level) => 60 + 28 * (level - 1)
 
 export const XP = {
   perCell: 0.12, // each square metre of floor turned your colour
-  splat: 12, // splashing another tank
+  splat: 2, // splashing another tank: about one floor splat's worth, so painting the floor is how you grow
   bucket: 20,
   star: 45,
 }
