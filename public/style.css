@@ -237,6 +237,10 @@ body.seat #periscope { display: block; }
   :root { --map: 92px; }
   .bottom { left: calc(50% - 36px); }
 }
+/* Short screens and landscape laptop windows: a toast goes to the top middle, never over your tank. */
+@media (orientation: landscape) and (max-height: 700px), (max-height: 520px) {
+  body #toast { top: var(--top); bottom: auto; font-size: 14px; padding: 6px 12px; }
+}
 /* Landscape screens: the camera keeps your tank in the middle, so banners hang just above the bottom panel,
    which is also where upgrade cards sit on a desktop: while they're up, the banner makes way (the voice
    still says it). */
@@ -257,9 +261,7 @@ body.seat #periscope { display: block; }
   #end .painters { gap: 4px; }
   #end .painters .chip { padding: 2px 8px; font-size: 12px; }
   #end .panel { padding: 8px 12px; }
-  /* Banners hang just above the level panel (landscape, above), so they're smaller here. A short toast goes
-     to the top middle, never over your tank. */
-  body #toast { top: var(--top); bottom: auto; font-size: 14px; padding: 6px 12px; }
+  /* Banners hang just above the level panel (landscape, above), so they're smaller here. */
   /* A match's banners go up top too, between the minimap and the leaderboard; the timer makes way while one
      shows. (Painting together, they hang above the panel, or sit up top on very short screens, below.) */
   body:not(.together) #hud { --banner-anchor: top; --banner-top: var(--top); }

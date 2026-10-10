@@ -924,7 +924,8 @@ function setSeat(on) {
 
 /** Shows and says which view is on, so a child who can't read knows what changed. */
 function sayView() {
-  const touch = input.touch || matchMedia('(any-pointer: coarse)').matches
+  // A touch laptop or an iPad with a mouse is told about whichever it was last used with.
+  const touch = input.touch || (matchMedia('(any-pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches)
   if (!seat.on) {
     hud.subBanner('🗺️ Sky view', 2200)
     voice.sayNow('Sky view.')
@@ -1146,7 +1147,7 @@ function battleStep(dt, n) {
     }
     hud.fraction(game.progress, me?.alive ? partAt(me.pos.x, me.pos.z) : -1)
   } else hud.timer(m.over ? 0 : Math.min(m.endsAt - n, m.endsAt - m.startAt))
-  if (me) hud.bars(me, best, n, together())
+  if (me) hud.bars(me, n, together())
   hud.minimap(tanks, me, game.pads)
   const inside = firstPerson()
   document.body.classList.toggle('seat', !!inside)
@@ -1282,6 +1283,8 @@ function setupMenu() {
   const flipMusic = () => $('music').classList.toggle('off', !toggleMusic())
   $('music').addEventListener('click', flipMusic)
   onKey('KeyM', flipMusic)
+  // HUD buttons never keep keyboard focus from a click, so Enter (a key young children mash) can't press one again.
+  for (const b of document.querySelectorAll('#hud button')) b.addEventListener('mousedown', (e) => e.preventDefault())
   $('seat-btn').classList.toggle('on', seat.on)
   $('seat-btn').addEventListener('click', () => setSeat(!seat.on))
   onKey('KeyV', () => setSeat(!seat.on))

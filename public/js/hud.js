@@ -134,12 +134,9 @@ export function board(tanks, me) {
   return sorted
 }
 
-/**
- * best: the most cells any tank has painted, so the bar is full when you lead.
- * Painting together hides the paint and XP bars and the level badge, so only the rest is kept up to date.
- */
-export function bars(me, best, now, together) {
-  if (!together) levelBars(me, best)
+/** Painting together hides the paint and XP bars and the level badge, so only the rest is kept up to date. */
+export function bars(me, now, together) {
+  if (!together) levelBars(me)
   put($('tiername'), 'text', `${tierFor(me.level).name}${me.level >= MAX_LEVEL ? ' · MAX' : ''}`)
   cooldown($('ab-boost'), me.boostReadyAt, BASE.boostCooldown * 1000, now, true)
   cooldown($('ab-mega'), me.megaReadyAt, BASE.megaCooldown * 1000, now, me.stats.mega)
@@ -150,8 +147,9 @@ export function bars(me, best, now, together) {
   if (now < me.rollerUntil) buffs.push(`🖌️ ${Math.ceil((me.rollerUntil - now) / 1000)}`)
   put($('buffs'), 'html', buffs.map((b) => `<span class="buff">${b}</span>`).join(''))
 }
-function levelBars(me, best) {
-  put($('paintfill'), 'width', cssPct(best ? cellsOf(me.slot) / best : 0))
+function levelBars(me) {
+  // The bar shows your share of the whole floor, the same number as its label, so it only ever grows as you paint.
+  put($('paintfill'), 'width', cssPct(cellsOf(me.slot) / CELLS))
   put($('paintfill'), 'background', me.color)
   put($('painttext'), 'text', `🎨 ${pct(me)}%`)
   put($('xpfill'), 'width', cssPct(me.level >= MAX_LEVEL ? 1 : Math.min(1, me.xp / xpToNext(me.level))))

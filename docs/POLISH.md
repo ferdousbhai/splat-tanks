@@ -316,6 +316,14 @@ Cleanup came back clean.
 - **Cards in the store's preview frame (from round 28):** the cards were pushed right of a minimap that isn't shown there and ran off the edge. They now centre across the whole frame.
 - **Cleanup:** the cards' placement is written once, and the `hearing()` comment points to audio.js for how sounds are spaced.
 
+### Fresh audit, round 30
+
+Cleanup came back clean.
+- **Honest paint bar (Splat match):** the bar filled relative to the leader while its label showed your share of the floor, so it could read 60% full beside "11%" and shrink while you painted. It now fills to your share of the floor, the same number as its label, and only ever grows.
+- **Toasts on landscape laptop windows (521–700 px tall):** they now sit at the top middle too, clear of the tank.
+- **Enter and HUD buttons:** a clicked 🏠, 👀 or 🎵 kept keyboard focus, so Enter, a key young children mash, pressed it again; one 🏠 click plus Enter ended the round. HUD buttons no longer take focus from a click.
+- **Driver's seat hint on hybrid devices:** it now follows the input in use, so a mouse user hears "Click, then move the mouse to look".
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
