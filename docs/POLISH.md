@@ -387,6 +387,13 @@ Code quality came back clean.
 - **One tap, two powers (correctness):** with more points waiting, the click that follows a tap landed on the next set of cards and took a second, unchosen power. A press's own click is now skipped; Enter and assistive tech still pick by click.
 - **Chalk labels near a diagonal (correctness):** looking along a diagonal from the seat flipped every label back and forth. They now turn only once the view is a little past the diagonal.
 
+### Fresh audit, round 40
+
+- **Keyboard-only painting (design):** no key squirted, so a child driving with the arrow keys alone painted only a thin wheel trail, and in the driver's seat ← → slid the tank while the view stayed fixed. Driving now paints on keys too once the mouse has rested 2.5 s (`input.js handsFree`), as the drive stick does on touch: the turret squirts ahead in the sky view, and in the seat the view swings behind the tank so ← → steer. Moving or clicking the mouse gives aim back to it. The menu's keyboard hint says "WASD or arrows drive and paint".
+- **Selected choices for screen readers (design):** the menu choices and 🎵 now carry `aria-pressed`, as the colours already did.
+- **Your own splat on a tank in Paint together (correctness):** round 39's early return also silenced the squirter's own splat when a blob hit a tank. The squirter hears the same soft splat as on the floor again.
+- **Tidy (code quality):** a card press now removes both its end listeners once either fires, instead of leaving one behind per pick.
+
 ### Open
 
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.

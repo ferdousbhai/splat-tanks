@@ -16,7 +16,7 @@ import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera } fr
 import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
-import { input, bindMouse, bindTouch, onKey, mouseSurfaces } from './input.js'
+import { input, bindMouse, bindTouch, onKey, mouseSurfaces, handsFree } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import * as hud from './hud.js'
@@ -375,7 +375,10 @@ function setOpt(key, value) {
   const b = [...(seg?.querySelectorAll('button') ?? [])].find((x) => x.dataset.v === String(value))
   if (!b) return null
   game.opts[key] = ['difficulty', 'mode'].includes(key) ? b.dataset.v : Number(b.dataset.v)
-  for (const x of seg.querySelectorAll('button')) x.classList.toggle('on', x === b)
+  for (const x of seg.querySelectorAll('button')) {
+    x.classList.toggle('on', x === b)
+    x.setAttribute('aria-pressed', String(x === b))
+  }
   return b
 }
 
@@ -668,8 +671,12 @@ function onHit(msg) {
     t.paintT = 1
   }
   // Painting together, a stray blob (a robot's or a friend's) just tints you: no flash, splash word or boing,
-  // so squirting each other is never the fun part.
-  if (together()) return
+  // so squirting each other is never the fun part. The squirter hears the same soft splat as on the floor.
+  if (together()) {
+    const ear = hearing(t.pos.x, t.pos.z, by?.id)
+    if (ear.mine) sound.splat(ear.vol * 0.6, true)
+    return
+  }
   t.flash = 1
   sparks(t.pos.x, t.pos.z, by?.color ?? '#ffffff', 5)
   const ear = hearing(t.pos.x, t.pos.z, by?.id)
@@ -898,13 +905,14 @@ const mouseNdc = new THREE.Vector2()
 function playerControls(me, dt) {
   const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing, boost: input.boost, mega: input.mega }
   if (firstPerson()) return seatControls(me, c, dt)
-  if (input.mouse.active && !input.touch) {
+  const free = handsFree()
+  if (input.mouse.active && !free) {
     ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
     if (ray.ray.intersectPlane(aimPlane, aimPoint)) c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   } else if (input.aimStick.active) {
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, yawOf(input.aimStick.x, input.aimStick.y)) * Math.min(1, dt * 18)
-  } else if (input.touch && Math.hypot(input.moveX, input.moveZ) > 0.2) {
-    // Little thumbs: with only the drive stick held, squirt paint ahead automatically.
+  } else if (free && Math.hypot(input.moveX, input.moveZ) > 0.2) {
+    // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically.
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, me.heading) * Math.min(1, dt * 4)
     c.fire = true
   }
@@ -955,8 +963,8 @@ function seatControls(me, c, dt) {
   seat.pitch = Math.max(-0.35, Math.min(0.2, seat.pitch - look.dy * 0.002))
   look.dx = look.dy = 0
   if (input.aimStick.active) seat.yaw -= input.aimStick.x * 2.4 * dt
-  else if (input.touch && Math.hypot(input.moveX, input.moveZ) > 0.2) {
-    // Drive stick only: the view swings round behind the tank, so holding the stick to one side steers.
+  else if (handsFree() && Math.hypot(input.moveX, input.moveZ) > 0.2) {
+    // Driving only: the view swings round behind the tank, so holding the stick or a key to one side steers.
     seat.yaw += angleDiff(seat.yaw, me.heading) * Math.min(1, dt * 2.5)
     c.fire = true
   }
@@ -1316,7 +1324,11 @@ function setupMenu() {
     voice.sayNow('Tap the house again to stop painting.')
   })
   $('to-menu').addEventListener('click', home)
-  const flipMusic = () => $('music').classList.toggle('off', !toggleMusic())
+  const flipMusic = () => {
+    const on = toggleMusic()
+    $('music').classList.toggle('off', !on)
+    $('music').setAttribute('aria-pressed', String(on))
+  }
   $('music').addEventListener('click', flipMusic)
   onKey('KeyM', flipMusic)
   // HUD buttons never keep keyboard focus from a click, so Enter (a key young children mash) can't press one again.

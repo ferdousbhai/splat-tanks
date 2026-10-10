@@ -5,6 +5,7 @@ export const input = {
   moveX: 0,
   moveZ: 0,
   mouse: { x: 0, y: 0, active: false }, // NDC
+  mouseAt: 0, // when the mouse was last moved or pressed (performance.now)
   look: { dx: 0, dy: 0 }, // mouse movement while the pointer is locked (driver's seat view), read and cleared by the game
   firing: false,
   aimStick: { x: 0, y: 0, active: false },
@@ -17,6 +18,12 @@ export const input = {
 const keys = new Set()
 const handlers = {}
 export const onKey = (key, fn) => (handlers[key] = fn)
+
+/**
+ * Driving alone paints: on touch, or on keys once the mouse has rested a moment (a young child, or someone
+ * playing with the keyboard only). Driving then squirts paint ahead, and in the driver's seat the view follows.
+ */
+export const handsFree = () => input.touch || (!input.firing && performance.now() - input.mouseAt > 2500)
 
 function updateMoveFromKeys() {
   let x = 0
@@ -63,6 +70,7 @@ export function bindMouse(canvas) {
   on('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return
     input.touch = false // an iPad trackpad or mouse takes over aiming
+    input.mouseAt = performance.now()
     if (document.pointerLockElement === canvas) {
       input.look.dx += e.movementX
       input.look.dy += e.movementY
@@ -75,6 +83,7 @@ export function bindMouse(canvas) {
   on('pointerdown', (e) => {
     if (e.pointerType !== 'mouse') return
     input.mouse.active = true
+    input.mouseAt = performance.now()
     if (e.button === 0) input.firing = true
     if (e.button === 2) input.mega = true
   })

@@ -258,7 +258,12 @@ export function showUpgrades(offer, upgrades, pending, onPick) {
       e.stopPropagation()
       e.preventDefault()
       pressing = true
-      for (const end of ['pointerup', 'pointercancel']) addEventListener(end, () => setTimeout(() => (pressing = false)), { once: true })
+      const ended = new AbortController()
+      const end = () => {
+        ended.abort()
+        setTimeout(() => (pressing = false)) // after this press's own click
+      }
+      for (const type of ['pointerup', 'pointercancel']) addEventListener(type, end, { signal: ended.signal })
       onPick(k)
     })
     b.addEventListener('click', () => pressing || onPick(k))
