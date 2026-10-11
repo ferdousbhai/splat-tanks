@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { scene, pushOut, BALLS } from './world.js'
 import { ARENA, TANK_RADIUS, r2 } from './config.js'
 import { glideTo } from './tank.js'
+import { nearCamera } from './fx.js'
 
 export const BALL_R = 1.15
 const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
@@ -24,7 +25,11 @@ const TOUCH = 0.05 // metres: this close to a wall or prop, a ball is touching i
 const REACH = BALL_R + TANK_RADIUS // centre to centre, a tank touching a ball
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
 
-/** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz, d}, trailAt, touchedAt, rolledOff } (trailAt: see main.js trailTo; touchedAt: when a tank was last within reach of it, host's clock; rolledOff: it has rolled off a wall since it was last pushed) */
+/**
+ * { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz, d}, trailAt, touchedAt, rolledOff, quiet }
+ * trailAt: see main.js trailTo. touchedAt: when a tank was last within reach of it (host's clock). rolledOff: it has
+ * rolled off a wall since it was last pushed. quiet: no bonk this frame (takeBallState).
+ */
 export const balls = []
 
 /** Beach ball gores round the middle, in one colour and white (or the rainbow before anyone has touched it). */
@@ -50,11 +55,11 @@ function makeBall() {
   canvas.height = 128
   const map = new THREE.CanvasTexture(canvas)
   map.colorSpace = THREE.SRGBColorSpace
-  const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.3, metalness: 0 })
+  const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.3, metalness: 0, transparent: true })
   const mesh = new THREE.Mesh(geo, mat)
   mesh.castShadow = true
   scene.add(mesh)
-  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0, d: 0 }, trailAt: null, touchedAt: 0, rolledOff: false }
+  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0, d: 0 }, trailAt: null, touchedAt: 0, rolledOff: false, quiet: false }
 }
 
 /** Puts every ball back on its spot, still and in rainbow colours, for a new round. */
@@ -381,7 +386,10 @@ export function takeBallState(a, colorOf, jump = false) {
   a.forEach(([x, z, vx, vz, by], i) => {
     const b = balls[i]
     if (!b) return
-    b.target = { x, z, vx, vz, t: performance.now() }
+    const now = performance.now()
+    // After a gap in the host's word (a network hiccup), the ball's speed catches up all at once: no bonk for that.
+    if (b.target && now - b.target.t > 150) b.quiet = true
+    b.target = { x, z, vx, vz, t: now }
     if (jump) placeBall(b, x, z, vx, vz)
     if ((by || null) !== b.by) setOwner(b, by || null, by ? colorOf(by) : null)
   })
@@ -413,6 +421,11 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
+    // Right in front of the driver's seat camera (pushing it along), a ball would fill most of the view: it shows
+    // see-through then, as your own blobs do. (The sky camera is far above, so this is only ever the seat.)
+    const close = nearCamera(b.x, BALL_R, b.z, BALL_R + 3)
+    b.mat.opacity = close ? 0.35 : 1
+    b.mat.depthWrite = !close
     // Only a ball that really moves bonks (faster than 0.6 m/s): one held against a wall doesn't drum. And only a
     // real knock: a tank topping up a ball it is already pushing along changes its speed a little for how fast it
     // is going, four times a second, which would make a steady drum while dribbling.
@@ -420,8 +433,9 @@ export function renderBalls(dt, host, onBump) {
     const fast = Math.max(Math.hypot(b.vx, b.vz), Math.hypot(b.seen.vx, b.seen.vz))
     // (Moving this frame or the last: the frame a ball reaches a wall, it may only cover the last bit to it. Not the
     // frame a ball jumps SNAP or more to where the host says it is: it didn't roll there.)
-    if (!jumped && jolt > Math.max(2.5, 0.4 * fast) && Math.max(d, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
+    if (!jumped && !b.quiet && jolt > Math.max(2.5, 0.4 * fast) && Math.max(d, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
     b.seen.d = jumped ? 0 : d
+    b.quiet = false
     b.seen.vx = b.vx
     b.seen.vz = b.vz
   }

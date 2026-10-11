@@ -97,6 +97,7 @@ function setupRoom(room) {
     const t = game.tanks.get(id)
     if (t) {
       hud.feed(`${hud.tag(t)} went home 👋`)
+      t.alive = false // a robot aiming at them lets go at once
       t.dispose()
       game.tanks.delete(id)
     }
@@ -1554,7 +1555,7 @@ function setupMenu() {
   for (const el of mouseSurfaces(renderer.domElement)) {
     el.addEventListener('pointerdown', (e) => {
       // Lock the pointer for mouse look, but not while the upgrade cards want clicking.
-      if (e.pointerType === 'mouse' && firstPerson() && !game.offer && !document.pointerLockElement) renderer.domElement.requestPointerLock()
+      if (e.pointerType === 'mouse' && firstPerson() && !game.offer && !document.pointerLockElement) renderer.domElement.requestPointerLock()?.catch?.(() => {}) // refused just after Esc: no matter
     })
   }
   // iOS Safari only unlocks audio from certain gestures, and the sticks cancel clicks.
