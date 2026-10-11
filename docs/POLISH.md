@@ -766,8 +766,12 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 76
 
-- **Every device took over at once (code quality, from round 75):** nothing said hello when a round started or ended, so mid-round each device held its friends' menu hellos ("not playing") while judging itself as playing, ranked itself first, and took over, every one saying "You're the host now" until the claims settled. A device now says hello whenever it starts or stops playing.
+- **Every device took over at once (correctness, from round 75):** nothing said hello when a round started or ended, so mid-round each device held its friends' menu hellos ("not playing") while judging itself as playing, ranked itself first, and took over, every one saying "You're the host now" until the claims settled. A device now says hello whenever it starts or stops playing.
 - **Tidy (code quality):** the Hosting comment adds the 🏠 rule and says why a joiner isn't chosen now that a friend following us makes us host; `send` and `sendFast` share one guarded `post`; `inRound` sits with the small helpers and replaces the two spelled-out tests.
+
+### Fresh audit, round 77
+
+All three reviews came back clean. Design played full rounds of both modes on iPad, phone and laptop, in the driver's seat and on two devices. Correctness ran realistic handovers: the host leaving mid-round, in the menu and on the results screen with two and three devices, a friend joining then the host leaving, and WebKit. Code quality found the code matching the Hosting rules exactly; the only change was refiling round 76's entry as correctness. This ends Pass 2's fresh-audit loop.
 
 ### Open (Pass 2)
 
