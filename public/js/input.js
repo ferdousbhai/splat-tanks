@@ -8,6 +8,7 @@ export const input = {
   mouseUsed: false, // the mouse has been pressed, or clearly moved, over the game this round (cleared at each start)
   look: { dx: 0, dy: 0 }, // mouse movement while the pointer is locked (driver's seat view), read and cleared by the game
   firing: false,
+  clicked: false, // a left press this frame, kept even if it was let go before the frame (a trackpad tap); cleared by the game
   aimStick: { x: 0, y: 0, active: false },
   boost: false, // edge-triggered, cleared by the game
   mega: false,
@@ -108,7 +109,7 @@ export function bindMouse(canvas) {
   const press = (e) => {
     input.mouse.active = true
     input.mouseUsed = true
-    if (e.button === 0) input.firing = true
+    if (e.button === 0) input.firing = input.clicked = true
     if (e.button === 2) input.mega = true
   }
   on('pointerdown', (e) => e.pointerType === 'mouse' && press(e))

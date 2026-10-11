@@ -990,7 +990,7 @@ function mouseGround() {
 }
 
 function playerControls(me, dt) {
-  const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing, boost: input.boost, mega: input.mega }
+  const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing || input.clicked, boost: input.boost, mega: input.mega }
   if (firstPerson()) return seatControls(me, c, dt)
   if (mouseAims()) {
     if (mouseGround()) {
@@ -1181,7 +1181,7 @@ function frame() {
   updatePaint(n)
   updateCamera(dt)
   renderer.render(scene, camera)
-  input.boost = input.mega = false
+  input.boost = input.mega = input.clicked = false
   input.pick = 0
 }
 

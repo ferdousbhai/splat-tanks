@@ -2,7 +2,6 @@
 
 export const ARENA = 46 // half-size of the square arena (metres)
 export const TANK_RADIUS = 1.35
-export const TANK_TOP = 1.8 // a lobbed blob higher than this flies over a tank
 export const MAX_LEVEL = 15
 export const MATCH = {
   minutes: [2, 3, 5],

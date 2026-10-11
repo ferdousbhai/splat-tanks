@@ -3,7 +3,7 @@
 // where they are; every other device glides its balls after the host's.
 import * as THREE from 'three'
 import { scene, pushOut, BALLS } from './world.js'
-import { TANK_RADIUS, r2 } from './config.js'
+import { ARENA, TANK_RADIUS, r2 } from './config.js'
 import { glideTo } from './tank.js'
 
 export const BALL_R = 1.15
@@ -11,6 +11,8 @@ const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
 const TOP = 16 // m/s
 const KICK = 1.15 // a tank sends a ball off this many times its own speed
 const WHITE = '#fbfbf6'
+const EDGE = 4 // metres by the outer wall where the floor rises, so a ball left there rolls back into play
+const RISE = 2.5 // m/s² it rolls back with: just past what rolling loses, so it comes out at a walking pace
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
 
 /** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz}, trailAt } (trailAt: see main.js trailTo) */
@@ -102,9 +104,8 @@ function cap(b) {
   }
 }
 
-/** The ball a blob of radius r at (x, z), y high, has hit, if any. */
-export function ballHit(x, z, r, y) {
-  if (y - r > BALL_R * 2) return null
+/** The ball a blob of radius r at (x, z) has hit, if any. */
+export function ballHit(x, z, r) {
   for (const b of balls) if ((x - b.x) ** 2 + (z - b.z) ** 2 < (BALL_R + r) ** 2) return b
   return null
 }
@@ -138,6 +139,8 @@ export function stepBalls(dt, tanks) {
       b.vx *= k
       b.vz *= k
     }
+    if (Math.abs(b.x) > ARENA - EDGE) b.vx -= Math.sign(b.x) * RISE * dt
+    if (Math.abs(b.z) > ARENA - EDGE) b.vz -= Math.sign(b.z) * RISE * dt
     b.x += b.vx * dt
     b.z += b.vz * dt
     pos.x = b.x

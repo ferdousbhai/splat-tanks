@@ -1,7 +1,7 @@
 // Paint blobs: every device flies every blob for the visuals; the host's copy decides where paint lands.
 import * as THREE from 'three'
 import { scene, shellObstacle } from './world.js'
-import { TANK_RADIUS, TANK_TOP } from './config.js'
+import { TANK_RADIUS } from './config.js'
 import { splash, sparks, shellTrail, nearCamera } from './fx.js'
 import { sound } from './audio.js'
 import { yawOf, view } from './tank.js'
@@ -99,7 +99,9 @@ export function updateShells(dt, tanks, hooks, hearing) {
       const oz = s.z
       s.x += s.dx * s.speed * h
       s.z += s.dz * s.speed * h
-      // A lob flies over what is lower than it: walls and tanks it clears in the middle of its flight.
+      // A lob flies over props lower than it, such as a wall it clears in the middle of its flight. Tanks and balls
+      // are hit at any height, like paint buckets: a squirt along the ground (a stick, the keys, the driver's
+      // seat, a robot) always flies its whole range, and would otherwise sail over a tank 8–15 m away.
       const y = arcY(s.apex, Math.min(1, (t0 + h * (i + 1)) / s.life))
       const hit = shellObstacle(s.x, s.z, ox, oz, s.r, y)
       if (hit) {
@@ -132,7 +134,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
         break
       }
       for (const t of tanks) {
-        if (!t.alive || (t.id === s.owner && !s.owner2) || y - s.r > TANK_TOP) continue
+        if (!t.alive || (t.id === s.owner && !s.owner2)) continue
         const dx = t.pos.x - s.x
         const dz = t.pos.z - s.z
         if (dx * dx + dz * dz < (TANK_RADIUS + s.r) ** 2) {
@@ -143,7 +145,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
         }
       }
       // A robot's blob flies past the beach balls: they are left for the children.
-      const ball = !done && !s.bot && ballHit(s.x, s.z, s.r, y)
+      const ball = !done && !s.bot && ballHit(s.x, s.z, s.r)
       if (ball) {
         hooks.ball?.(s, ball)
         removeShell(s.sid)
