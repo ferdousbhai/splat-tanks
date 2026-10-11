@@ -216,15 +216,17 @@ const v = new THREE.Vector3()
 /** Screen pixels [x, y] of a point already projected by the camera (normalised device coordinates). */
 export const toScreen = (v) => [((v.x + 1) / 2) * innerWidth, ((1 - v.y) / 2) * innerHeight]
 
+const FLOAT_Y = 2.6 // metres up a floating word starts
+
 export function floatText(x, z, text, cls = '') {
-  // Starting right by the driver's seat camera, it would fly off the top or flash over the turret: the pickup's
-  // sound and the powers bar say it there.
-  if (nearCamera(x, 2.6, z)) return
+  // Your own floating words (pickups, upgrades, 💦) start right by the driver's seat camera, where they would fly off
+  // the top or flash over the turret: a sound or the voice already says them there.
+  if (nearCamera(x, FLOAT_Y, z)) return
   const el = document.createElement('div')
   el.className = `floater ${cls}`
   el.textContent = text
   layer.appendChild(el)
-  floaters.push({ el, x: x + (Math.random() - 0.5), z, y: 2.6, t: 0 })
+  floaters.push({ el, x: x + (Math.random() - 0.5), z, y: FLOAT_Y, t: 0 })
 }
 
 export function updateFloaters(dt) {

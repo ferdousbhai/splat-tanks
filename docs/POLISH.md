@@ -736,8 +736,13 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 - **A friend joining as the host left never got a tank (correctness, older):** a hello arriving while the old host was going reached a device that wasn't host yet, so no one answered it, and when that device took over it only said hello back. The friend waited on "Waiting for the host to start." for the rest of the round. A new host now gives a tank to anyone who said hello and has none.
 - **Paint slots past 255 (correctness, plausible):** with slots never reused in a round, about 245 joins in one round would have reached a slot the floor can't store. Past 255 a slot whose paint is all painted over is reused.
-- **A floating word from the driver's seat camera (design, cosmetic):** your own pickup's word ("💦 Super squirt") started at the seat camera and flew off the top or flashed over the turret. It is left out by the camera, where the pickup's sound and the powers bar already say it.
+- **A floating word from the driver's seat camera (design, cosmetic):** your own floating words (a pickup's "💦 Super squirt", an upgrade's name, the 💦 of being splashed) started at the seat camera and flew off the top or flashed over the turret. They are left out by the camera, where a sound or the voice already says them.
 - **Tidy (code quality):** `nextSlot` counts only the slots with a colour this round (every tank's is one), and a blank line in hud.js.
+
+### Fresh audit, round 73
+
+- **A balloon's "at Lv 4" went unsaid in the driver's seat (code quality, from round 72):** leaving out floating words by the seat camera also dropped "🎈 at Lv 4!", which nothing else says. The voice says it there.
+- **Tidy (code quality):** `migrateHost`'s comment sits on it again, `giveTank`'s grown-level comment sits on its line, `nextSlot`'s comment covers the reuse past 255, and the floating words' start height is named.
 
 ### Open (Pass 2)
 

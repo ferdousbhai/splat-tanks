@@ -109,20 +109,20 @@ function setupRoom(room) {
   hello()
 }
 
-/** If the host leaves, the remaining player with the smallest id takes over, bots included. */
 /** Host: a tank (and a slot for their paint) for a friend who joined part way through a round. */
 function giveTank(id, h) {
   flushPaint()
-  // A late painter starts as big as everyone else has grown.
   // With every colour on a tank, share a robot's colour, never another child's.
   const kids = new Set(tankList().filter((t) => !t.bot).map((t) => t.color))
   let c = freeColor(h.color, new Set(tankList().map((t) => t.color)), new Set([...tankList().map((t) => t.color), ...[...game.humans.values()].map((x) => x.color)]))
   if (kids.has(c)) c = COLORS.find((x) => !kids.has(x)) ?? c
+  // A late painter starts as big as everyone else has grown.
   broadcast({ t: 'add', e: { i: id, n: h.name, c, s: nextSlot(), ...(together() && { lv: grownLevel(partsDone()) }) } })
   send(snapshot(), id)
   game.tanks.get(id).respawnAt = now() + 800
 }
 
+/** If the host leaves, the remaining player with the smallest id takes over, bots included. */
 function migrateHost() {
   const ids = [game.selfId, ...(game.room?.peers ?? [])].sort()
   game.hostId = ids[0]
@@ -293,14 +293,14 @@ function setBarrel(b, alive) {
 
 /**
  * A paint slot no one has used this round, counting players who have left, or a newcomer would take their paint
- * (addTank gives every tank's slot a colour).
+ * (addTank gives every tank's slot a colour); once the floor's 255 are used, one whose paint is all painted over.
  */
 function nextSlot() {
   const next = Math.max(0, ...usedSlots()) + 1
   if (next <= 255) return next
   // The floor keeps 255 slots: after that many joins in one round, reuse one whose paint is all painted over.
   for (let s = 1; s <= 255; s++) if (!cellsOf(s) && !tankList().some((t) => t.slot === s)) return s
-  return 255
+  return 255 // every slot still has paint: share the last rather than overflow the floor's byte
 }
 
 function addTank(e) {
@@ -603,8 +603,11 @@ function onPick(msg) {
   sparks(t.pos.x, t.pos.z, def.color, 10)
   if (t === game.me) {
     sound.pickup()
-    // One floating word: a balloon picked up before level 4 says when balloons come.
-    floatText(t.pos.x, t.pos.z, msg.k === 'mega' && !t.stats.mega ? '🎈 at Lv 4!' : `${def.icon} ${def.text}`, 'xp')
+    // One floating word: a balloon picked up before level 4 says when balloons come. (In the driver's seat the
+    // floating word is left out, and nothing else would say that: the voice does there.)
+    const early = msg.k === 'mega' && !t.stats.mega
+    floatText(t.pos.x, t.pos.z, early ? '🎈 at Lv 4!' : `${def.icon} ${def.text}`, 'xp')
+    if (early && firstPerson()) voice.say('Balloons come at level 4.')
   }
 }
 
