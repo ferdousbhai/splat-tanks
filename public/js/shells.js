@@ -28,7 +28,7 @@ export function spawnShell(o) {
   shine.scale.setScalar(o.mega ? 2 : 1)
   blob.castShadow = true
   group.add(blob, shine)
-  group.position.set(o.x, 1.1, o.z)
+  group.position.set(o.x, NOZZLE_Y, o.z)
   group.rotation.order = 'YXZ' // turn to the heading, then tip along the arc
   group.rotation.y = yawOf(o.dx, o.dz)
   scene.add(group)
@@ -38,8 +38,12 @@ export function spawnShell(o) {
   shells.set(o.sid, s)
 }
 
-/** A blob's height at fraction k of its flight: a parabola from the nozzle (1.1 m) to the floor (0.25 m). */
-const arcY = (s, k) => 1.1 - 0.85 * k + 4 * s.apex * k * (1 - k)
+/** How high blobs leave the nozzle, and land (the floor's paint); main.js aims the mouse at LAND_Y. */
+const NOZZLE_Y = 1.1
+export const LAND_Y = 0.25
+
+/** A blob's height at fraction k of its flight: a parabola from the nozzle down to the floor. */
+const arcY = (s, k) => NOZZLE_Y - (NOZZLE_Y - LAND_Y) * k + 4 * s.apex * k * (1 - k)
 
 /** A blob leaving the nozzle right by the driver's seat camera would fill the view, so it shows once clear. */
 function hideNear(s) {
@@ -72,10 +76,12 @@ export function clearShells() {
  */
 export function updateShells(dt, tanks, hooks, hearing) {
   for (const s of shells.values()) {
+    // Flies only the time it has left, so it comes down exactly at its range whatever the frame rate.
+    const fly = Math.min(dt, Math.max(0, s.life - s.t))
     s.t += dt
     // Sub-step fast shells so they can't skip through thin walls.
-    const steps = Math.ceil((s.speed * dt) / 0.6)
-    const h = dt / steps
+    const steps = Math.max(1, Math.ceil((s.speed * fly) / 0.6))
+    const h = fly / steps
     let done = false
     for (let i = 0; i < steps && !done; i++) {
       const ox = s.x
@@ -144,7 +150,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
     // stretched a little by its speed, like a real drop of paint.
     const k = s.t / s.life
     s.mesh.position.set(s.x, arcY(s, k), s.z)
-    const climb = (-0.85 + 4 * s.apex * (1 - 2 * k)) / s.range // the slope of arcY over the ground
+    const climb = (LAND_Y - NOZZLE_Y + 4 * s.apex * (1 - 2 * k)) / s.range // the slope of arcY over the ground
     s.mesh.rotation.x = Math.atan(climb)
     if (!s.mega) s.blob.scale.set(0.9, 0.9, 1 + Math.min(0.35, Math.abs(climb) * 0.4))
     hideNear(s)

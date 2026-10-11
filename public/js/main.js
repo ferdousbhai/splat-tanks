@@ -12,7 +12,7 @@ import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.j
 import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor, r2 } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, lineOfSight, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
-import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera } from './shells.js'
+import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y } from './shells.js'
 import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
@@ -20,7 +20,7 @@ import { input, bindMouse, bindTouch, onKey, mouseSurfaces, mouseAims, drivingAl
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import { updateTreads, clearTreads } from './treads.js'
-import { balls, resetBalls, stepBalls, pushBall, setOwner, blockTank, ballState, ballsMoving, takeBallState, renderBalls, BALL_R } from './balls.js'
+import { balls, resetBalls, stepBalls, squirtBall, burstBalls, setOwner, blockTank, ballState, ballsMoving, takeBallState, renderBalls } from './balls.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
@@ -623,14 +623,8 @@ function bigSplash(x, z, radius, by) {
     if (!t.alive || t === by) continue
     if (Math.hypot(t.pos.x - x, t.pos.z - z) < radius + TANK_RADIUS) splashTank(t, by, null)
   }
-  for (const b of balls) {
-    const d = Math.hypot(b.x - x, b.z - z)
-    if (d < radius + BALL_R) {
-      pushBall(b, b.x - x || 1, b.z - z, 7 * (1 - d / (radius + BALL_R)) + 2, 12)
-      // A robot's burst rolls a ball but never takes it: the balls are the children's.
-      if (by && !by.bot) setOwner(b, by.id, by.color)
-    }
-  }
+  // A robot's burst rolls a ball but never takes it: the balls are the children's.
+  for (const b of burstBalls(x, z, radius)) if (by && !by.bot) setOwner(b, by.id, by.color)
   const match = game.match
   barrels.forEach((b, i) => {
     if (b.alive && Math.hypot(b.x - x, b.z - z) < radius) setTimeout(() => hostBucket(i, by, match), 150)
@@ -641,7 +635,7 @@ function bigSplash(x, z, radius, by) {
 function hostBall(b, s) {
   if (!isHost()) return
   const by = game.tanks.get(s.owner)
-  pushBall(b, s.dx, s.dz, 2.5, 8)
+  squirtBall(b, s.dx, s.dz)
   if (by) setOwner(b, by.id, by.color)
 }
 
@@ -907,18 +901,23 @@ function fire(t, mega = false, aim = null) {
 function control(t, c, dt) {
   const n = now()
   t.drive(c.mx, c.mz, dt)
+  // Where the turret should point: the aim while squirting is held; after a quick flick of the aim stick, or a
+  // balloon tap, the aim as it was pressed, until that squirt has gone.
+  if (c.fire || c.mega) t.dueAim = c.aimYaw
+  const aim = (t.shotDue || t.megaDue) && !c.fire ? t.dueAim : c.aimYaw
   // The turret swings round to the aim instead of snapping, and stays on it while the hull turns. In the
   // driver's seat it is the view itself, so it follows at once.
   const swing = BASE.turretRate * dt
-  t.turretYaw = c.snap ? c.aimYaw : t.turretYaw + Math.max(-swing, Math.min(swing, angleDiff(t.turretYaw, c.aimYaw)))
+  t.turretYaw = c.snap ? aim : t.turretYaw + Math.max(-swing, Math.min(swing, angleDiff(t.turretYaw, aim)))
   if (c.boost && n >= t.boostReadyAt) {
     t.boostUntil = n + BASE.boostTime * 1000
     t.boostReadyAt = n + BASE.boostCooldown * 1000
     if (t === game.me) sound.boost()
   }
   // A squirt or balloon waits until the turret has swung onto the aim, so a click lands where it was made
-  // rather than where the nozzle happened to point. Robots aim as they go.
-  const onAim = c.snap || t.bot || Math.abs(angleDiff(t.turretYaw, c.aimYaw)) < 0.06
+  // rather than where the nozzle happened to point. Robots squirt while it swings: their aim wobbles a little on
+  // purpose (BOT_LEVELS aimError), and waiting would leave them hardly squirting at all.
+  const onAim = c.snap || t.bot || Math.abs(angleDiff(t.turretYaw, aim)) < 0.06
   if (c.mega && t.stats.mega && n >= t.megaReadyAt) t.megaDue = true
   if (t.megaDue && onAim) {
     t.megaDue = false
@@ -953,7 +952,7 @@ function control(t, c, dt) {
 // --- Player input ------------------------------------------------------------------------
 
 const ray = new THREE.Raycaster()
-const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.25) // where blobs land
+const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -LAND_Y) // where blobs land
 const aimPoint = new THREE.Vector3()
 const mouseNdc = new THREE.Vector2()
 

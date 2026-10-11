@@ -9,6 +9,8 @@ import { glideTo } from './tank.js'
 export const BALL_R = 1.15
 const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
 const TOP = 16 // m/s
+const KICK = 1.15 // a tank sends a ball off this many times its own speed
+const WHITE = '#fbfbf6'
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
 
 /** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz}, trailAt } (trailAt: see main.js trailTo) */
@@ -21,11 +23,11 @@ function drawBall(b, colors) {
   const H = b.canvas.height
   const n = 8
   for (let i = 0; i < n; i++) {
-    g.fillStyle = i % 2 ? '#fbfbf6' : colors[(i / 2) % colors.length]
+    g.fillStyle = i % 2 ? WHITE : colors[(i / 2) % colors.length]
     g.fillRect((i * W) / n, 0, W / n + 1, H)
   }
   // White caps at the poles, as on a real beach ball.
-  g.fillStyle = '#fbfbf6'
+  g.fillStyle = WHITE
   g.fillRect(0, 0, W, H * 0.1)
   g.fillRect(0, H * 0.9, W, H * 0.1)
   b.mat.map.needsUpdate = true
@@ -64,8 +66,8 @@ export function setOwner(b, id, color) {
   drawBall(b, color ? [color] : RAINBOW)
 }
 
-/** Host: a shove of `power` m/s along (dx, dz), but never past `upTo` m/s that way, so squirts nudge a ball along rather than fling it. */
-export function pushBall(b, dx, dz, power, upTo = TOP) {
+/** A shove of `power` m/s along (dx, dz), but never past `upTo` m/s that way. */
+function pushBall(b, dx, dz, power, upTo = TOP) {
   const l = Math.hypot(dx, dz) || 1
   const nx = dx / l
   const nz = dz / l
@@ -73,6 +75,23 @@ export function pushBall(b, dx, dz, power, upTo = TOP) {
   b.vx += nx * add
   b.vz += nz * add
   cap(b)
+}
+
+/** Host: a blob knocks a ball along (dx, dz): a nudge each, never past a gentle roll. */
+export function squirtBall(b, dx, dz) {
+  pushBall(b, dx, dz, 2.5, 8)
+}
+
+/** Host: a balloon or bucket bursting at (x, z) sends the balls within `radius` rolling away. Returns them. */
+export function burstBalls(x, z, radius) {
+  const hit = []
+  for (const b of balls) {
+    const d = Math.hypot(b.x - x, b.z - z)
+    if (d >= radius + BALL_R) continue
+    if (d > 1e-6) pushBall(b, b.x - x, b.z - z, 7 * (1 - d / (radius + BALL_R)) + 2, 12)
+    hit.push(b)
+  }
+  return hit
 }
 
 function cap(b) {
@@ -114,7 +133,7 @@ export function stepBalls(dt, tanks) {
     // Rolling slows a ball gently, then brings it to a stop.
     const s = Math.hypot(b.vx, b.vz)
     if (s > 0) {
-      const k = Math.max(0, s - 0.5 * dt) * Math.exp(-1 * dt) / s
+      const k = Math.max(0, s - 0.5 * dt) * Math.exp(-dt) / s
       b.vx *= k
       b.vz *= k
     }
@@ -195,9 +214,9 @@ export function stepBalls(dt, tanks) {
           vb = b.vx * nx + b.vz * nz
         }
       }
-      if (vt > 0.3 && vt * 1.15 > vb) {
-        b.vx += nx * (vt * 1.15 - vb)
-        b.vz += nz * (vt * 1.15 - vb)
+      if (vt > 0.3 && vt * KICK > vb) {
+        b.vx += nx * (vt * KICK - vb)
+        b.vz += nz * (vt * KICK - vb)
         // A tank brushing past sideways rolls the ball along a little too.
         const side = (t.vel.x * -nz + t.vel.z * nx) * 0.3
         b.vx += -nz * side
@@ -248,6 +267,8 @@ export function renderBalls(dt, host, onBump) {
   for (const b of balls) {
     if (!host && b.target) {
       glideTo(b, b.target, dt, 6, 12)
+      // Carried on by its speed, a ball the host has just bounced off a wall would show inside it for a moment.
+      pushOut(b, BALL_R)
       b.vx = b.target.vx
       b.vz = b.target.vz
     }

@@ -120,6 +120,7 @@ export class Tank {
     this.megaReadyAt = 0
     this.nextFireAt = 0
     this.shotDue = this.megaDue = false // a squirt or balloon waiting for the turret to reach the aim
+    this.dueAim = 0 // the aim it waits for (main.js control)
     this.target = null // remote: last network state
     this.flash = 0
     this.recoil = 0
@@ -244,7 +245,7 @@ export class Tank {
     }
     this.yawRate += (yawWant - this.yawRate) * Math.min(1, dt * 14)
     this.heading += this.yawRate * dt
-    if (this.boosting) speed = this.stats.speed * BASE.boostSpeed * (speed < 0 ? -1 : 1)
+    if (this.boosting) speed = top * (speed < 0 ? -1 : 1)
     const g = dirOf(this.heading)
     const side = this.vel.x * -g.z + this.vel.z * g.x
     // Tracks brake harder than they pull away; a zoom kicks in quickly.
@@ -297,12 +298,13 @@ export class Tank {
     if (dt <= 0) return
     const f = dirOf(this.heading)
     const fwd = this.vel.x * f.x + this.vel.z * f.z
-    const yawRate = angleDiff(w.yaw, this.heading) / dt
+    const turn = angleDiff(w.yaw, this.heading) / dt
     w.yaw = this.heading
     // From the smoothed speed (a tank another device drives changes speed in steps, 20 times a second); the
     // gap to it, times its rate, is the acceleration whatever the frame rate.
-    const accel = (fwd - w.fwd) * 10
-    w.fwd += (fwd - w.fwd) * Math.min(1, dt * 10)
+    const rate = 10
+    const accel = (fwd - w.fwd) * rate
+    w.fwd += (fwd - w.fwd) * Math.min(1, dt * rate)
     if (this.recoil > w.kick) w.pv += 0.9 // just squirted
     w.kick = this.recoil
     if (still.matches) {
@@ -311,7 +313,7 @@ export class Tank {
       return
     }
     const pitchGoal = Math.max(-0.07, Math.min(0.07, accel * 0.004))
-    const rollGoal = Math.max(-0.08, Math.min(0.08, -fwd * yawRate * 0.004))
+    const rollGoal = Math.max(-0.08, Math.min(0.08, -fwd * turn * 0.004))
     w.pv += ((pitchGoal - w.pitch) * 90 - w.pv * 11) * dt
     w.rv += ((rollGoal - w.roll) * 90 - w.rv * 11) * dt
     w.pitch += w.pv * dt

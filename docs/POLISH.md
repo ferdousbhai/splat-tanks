@@ -482,7 +482,7 @@ All three reviews came back clean: design (real painting to the end in WebKit an
 | --- | --- |
 | Tanks drive like tracked vehicles: the hull's turn eases in and out, and it turns quicker on the spot than at full speed. The tank pulls away with some weight and brakes harder than it accelerates, and the tracks grip, so sideways sliding dies away | `tank.js` `drive` |
 | The hull rocks on its suspension: it squats as it pulls away, noses down as it stops, leans out of turns and rocks back when it squirts. It is worked out from how the tank moves, so friends' tanks rock too. It settles after one small rock and is off under `prefers-reduced-motion` | `tank.js` `suspend` |
-| The turret swings round to the aim (about half a second for a half turn) and stays on it while the hull turns. In the driver's seat it is the view, so it follows at once | `main.js` `control`, `TURRET_RATE` |
+| The turret swings round to the aim (about half a second for a half turn) and stays on it while the hull turns. In the driver's seat it is the view, so it follows at once | `main.js` `control`, `BASE.turretRate` |
 | Tread marks: each track presses a pattern into the sand, and through paint, which fades over about 30 s. It is only for looks and never counts as paint | `treads.js` |
 | Blobs fly a real arc, higher the farther they go, tipped and stretched along their path. With a mouse they land on the point under the pointer, so the aim ring is where the paint goes | `shells.js`, `main.js` `fire`, `playerControls` |
 | 🏐 Beach balls, one in each quarter. A tank nudges a ball along, and a squirt knocks it (up to a gentle speed). Balls roll to a stop, bounce off walls and each other, and paint a stripe in the colour of whoever touched them last. A balloon or bucket nearby sends them rolling. They show on the minimap. Robots leave them for the children: they steer round them, their blobs fly past them, and their bumps and bursts roll a ball without taking its colour. Knocks make a soft bonk | `balls.js`, `main.js` `hostBall`, `hostStep`, `bigSplash` |
@@ -494,7 +494,7 @@ The host rolls the balls and sends them in a `bl` message, `[[x, z, vx, vz, touc
 
 Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`). They report 0 errors in Chromium and WebKit.
 
-- `ball.mjs`: a tank driving into a ball sends it rolling about 5 m. The ball takes the tank's colour and paints a stripe.
+- `ball.mjs`: a tank driving into a ball from a short run-up sends it rolling about 5 m. The ball takes the tank's colour and paints a stripe.
 - `duo.mjs` (`dev/two.html`): a guest's tank pushes a ball, and the host rolls it. The two devices end within 0.1–0.5 m of each other and agree on the ball's colour.
 - `modes.mjs`: Splat match at iPad landscape with touch, and the driver's seat view with the lower arc. Paint stays out of the middle of the view.
 
@@ -503,7 +503,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **The first squirt missed the click (design):** with the turret now swinging round, a click away from where it pointed sent the first blob the old way (20 m from the pointer). With the aim stick the first blobs went 90–174° off. Most children click once, so that first blob is the one they see. A squirt or balloon now waits until the turret is on the aim, and the aim stick hands its direction straight to the turret's swing. Both land on the aim (0.1 m, 1°).
 - **Robots took the balls (design):** robots steered round the balls, but their blobs still hit them. Robots were the last to touch a ball about 30 times in two minutes against 3 for the child, and their shoves walked the balls to the walls. A robot's blob now flies past a ball, and its bumps and bursts roll a ball without colouring it. That made 0 robot touches, and the balls stay out in the play area.
 - **A ball over a chalk fraction (design):** the balls start near the middle of each square quarter, where the label goes. Labels now keep clear of the balls' starting spots, as they do of pads and buckets (at least 3.4 m over 12 arenas).
-- **Balls rolled away too far (design):** a full-speed bump sent a ball off at 14 m/s for 12–20 m, too far for a small child to follow. It now goes about 8 m, so a ball can be pushed along like a football.
+- **Balls rolled away too far (design):** a full-speed bump sent a ball off at 14 m/s for 12–20 m, too far for a small child to follow. It now goes about 8–10 m, so a ball can be pushed along like a football.
 - **A ball rolling into a tank stuck to it (correctness):** a ball was only moved back out of a tank, keeping its speed into it. It sat against a parked tank still "rolling", which kept the `bl` messages and its trail going. On a friend's device the ball glided on ahead and shoved their parked tank about 5 m. A ball now bounces off a tank, and a friend's tank moves about 0.5 m at most (network lag).
 - **A ball pushed through a wall (correctness, plausible):** the host places a friend's tank slightly ahead of where it was last heard of. The ball is now moved out of a tank by at most 0.6 m a step, and out of walls again after the tanks.
 - **Tread marks never quite faded (correctness):** the canvas keeps alpha in whole steps, so the last 1–3 % of every mark stayed for the whole round, and the fade re-uploaded the texture every 2 s forever. Marks below 3 % are now hidden (`alphaTest`), and fading stops once everything is under that.
@@ -518,4 +518,17 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - The dead `mesh.visible` checks are gone.
   - The `stepBalls` comment now says what it returns.
   - A split Pass 2 table row is mended.
+
+### Fresh audit, round 54
+
+- **A quick flick of the aim stick misfired (correctness):** let go of the stick before the turret had swung round, and the waiting squirt took the turret's half-way direction as its aim and went off at once, up to 143° wrong. The 🎈 button did the same. A waiting squirt or balloon now keeps the aim it was pressed with until it has gone. It lands on that aim (0.01 rad) however short the flick.
+- **Blobs flew one frame past their range (correctness):** a blob moved a whole frame before checking its flight time, so paint landed up to 0.4 m past the ring at 60 Hz and 1.3 m at a slow host's 20 Hz. It now flies only the time it has left (0–0.04 m).
+- **Cheaper tread marks (correctness, plausible on iPad):** the marks use a plain lit material and are drawn only while there are marks.
+- **A guest's ball inside a wall (correctness, plausible):** a guest carries the host's balls on by their speed, so a ball just bounced off a wall could show inside it for a moment. It is kept out of walls.
+- **Tidy (code quality):**
+  - The ball shoves for a squirt and a burst live in `balls.js` (`squirtBall`, `burstBalls`) with the other ball physics. A burst exactly in line with a ball no longer tilts its push.
+  - The heights blobs fly between are named once (`NOZZLE_Y`, `LAND_Y`), and the mouse aims at `LAND_Y`.
+  - Robots hand their aim to the same turret swing as everyone (their own 5 rad/s clamp is gone). The comment says why they squirt while it swings.
+  - The suspension's smoothing rate is named once. `KICK` and the ball's white are named.
+  - A stale `TURRET_RATE` and a ball distance in the docs are corrected.
 

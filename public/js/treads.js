@@ -17,12 +17,13 @@ tex.minFilter = THREE.LinearFilter
 const mesh = new THREE.Mesh(
   new THREE.PlaneGeometry(ARENA * 2, ARENA * 2),
   // alphaTest: the canvas keeps alpha in whole steps, so the last faint traces never fade to nothing; hide them.
-  new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.03, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
+  new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.03, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
 )
 mesh.rotation.x = -Math.PI / 2
 mesh.position.y = 0.035
 mesh.receiveShadow = true
 mesh.renderOrder = 1
+mesh.visible = false // drawn only while there are marks: it covers the whole arena
 scene.add(mesh)
 
 const GAP = 0.32 // metres between tread bars
@@ -81,6 +82,7 @@ export function updateTreads(tanks, now) {
         prev[i] = { x: prev[i].x + (pts[i].x - prev[i].x) * f, z: prev[i].z + (pts[i].z - prev[i].z) * f }
         dirty = true
         fades = 24
+        mesh.visible = true
       }
     }
   }
@@ -89,6 +91,7 @@ export function updateTreads(tanks, now) {
   if (fades > 0 && now - lastFade > 2000) {
     lastFade = now
     fades--
+    if (!fades) mesh.visible = false // everything is under the alphaTest now
     g.save()
     g.globalCompositeOperation = 'destination-out'
     g.fillStyle = 'rgba(0, 0, 0, 0.14)'
@@ -106,6 +109,8 @@ export function updateTreads(tanks, now) {
 
 export function clearTreads() {
   g.clearRect(0, 0, SIZE, SIZE)
+  fades = 0
+  mesh.visible = false
   last.clear()
   tex.needsUpdate = true
 }
