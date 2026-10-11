@@ -23,7 +23,7 @@ const TOUCH = 0.05 // metres: this close to a wall or prop, a ball is touching i
 const REACH = BALL_R + TANK_RADIUS // centre to centre, a tank touching a ball
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
 
-/** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz}, trailAt, touchedAt, rolledOff } (trailAt: see main.js trailTo; touchedAt: when a tank was last within reach of it, host's clock; rolledOff: it has rolled off a wall since it was last pushed) */
+/** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz, d}, trailAt, touchedAt, rolledOff } (trailAt: see main.js trailTo; touchedAt: when a tank was last within reach of it, host's clock; rolledOff: it has rolled off a wall since it was last pushed) */
 export const balls = []
 
 /** Beach ball gores round the middle, in one colour and white (or the rainbow before anyone has touched it). */
@@ -53,7 +53,7 @@ function makeBall() {
   const mesh = new THREE.Mesh(geo, mat)
   mesh.castShadow = true
   scene.add(mesh)
-  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0 }, trailAt: null, touchedAt: 0, rolledOff: false }
+  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0, d: 0 }, trailAt: null, touchedAt: 0, rolledOff: false }
 }
 
 /** Puts every ball back on its spot, still and in rainbow colours, for a new round. */
@@ -62,7 +62,7 @@ export function resetBalls() {
   BALLS.forEach(([x, z], i) => {
     const b = balls[i]
     Object.assign(b, { x, z, vx: 0, vz: 0, target: null, trailAt: null, touchedAt: 0, rolledOff: false })
-    b.seen.vx = b.seen.vz = 0
+    b.seen.vx = b.seen.vz = b.seen.d = 0
     setOwner(b, null, null)
     b.mesh.position.set(x, BALL_R, z)
   })
@@ -200,7 +200,9 @@ function tryRoll(b, dx, dz, chain = balls.length) {
     for (const o of balls) {
       const ox = o.x - b.x
       const oz = o.z - b.z
+      // (Ahead and in its path: not behind it, and not off to the side where the push would pass it by.)
       if (o === b || ox * ox + oz * oz > (BALL_R * 2 + PROBE) ** 2 || ox * dx + oz * dz <= 0) continue
+      if (Math.abs(ox * dz - oz * dx) >= BALL_R * 2) continue
       if (tryRoll(o, dx, dz, chain - 1) < PROBE * STUCK) {
         stopped = true
         break
@@ -398,7 +400,9 @@ export function renderBalls(dt, host, onBump) {
     // is going, four times a second, which would make a steady drum while dribbling.
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)
     const fast = Math.max(Math.hypot(b.vx, b.vz), Math.hypot(b.seen.vx, b.seen.vz))
-    if (jolt > Math.max(2.5, 0.4 * fast) && d > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
+    // (Moving this frame or the last: the frame a ball reaches a wall, it may only cover the last bit to it.)
+    if (jolt > Math.max(2.5, 0.4 * fast) && Math.max(d, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
+    b.seen.d = d
     b.seen.vx = b.vx
     b.seen.vz = b.vz
   }

@@ -635,6 +635,8 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 61
 
+- **A ball beside a stuck ball stopped too (correctness, from round 60):** the chain test counted any ball ahead within reach, including one off to the side that the push would pass by. So a ball pushed past another resting against a post froze in open floor, and stopped the tank with it. Only a ball in the pushed ball's path counts now.
+- **Wall bounces sometimes made no bonk (correctness):** the bonk needed the ball to move a little that frame, and the frame a ball reaches a wall it may cover only the last centimetres, so 5–20% of wall hits were silent. It now looks at this frame's movement or the last one's (20 of 20 at 3–12 m/s). Held balls and chains stay quiet (0–3 bonks in 10 s), and dribbling gives 1–2.
 - **Tidy (code quality):**
   - `tryRoll` asks the chain of balls ahead before the walls, so it no longer saves and restores its scratch around the recursion. Its comment says what it leaves when another ball stops it.
   - "Stuck" is now decided along the push's line in both places, the ball's rest and the tank's stop, so they really are one test. The ball's free direction is only used to steer a ball that isn't stuck.
