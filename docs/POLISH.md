@@ -754,6 +754,14 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 75
 
+- **More handover corners (correctness, older and from rounds 73–74):** four-device tests found:
+  - A device chosen to take over but slow to see the host go never learned it was chosen. Now a friend who says they follow us makes us host.
+  - A device kept following a friend that had given way. Now, if the host we follow says it follows someone else, so do we.
+  - A friend who joined mid-round but was still in the menu could be chosen, leaving the round unrun. Now a friend playing the round is chosen first, and a hello says whether we are playing.
+  - A device slow to see the old host go missed the new host's 🏠. Now 🏠 is obeyed from a friend who has claimed host.
+  - A link closing as a message went could throw and stop it reaching other friends. Now the game catches it and goes on.
+
+  In the tests, everyone ends up following one host, and 🏠 brings all of them to the menu.
 - **Tidy (code quality):** hosting's rules are written once, in order, above `hello()`, and each piece points to them; a friend's hello records whether they claim host; giving way sits beside taking over; and round 74's entries are filed as correctness, with round 73's left as it was.
 
 ### Open (Pass 2)
@@ -764,4 +772,9 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **A close tank's name tag floats high in the driver's seat** (round 65, cosmetic, older): a tank a few metres ahead has its tag drawn well above it, near the fraction strip. Placing it just above the hull in the seat, or hiding it close up, would tidy it.
 - **A child who drops and rejoins starts a new paint slot** (round 72, from round 71's fix): their old paint stays in their colour but no longer counts toward their share. Telling a rejoin from a newcomer would need a lasting player id from the lobby.
 - **When the host's device goes, friends' play pauses until the room notices** (round 75): 8–20 s in tests, with robots still and no paint landing, which a child may read as the game breaking. A goodbye sent as the page closes doesn't arrive (the page is torn down first), so it was tried and left out. Treating a few seconds of silence from the host as gone would shorten it, but would also hand over from a host whose tab is only briefly hidden; the room library noticing a closed link sooner would be the clean fix.
+- **Two rarer handover cases need the room's help** (round 75):
+  - A friend who joins while the host is leaving, before their link to it opens, waits with no host. Reloading fixes it.
+  - If the link between just two devices fails while both still reach a third, both can host.
+
+  Taking over on a timer would close these, but could let a slow-connecting child take hosting from a real host mid-round.
 - Real play by the children on an iPad: how the heavier driving, the turret swing and the beach balls feel in small hands (headless browsers can't show it).

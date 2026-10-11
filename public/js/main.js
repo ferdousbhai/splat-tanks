@@ -75,8 +75,21 @@ const tankColor = (id) => game.tanks.get(id)?.color ?? null
 // --- Networking --------------------------------------------------------------------------
 
 // The ?solo room's send() does nothing, so these need no solo check.
-const send = (msg, to) => game.room?.send(msg, to ? { to } : {})
-const sendFast = (msg) => game.room?.send(msg, { fast: true })
+// A link closing as a message goes can throw: the message is lost to that friend, but the game goes on.
+const send = (msg, to) => {
+  try {
+    game.room?.send(msg, to ? { to } : {})
+  } catch (e) {
+    console.warn('Could not send', msg.t, e)
+  }
+}
+const sendFast = (msg) => {
+  try {
+    game.room?.send(msg, { fast: true })
+  } catch (e) {
+    console.warn('Could not send', msg.t, e)
+  }
+}
 /** Host: tell everyone, and apply it here too. */
 function broadcast(msg) {
   send(msg)
@@ -89,16 +102,20 @@ function broadcast(msg) {
  * - A hello says who we are, whether we are host, and which host we follow (`knows`).
  * - Every device says hello whenever the host it follows changes, so everyone knows who knew which host.
  * - When the host leaves, we follow anyone who has already claimed it (we may be slow to see the host go); otherwise
- *   whoever has the smallest id among ourselves and those who knew it takes over. A friend who joined as it left
- *   has heard from no host, and would never learn it had been chosen. (migrateHost)
+ *   the smallest id among ourselves and those who knew it, and are playing the round if anyone is, takes over. A
+ *   friend who joined as it left has heard from no host, and would never learn it had been chosen; one still in
+ *   the menu has no round to run. (migrateHost)
+ * - A friend who says they follow us makes us host, if we didn't know; and if the host we follow says it follows
+ *   someone else, so do we. (handle: hello)
  * - Of two claims still in the room, every device keeps the smaller id, whichever arrives first. (handle: hello)
  * - The device that gives way hands back the robots, the host's buttons and the splats it queued. (loseHost)
  */
 
 /** Who we are, whether we host, and which host we follow. */
 function hello(to) {
-  send({ t: 'hello', name: game.myName, color: game.myColor, host: isHost(), knows: game.hostId }, to)
+  send({ t: 'hello', name: game.myName, color: game.myColor, host: isHost(), knows: game.hostId, playing: inRound() }, to)
 }
+const inRound = () => game.phase === 'battle' || game.phase === 'ending'
 
 function setupRoom(room) {
   game.room = room
@@ -140,11 +157,16 @@ function migrateHost(gone) {
   const peers = game.room?.peers ?? []
   const claimed = peers.filter((p) => game.humans.get(p)?.host).sort()
   const knew = peers.filter((p) => game.humans.get(p)?.knows === gone)
-  game.hostId = claimed[0] ?? [game.selfId, ...knew].sort()[0]
-  if (!isHost()) {
-    hello()
-    return
-  }
+  const playing = (id) => (id === game.selfId ? inRound() : game.humans.get(id)?.playing)
+  const order = (a, b) => (playing(b) ? 1 : 0) - (playing(a) ? 1 : 0) || (a < b ? -1 : 1)
+  game.hostId = claimed[0] ?? [game.selfId, ...knew].sort(order)[0]
+  if (isHost()) takeOver()
+  else hello()
+}
+
+/** We are host now: run the robots and the rules from here. */
+function takeOver() {
+  game.hostId = game.selfId
   hud.toast('👑 The host left. You are running the game now!')
   voice.say("The host left. You're the host now.")
   for (const t of game.tanks.values()) {
@@ -201,7 +223,7 @@ function handle(msg, from) {
   const t = game.tanks.get(msg.i)
   switch (msg.t) {
     case 'hello': {
-      const h = { name: safeName(msg.name), color: safeColor(msg.color), host: !!msg.host, knows: msg.knows ?? null }
+      const h = { name: safeName(msg.name), color: safeColor(msg.color), host: !!msg.host, knows: msg.knows ?? null, playing: !!msg.playing }
       // A friend arriving in the menu is said; one joining a round is shown in the feed when their tank arrives.
       // (Not the players already in the room when we arrive: their hellos all come in the first moments.)
       if (!game.humans.has(from) && game.phase === 'menu' && now() - game.joinedAt > 3000) voice.say(`${h.name} is here!`)
@@ -218,6 +240,13 @@ function handle(msg, from) {
           if (was === game.selfId) loseHost()
           hello()
         }
+      } else if (msg.knows === game.selfId && !isHost()) {
+        // A friend follows us, chosen when the host left, but we didn't know (we hadn't seen it go).
+        takeOver()
+      } else if (from === game.hostId && msg.knows && msg.knows !== from && (game.room?.peers ?? []).includes(msg.knows)) {
+        // The host we follow has given way to someone else: so do we.
+        game.hostId = msg.knows
+        hello()
       }
       const existing = game.tanks.get(from)
       if (existing && existing.name !== h.name) {
@@ -302,7 +331,8 @@ function handle(msg, from) {
       onPartDone(msg)
       break
     case 'menu':
-      if (from === game.hostId) toMenu()
+      // (Or from a friend who has claimed host, if we are slow to see the old host go.)
+      if (from === game.hostId || game.humans.get(from)?.host) toMenu()
       break
   }
 }
