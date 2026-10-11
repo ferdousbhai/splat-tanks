@@ -59,7 +59,7 @@ const game = {
   lastPaintSend: 0,
   lastTrail: 0,
   lastBalls: 0,
-  ballsRolled: false, // host: some ball was rolling at the last network tick
+  ballsRolled: 0, // host: sends of the balls still to make after they came to rest
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
@@ -1327,15 +1327,15 @@ function battleStep(dt, n) {
     game.lastNet = n
     const a = tanks.filter((t) => t.alive && (t === me || (t.bot && isHost()))).map(poseOf)
     if (a.length) sendFast({ t: 'pb', a })
-    // The balls while they roll, once more as they come to rest (so friends' last word of them is "still"), and
-    // now and then when they're still (for a friend who just joined).
+    // The balls while they roll, twice more as they come to rest (so friends' last word of them is "still", even if
+    // one of those quick messages is lost), and now and then when they're still (for a friend who just joined).
     if (isHost()) {
       const rolling = ballsMoving()
-      if (rolling || game.ballsRolled || n - game.lastBalls > 1000) {
+      if (rolling || game.ballsRolled > 0 || n - game.lastBalls > 1000) {
         game.lastBalls = n
         sendFast({ t: 'bl', a: ballState() })
       }
-      game.ballsRolled = rolling
+      game.ballsRolled = rolling ? 2 : Math.max(0, game.ballsRolled - 1)
     }
   }
   if (isHost() && ((game.statsDirty && n - game.lastStats > 150) || n - game.lastStats > 1000)) sendStats()
