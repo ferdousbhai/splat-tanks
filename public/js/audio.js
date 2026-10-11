@@ -187,29 +187,41 @@ export const sound = {
 
 // --- Engine ------------------------------------------------------------------------------
 
-let engine = null // { o, g, level }, made on first use
+let engine = null // { f, g, lfo, level }, made on first use
 /**
- * Your own tank's engine: a soft, low purr that rises a little with speed (level 0..1) and dies away when it stops.
- * Only your own, and well under the squirts (0.035 against a squirt's 0.22), so it stays in the background.
+ * Your own tank's engine: a soft purr (low rumbling noise with a slow wobble, not a tone, so it never fights the
+ * music's bass) that grows a little with speed (level 0..1) and dies away when it stops. Only your own, and at full
+ * speed a touch under the music's own level (about 0.007 against 0.0086 on average), so it stays in the background.
  */
 export function engineHum(level) {
   if (!ctx || ctx.state !== 'running' || (level === 0 && !engine?.level)) return
   if (!engine) {
-    const o = ctx.createOscillator()
-    o.type = 'triangle'
+    const src = ctx.createBufferSource()
+    src.buffer = noiseBuf
+    src.loop = true
     const f = ctx.createBiquadFilter()
     f.type = 'lowpass'
-    f.frequency.value = 420
+    f.Q.value = 0.7
+    // The purr: loudness wobbling softly, ten times a second.
+    const wob = ctx.createGain()
+    wob.gain.value = 0.6
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 9
+    const amount = ctx.createGain()
+    amount.gain.value = 0.4
+    lfo.connect(amount).connect(wob.gain)
     const g = ctx.createGain()
     g.gain.value = 0
-    o.connect(f).connect(g).connect(sfx)
-    o.start()
-    engine = { o, g, level: 0 }
+    src.connect(f).connect(wob).connect(g).connect(sfx)
+    src.start()
+    lfo.start()
+    engine = { f, g, lfo, level: 0 }
   }
   engine.level = level
   const t = ctx.currentTime
-  engine.g.gain.setTargetAtTime(0.035 * level, t, 0.15)
-  engine.o.frequency.setTargetAtTime(85 + 45 * level, t, 0.2)
+  engine.g.gain.setTargetAtTime(0.15 * level, t, 0.15)
+  engine.f.frequency.setTargetAtTime(120 + 70 * level, t, 0.2)
+  engine.lfo.frequency.setTargetAtTime(9 + 3 * level, t, 0.2)
 }
 
 // The game stops drawing (and so stops calling engineHum) in a hidden tab, but sound plays on: hush the purr.

@@ -699,6 +699,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 - **The engine purred on in a hidden tab (code quality):** the game stops drawing in a hidden tab, and with it the calls that set the engine's level, but sound plays on, so a child switching away mid-drive left it purring. It is hushed when the tab hides or the page goes, and makes no calls at all while it is quiet.
 - **A joiner's camera swung in from last round's spot (correctness, plausible):** a round's start put the camera above our tank but left it looking at the old spot, so a friend joining part way through (no countdown) saw it swing round, and a stick squirt in that half second judged what was on screen from the wrong view. It now looks at our tank from the start.
+- **The engine droned (design, from round 66):** its steady triangle tone was louder on average than the whole music bed (about +8 dB at full speed, where a child spends most of a round), and it glided 85–130 Hz through the music's bass, beating against it like a siren. It is now a real purr: low rumbling noise with a soft ten-a-second wobble, growing a little with speed, at a touch under the music's level (RMS about 0.007 against 0.0086).
 - **Tidy (code quality):**
   - The nozzle's distance ahead (with the squirt's recoil) is one helper, `nozzleAhead`, used by the reach dot and the seen spot.
   - The seen spot's screen margins and its least distance are named, with what each clears.
