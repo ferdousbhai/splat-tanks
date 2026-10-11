@@ -903,13 +903,32 @@ function fire(t, mega = false, aim = null) {
   sound.shoot(ear.vol, mega, ear.mine)
 }
 
-/** Shared controls for the player and bots: drive, aim, squirt, zoom, balloon. */
+/** Shared controls for the player and bots: drive, zoom, aim and squirt, then move. */
 function control(t, c, dt) {
   const n = now()
   t.drive(c.mx, c.mz, dt, !c.snap)
-  // Where the turret should point: the aim while squirting is held; after a quick flick of the aim stick, a
-  // quick tap or a balloon press, the aim (and with a mouse, the floor point) as it was pressed, until that
-  // squirt has gone.
+  if (c.boost && n >= t.boostReadyAt) {
+    t.boostUntil = n + BASE.boostTime * 1000
+    t.boostReadyAt = n + BASE.boostCooldown * 1000
+    if (t === game.me) sound.boost()
+  }
+  squirt(t, c, n, dt)
+  moveTank(t, dt)
+}
+
+/**
+ * Swings the turret round to the aim and squirts. In the driver's seat (c.snap) the turret is the view itself, so
+ * it follows at once and nothing waits.
+ *
+ * A press's first squirt, and a balloon, wait until the turret has swung onto the aim, so a click lands where it
+ * was made rather than where the nozzle happened to point. Let go before it goes (a quick flick of the aim stick, a
+ * tap, a balloon press), it keeps the aim it was pressed with, and with a mouse the floor point, which stays the
+ * aim as the tank drives on. With squirting held (sweeping paint round like a hose), the rest go on time from
+ * wherever the nozzle points. A new press always waits for its own aim, and squirting ahead on its own (c.auto)
+ * never counts as hosing. Robots never wait: their aim wobbles a little on purpose (BOT_LEVELS aimError), and
+ * waiting would leave them hardly squirting at all.
+ */
+function squirt(t, c, n, dt) {
   if (c.fire || c.mega) {
     t.dueAim = c.aimYaw
     t.dueAt = null
@@ -919,25 +938,12 @@ function control(t, c, dt) {
       t.dueAt = t.dueSpot
     }
   }
-  // (The driver's seat aims with the view itself, so nothing waits there.)
   const waiting = (t.shotDue || t.megaDue) && !c.fire && !c.snap
   const aimAt = waiting ? t.dueAt : c.aimAt
-  // A clicked spot stays the aim as the tank drives on, so the squirt still lands there.
   const aim = !waiting ? c.aimYaw : aimAt ? yawOf(aimAt.x - t.pos.x, aimAt.z - t.pos.z) : t.dueAim
-  // The turret swings round to the aim instead of snapping, and stays on it while the hull turns. In the
-  // driver's seat it is the view itself, so it follows at once.
+  // It stays on the aim while the hull turns.
   const swing = BASE.turretRate * dt
   t.turretYaw = c.snap ? aim : t.turretYaw + Math.max(-swing, Math.min(swing, angleDiff(t.turretYaw, aim)))
-  if (c.boost && n >= t.boostReadyAt) {
-    t.boostUntil = n + BASE.boostTime * 1000
-    t.boostReadyAt = n + BASE.boostCooldown * 1000
-    if (t === game.me) sound.boost()
-  }
-  // A press's first squirt, and a balloon, wait until the turret has swung onto the aim, so a click lands where it
-  // was made rather than where the nozzle happened to point. With squirting held (sweeping paint round like a
-  // hose), the rest go on time from wherever the nozzle points. Robots never wait: their aim wobbles a little on
-  // purpose (BOT_LEVELS aimError), and waiting would leave them hardly squirting at all.
-  // A new press always waits for its own aim; squirting ahead on its own (c.auto) never counts as hosing.
   if (!c.fire || c.tap || c.auto) t.hosing = false
   const onAim = c.snap || t.bot || Math.abs(angleDiff(t.turretYaw, aim)) < 0.06
   if (c.mega && t.stats.mega && n >= t.megaReadyAt) t.megaDue = true
@@ -955,7 +961,10 @@ function control(t, c, dt) {
     t.nextFireAt = n + t.stats.reload * (n < t.rapidUntil ? 0.45 : 1) * 1000
     fire(t, false, aimAt)
   }
-  // Move, then slide off walls and other tanks.
+}
+
+/** Moves a tank this device drives, then slides it off walls, props, other tanks and the balls. */
+function moveTank(t, dt) {
   t.pos.x += t.vel.x * dt
   t.pos.z += t.vel.z * dt
   const wantX = t.pos.x
@@ -1018,7 +1027,8 @@ function playerControls(me, dt) {
       // Paint lobs onto the point under the mouse.
       c.aimAt = aimPoint
     }
-  } else if (input.aimStick.active) {
+  } else if (input.aimStick.active || (input.touch && input.clicked)) {
+    // (Or a flick of the aim stick over within a frame: it keeps its direction.)
     c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (control)
   } else if (drivingAlone() && !me.shotDue && !me.megaDue) {
     // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically, but not while
@@ -1092,7 +1102,7 @@ function seatControls(me, c, dt) {
     seat.yaw -= input.moveX * 1.3 * dt
     // The hull turns with the view, so up always drives forward (never the tank's reverse) and down backs up.
     me.heading += angleDiff(me.heading, seat.yaw) * Math.min(1, dt * 8)
-    c.fire = true
+    c.fire = c.auto = true
     seat.keys = !input.touch
   }
   const d = dirOf(seat.yaw)
@@ -1353,6 +1363,16 @@ const landing = new THREE.Vector3()
  * With the mouse beyond squirting range, a dot shows where the paint will really land (as far as it goes toward
  * the ring), and the ring dims, so the ring never promises paint where it can't reach.
  */
+/**
+ * Shortens the fraction k of the way from p to a (one axis) to stop at the outer wall, less about a blob's radius
+ * (where shellObstacle stops it).
+ */
+function edgeAt(p, a, k) {
+  const edge = ARENA - 0.3
+  const at = p + (a - p) * k
+  return Math.abs(at) > edge ? (Math.sign(at) * edge - p) / (a - p) : k
+}
+
 function showReach(me) {
   if (!me || !mouseGround()) return hud.reach(false)
   // Measured from the nozzle as it will be once the turret has swung round to the mouse.
@@ -1361,13 +1381,8 @@ function showReach(me) {
   const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * RECOIL_KICK
   const d = Math.hypot(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   if (d - ahead <= me.stats.range) return hud.reach(false)
-  let k = (me.stats.range + ahead) / d
   // No further than the outer wall, where the paint would splat.
-  const edge = ARENA - 0.3
-  for (const [p, a] of [[me.pos.x, aimPoint.x], [me.pos.z, aimPoint.z]]) {
-    const at = p + (a - p) * k
-    if (Math.abs(at) > edge) k = (Math.sign(at) * edge - p) / (a - p)
-  }
+  const k = edgeAt(me.pos.z, aimPoint.z, edgeAt(me.pos.x, aimPoint.x, (me.stats.range + ahead) / d))
   landing.set(me.pos.x + (aimPoint.x - me.pos.x) * k, LAND_Y, me.pos.z + (aimPoint.z - me.pos.z) * k).project(camera)
   hud.reach(true, ...toScreen(landing))
 }

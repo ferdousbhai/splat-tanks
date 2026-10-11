@@ -581,7 +581,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **A ball pushed into a corner froze and drummed (design):** a child pushing a ball into a corner or against a prop left both stopped dead. The tank still showed full speed, with dust and that speed sent to friends. The ball kept its speed into the wall, sent 20 messages a second and bonked about 8 times a second.
   - The ball now loses its speed into the wall.
   - A tank pushing a ball that can't go on stops against it as against a wall.
-  - The ball squeezes out sideways past the tank to whichever side is open. Wedged in a corner with no side open, it just rests, quietly, and rolls back out when the tank backs off.
+  - The ball squeezes out sideways past the tank to whichever side is open. Wedged in a corner with no side open, it just rests, quietly, until the tank backs off or comes at it from the side (by the outer wall it then rolls back out).
   - A ball that isn't moving never bonks.
 - **The reach dot outside the arena (design):** near an edge it could sit on the grass beyond the outer wall, where the paint splats on the wall. It now stops at the wall.
 - **Splashes on top of props were still hidden (code quality):** round 56 raised a splash to the blob's height, but kept offsets measured from the floor, so its ring sat inside the prop. It also used the blob's height from the frame before, and raised splashes on tanks and balls into the air. A blob that comes down on a prop now splashes at that prop's top. Everything else splashes on the floor as before.
@@ -592,4 +592,18 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - The waiting-squirt fields say what they do.
   - The squirt-ahead comment says what the branch is for first.
   - `drive` skips the steering maths while backing straight up.
+
+### Fresh audit, round 58
+
+- **Balls against walls, simplified (correctness and code quality):** round 57's sideways squeeze ran whenever any tank was within reach of a slow ball by a wall. A parked tank, one backing away, or a passing robot flung the ball off at 4 m/s and took it for that colour. Its wall check also ignored which side the wall was on, so pushing a ball along a wall stopped the tank and popped the ball off. Pushing diagonally into a wall could also build a ball up to 10 m/s, and a wedged ball and the outer wall's roll-back took turns, bonking. All of it is replaced by one rule: a ball pushed into a wall or prop in its way keeps only the part of the push along it, no faster than the push. Pushed straight in, or into a corner, nothing is left and it rests, held, until the tank backs off or comes from the side. Only a wall in the push's way counts, and the tank stops against such a ball as against the wall. Results:
+  - A parked or departing tank leaves a ball alone.
+  - A push along a wall rolls the ball along it.
+  - A corner held for 20 s gives 3–4 bonks instead of dozens.
+- **A flick over within a frame (correctness, plausible):** it keeps the stick's direction instead of the turret's.
+- **Tidy (code quality):**
+  - `control()` is split into `squirt()` (aim, turret, waiting and hosing, documented in one place) and `moveTank()` (moving and sliding).
+  - The seat's squirt-ahead is marked `c.auto` too.
+  - The reach dot's wall clamp is a small helper without per-frame arrays.
+  - The bonk only counts a ball moving faster than 0.6 m/s, whatever the frame rate.
+  - `stepBalls`' comment sits on it again.
 

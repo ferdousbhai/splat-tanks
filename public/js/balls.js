@@ -11,6 +11,7 @@ const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
 const TOP = 16 // m/s
 const KICK = 1.15 // a tank sends a ball off this many times its own speed
 const WHITE = '#fbfbf6'
+const WALL_NEAR = 0.3 // metres: a ball this close to a wall in a tank's way counts as pushed into it
 const EDGE = 4 // metres by the outer wall where a ball rolls back into play, as if the floor rose there
 const RISE = 2.5 // m/s² it rolls back with: beats rolling's slowing up to about 2 m/s, a brisk walk
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
@@ -124,17 +125,12 @@ export function blockTank(p) {
     if (d < min && d > 0.001) {
       p.x = b.x + (dx / d) * min
       p.z = b.z + (dz / d) * min
-      held ||= againstWall(b)
+      held ||= !!wallInWay(b, -dx / d, -dz / d)
     }
   }
   return held
 }
 
-/**
- * Host: rolls the balls. A tank driving into a ball sends it off a little faster than the tank (a tank is
- * far heavier), about 8–10 m from a full-speed bump; balls slow down as they roll, bounce off walls and props, and knock each other on.
- * Returns each ball a tank pushed this step, with that tank, so the host can give it the tank's colour.
- */
 const pos = { x: 0, z: 0 } // scratch
 
 /** Moves a ball out of walls and props, bouncing off what it was rolling into. Returns true if it touched one. */
@@ -159,23 +155,29 @@ function offWalls(b) {
   return true
 }
 
-/** True if a ball is up against a wall or prop (so a tank pushing it there can't move it on). */
-function againstWall(b) {
+/**
+ * The wall or prop in a ball's way (within WALL_NEAR) when pushed along (nx, nz): the unit normal pointing out of
+ * it, or null. One merely beside it, as the ball rolls along a wall, doesn't count.
+ */
+const wall = { x: 0, z: 0 }
+function wallInWay(b, nx, nz) {
   pos.x = b.x
   pos.z = b.z
-  return pushOut(pos, BALL_R + 0.05)
+  if (!pushOut(pos, BALL_R + WALL_NEAR)) return null
+  const ox = pos.x - b.x
+  const oz = pos.z - b.z
+  const l = Math.hypot(ox, oz)
+  if (l < 1e-6 || (ox * nx + oz * nz) / l > -0.5) return null
+  wall.x = ox / l
+  wall.z = oz / l
+  return wall
 }
 
-/** Which way (+1 or -1) along (tx, tz) a ball has room to squeeze out, or 0 if neither (wedged in a corner). */
-function squeezeSide(b, tx, tz) {
-  for (const s of [1, -1]) {
-    pos.x = b.x + tx * s * 0.6
-    pos.z = b.z + tz * s * 0.6
-    if (!pushOut(pos, BALL_R)) return s
-  }
-  return 0
-}
-
+/**
+ * Host: rolls the balls. A tank driving into a ball sends it off a little faster than the tank (a tank is
+ * far heavier), about 8–10 m from a full-speed bump; balls slow down as they roll, bounce off walls and props, and knock each other on.
+ * Returns each ball a tank pushed this step, with that tank, so the host can give it the tank's colour.
+ */
 export function stepBalls(dt, tanks) {
   for (const b of balls) {
     // Rolling slows a ball gently, then brings it to a stop.
@@ -232,22 +234,11 @@ export function stepBalls(dt, tanks) {
       if (d >= min + 0.25 || d < 1e-6) continue
       const nx = dx / d
       const nz = dz / d
-      // Pressed into a corner or against a prop, a real ball squeezes out sideways past the tank, to whichever
-      // side is open. (The tank stops against it meanwhile, as against a wall: main.js control.)
-      if (Math.hypot(b.vx, b.vz) < 1 && againstWall(b)) {
-        const s = squeezeSide(b, -nz, nx)
-        if (s) {
-          b.vx += -nz * s * 4
-          b.vz += nx * s * 4
-          knocked.push({ b, t })
-        } else {
-          // Wedged between the tank and a corner: it just rests there until the tank backs off or comes at it
-          // from the side.
-          b.vx = b.vz = 0
-          continue
-        }
-      }
-      const vt = t.vel.x * nx + t.vel.z * nz
+      // A tank this device drives pushes with its tracks (it shows no speed into a ball held against a wall); a
+      // friend's tank with the speed it was sent.
+      const push = t.local ? t.trackVel : t.vel
+      const vt = push.x * nx + push.z * nz
+      const shown = t.vel.x * nx + t.vel.z * nz
       let vb = b.vx * nx + b.vz * nz
       if (d < min) {
         // Out of the tank, but at most 0.6 m a step: a friend's tank is placed a little ahead of where it was
@@ -256,9 +247,9 @@ export function stepBalls(dt, tanks) {
         b.x += nx * out
         b.z += nz * out
         // A ball rolling into a tank bounces off it (a tank is far heavier).
-        if (vb < vt) {
-          b.vx -= 1.5 * (vb - vt) * nx
-          b.vz -= 1.5 * (vb - vt) * nz
+        if (vb < shown) {
+          b.vx -= 1.5 * (vb - shown) * nx
+          b.vz -= 1.5 * (vb - shown) * nz
           vb = b.vx * nx + b.vz * nz
         }
       }
@@ -266,9 +257,25 @@ export function stepBalls(dt, tanks) {
         b.vx += nx * (vt * KICK - vb)
         b.vz += nz * (vt * KICK - vb)
         // A tank brushing past sideways rolls the ball along a little too.
-        const side = (t.vel.x * -nz + t.vel.z * nx) * 0.3
+        const side = (push.x * -nz + push.z * nx) * 0.3
         b.vx += -nz * side
         b.vz += nx * side
+        // Pushed into a wall or prop, a ball can only roll along it, and no faster than it was pushed. Pushed
+        // straight in (or into a corner) that leaves nothing, and it rests there, held, until the tank backs off
+        // or comes at it from the side. (The tank stops against it meanwhile: blockTank.)
+        const w = wallInWay(b, nx, nz)
+        if (w) {
+          const vn = b.vx * w.x + b.vz * w.z
+          if (vn < 0) {
+            b.vx -= vn * w.x
+            b.vz -= vn * w.z
+          }
+          const sp = Math.hypot(b.vx, b.vz)
+          const most = vt * KICK
+          const k = sp < 0.5 ? 0 : Math.min(1, most / sp)
+          b.vx *= k
+          b.vz *= k
+        }
         cap(b)
         knocked.push({ b, t })
       }
@@ -324,9 +331,9 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
-    // Only a ball that really moves bonks (one held against a wall doesn't drum).
+    // Only a ball that really moves bonks (faster than 0.6 m/s): one wedged against a wall doesn't drum.
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)
-    if (jolt > 2.5 && d > 0.01) onBump?.(b, Math.min(1, jolt / 10))
+    if (jolt > 2.5 && d > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
     b.seen.vx = b.vx
     b.seen.vz = b.vz
   }
