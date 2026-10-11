@@ -12,8 +12,8 @@ import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.j
 import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor, r2 } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, lineOfSight, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
-import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y, flight } from './shells.js'
-import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
+import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y } from './shells.js'
+import { updateFx, clearNearCamera, updateFloaters, toScreen, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey, mouseSurfaces, mouseAims, drivingAlone } from './input.js'
@@ -493,6 +493,7 @@ function toMenu() {
   // Tanks stay parked in the menu's arena: draw them once more from the sky, so a round left from the
   // driver's seat doesn't leave seat-sized name labels (or our own hidden one) behind.
   view.seat = false
+  view.seatTank = null
   for (const t of game.tanks.values()) {
     if (t.firstPerson) t.setFirstPerson(false)
     t.render(0, false)
@@ -977,12 +978,17 @@ const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -LAND_Y) // where b
 const aimPoint = new THREE.Vector3()
 const mouseNdc = new THREE.Vector2()
 
+/** The floor point under the mouse (aimPoint, where blobs land), or null. */
+function mouseGround() {
+  ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
+  return ray.ray.intersectPlane(aimPlane, aimPoint)
+}
+
 function playerControls(me, dt) {
   const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing, boost: input.boost, mega: input.mega }
   if (firstPerson()) return seatControls(me, c, dt)
   if (mouseAims()) {
-    ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
-    if (ray.ray.intersectPlane(aimPlane, aimPoint)) {
+    if (mouseGround()) {
       c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
       // Paint lobs onto the point under the mouse.
       c.aimAt = aimPoint
@@ -1095,6 +1101,7 @@ function updateCamera(dt) {
   const portrait = innerHeight > innerWidth
   const inside = firstPerson()
   view.seat = !!inside
+  view.seatTank = inside ? game.me.id : null
   const entering = inside && !game.me.firstPerson
   if (game.me && game.me.firstPerson !== inside) {
     game.me.setFirstPerson(inside)
@@ -1176,7 +1183,6 @@ function frame() {
 function battleStep(dt, n) {
   const m = game.match
   const me = game.me
-  flight.seat = firstPerson() ? me.id : null
   const live = n >= m.startAt && !m.over
   const tanks = tankList()
 
@@ -1305,27 +1311,25 @@ function battleStep(dt, n) {
     hud.reach(false)
   } else {
     const aiming = mouseAims() && me?.alive
-    hud.crosshair(aiming, ((input.mouse.x + 1) / 2) * innerWidth, ((1 - input.mouse.y) / 2) * innerHeight)
+    hud.crosshair(aiming, ...toScreen(mouseNdc.set(input.mouse.x, input.mouse.y)))
     showReach(aiming && !inside ? me : null)
   }
 }
 
+const nozzle = new THREE.Vector3()
+const landing = new THREE.Vector3()
 /**
  * With the mouse beyond squirting range, a dot shows where the paint will really land (as far as it goes toward
  * the ring), and the ring dims, so the ring never promises paint where it can't reach.
  */
-const nozzle = new THREE.Vector3()
 function showReach(me) {
-  ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
-  const hit = me && ray.ray.intersectPlane(aimPlane, aimPoint)
-  me?.muzzleNodes[0].getWorldPosition(nozzle)
-  const d = hit ? Math.hypot(aimPoint.x - nozzle.x, aimPoint.z - nozzle.z) : 0
-  const far = d > me?.stats.range
-  if (far) {
-    const k = me.stats.range / d
-    nozzle.set(nozzle.x + (aimPoint.x - nozzle.x) * k, LAND_Y, nozzle.z + (aimPoint.z - nozzle.z) * k).project(camera)
-  }
-  hud.reach(far, ((nozzle.x + 1) / 2) * innerWidth, ((1 - nozzle.y) / 2) * innerHeight)
+  if (!me || !mouseGround()) return hud.reach(false)
+  me.muzzleNodes[0].getWorldPosition(nozzle)
+  const d = Math.hypot(aimPoint.x - nozzle.x, aimPoint.z - nozzle.z)
+  if (d <= me.stats.range) return hud.reach(false)
+  const k = me.stats.range / d
+  landing.set(nozzle.x + (aimPoint.x - nozzle.x) * k, LAND_Y, nozzle.z + (aimPoint.z - nozzle.z) * k).project(camera)
+  hud.reach(true, ...toScreen(landing))
 }
 
 function hostStep(dt, n) {

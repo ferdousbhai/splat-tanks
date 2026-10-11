@@ -206,6 +206,9 @@ const layer = document.getElementById('floaters')
 const floaters = []
 const v = new THREE.Vector3()
 
+/** Screen pixels [x, y] of a point already projected by the camera (normalised device coordinates). */
+export const toScreen = (v) => [((v.x + 1) / 2) * innerWidth, ((1 - v.y) / 2) * innerHeight]
+
 export function floatText(x, z, text, cls = '') {
   const el = document.createElement('div')
   el.className = `floater ${cls}`
@@ -223,8 +226,8 @@ export function updateFloaters(dt) {
       floaters.splice(i, 1)
       continue
     }
-    v.set(f.x, f.y + f.t * 2.2, f.z).project(camera)
-    f.el.style.transform = `translate(${((v.x + 1) / 2) * innerWidth}px, ${((1 - v.y) / 2) * innerHeight}px) translate(-50%, -50%) scale(${still.matches ? 1 : 1 + Math.max(0, 0.3 - f.t) * 2})`
+    const [x, y] = toScreen(v.set(f.x, f.y + f.t * 2.2, f.z).project(camera))
+    f.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${still.matches ? 1 : 1 + Math.max(0, 0.3 - f.t) * 2})`
     f.el.style.opacity = String(1 - Math.max(0, f.t - 0.6) / 0.4)
   }
 }

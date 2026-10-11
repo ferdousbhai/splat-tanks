@@ -537,3 +537,13 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - The suspension's smoothing rate is named once. `KICK` and the ball's white are named.
   - A stale `TURRET_RATE` and a ball distance in the docs are corrected.
 
+### Fresh audit, round 55
+
+- **Tidy (code quality):**
+  - The mouse's floor point is found once (`mouseGround`), and `showReach` stops early when nothing is aimed.
+  - Projected points become screen pixels in one place (`toScreen`), and the ring and the reach dot share one marker helper.
+  - The driver's seat tank lives in `view.seatTank` beside `view.seat`, instead of a second flag set elsewhere, and it is cleared at the menu.
+  - Your own see-through blobs in the seat have no solid shine or shadow.
+  - `TANK_TOP` sits beside `TANK_RADIUS` in `config.js`.
+  - Small tidies: `ballHit`'s height is required, a blob's step start is read before it moves, and the crosshair's CSS is back together.
+

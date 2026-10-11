@@ -6,9 +6,10 @@ import { emojiTexture, still } from './fx.js'
 
 /**
  * seat: in the driver's seat, labels keep one size on screen instead of filling it up close.
+ * seatTank: the id of the tank the seat is in, whose own blobs keep out of the aim ring (shells.js), else null.
  * levels: the splat match labels show "Lv n Tier"; painting together shows just the tier.
  */
-export const view = { seat: false, levels: true }
+export const view = { seat: false, seatTank: null, levels: true }
 
 /** Seconds a tank backs up with the stick held behind before it turns round. */
 const BACK_FOR = 0.6

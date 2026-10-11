@@ -1,10 +1,10 @@
 // Paint blobs: every device flies every blob for the visuals; the host's copy decides where paint lands.
 import * as THREE from 'three'
 import { scene, shellObstacle } from './world.js'
-import { TANK_RADIUS } from './config.js'
+import { TANK_RADIUS, TANK_TOP } from './config.js'
 import { splash, sparks, shellTrail, nearCamera } from './fx.js'
 import { sound } from './audio.js'
-import { yawOf } from './tank.js'
+import { yawOf, view } from './tank.js'
 import { ballHit } from './balls.js'
 
 const blobGeo = new THREE.SphereGeometry(0.32, 14, 10).scale(1, 1, 1.35)
@@ -24,12 +24,17 @@ const shells = new Map()
 export function spawnShell(o) {
   if (shells.has(o.sid)) return
   const group = new THREE.Group()
-  const blob = new THREE.Mesh(o.mega ? balloonGeo : blobGeo, (o.owner === flight.seat ? ghostMat : blobMat)(o.color))
-  const shine = new THREE.Mesh(shineGeo, shineMat)
-  shine.position.set(-0.12, 0.14, 0.05).multiplyScalar(o.mega ? 2.4 : 1)
-  shine.scale.setScalar(o.mega ? 2 : 1)
-  blob.castShadow = true
-  group.add(blob, shine)
+  // Your own, seen from the driver's seat, are see-through with no shine or shadow (hideNear).
+  const ghost = o.owner === view.seatTank
+  const blob = new THREE.Mesh(o.mega ? balloonGeo : blobGeo, (ghost ? ghostMat : blobMat)(o.color))
+  group.add(blob)
+  if (!ghost) {
+    const shine = new THREE.Mesh(shineGeo, shineMat)
+    shine.position.set(-0.12, 0.14, 0.05).multiplyScalar(o.mega ? 2.4 : 1)
+    shine.scale.setScalar(o.mega ? 2 : 1)
+    blob.castShadow = true
+    group.add(shine)
+  }
   group.position.set(o.x, NOZZLE_Y, o.z)
   group.rotation.order = 'YXZ' // turn to the heading, then tip along the arc
   group.rotation.y = yawOf(o.dx, o.dz)
@@ -43,10 +48,6 @@ export function spawnShell(o) {
 /** How high blobs leave the nozzle, and land (the floor's paint); main.js aims the mouse at LAND_Y. */
 const NOZZLE_Y = 1.1
 export const LAND_Y = 0.25
-const TANK_TOP = 1.8 // a lob higher than this flies over a tank
-
-/** Seen from the driver's seat (main.js sets it): this tank's own blobs stay out of the aim ring (hideNear). */
-export const flight = { seat: null }
 
 /** A blob's height at fraction k of its flight: a parabola from the nozzle down to the floor, `apex` above the line. */
 const arcY = (apex, k) => NOZZLE_Y - (NOZZLE_Y - LAND_Y) * k + 4 * apex * k * (1 - k)
@@ -57,7 +58,7 @@ const arcY = (apex, k) => NOZZLE_Y - (NOZZLE_Y - LAND_Y) * k + 4 * apex * k * (1
  */
 function hideNear(s) {
   const p = s.mesh.position
-  s.mesh.visible = !nearCamera(p.x, p.y, p.z, s.owner === flight.seat ? 6 : s.mega ? 3 : 1.5)
+  s.mesh.visible = !nearCamera(p.x, p.y, p.z, s.owner === view.seatTank ? 6 : s.mega ? 3 : 1.5)
 }
 
 /** Hides blobs by the camera once it has moved into the driver's seat. */
@@ -86,13 +87,13 @@ export function clearShells() {
 export function updateShells(dt, tanks, hooks, hearing) {
   for (const s of shells.values()) {
     // Flies only the time it has left, so it comes down exactly at its range whatever the frame rate.
-    const fly = Math.min(dt, Math.max(0, s.life - s.t))
+    const t0 = s.t
+    const fly = Math.min(dt, Math.max(0, s.life - t0))
     s.t += dt
     // Sub-step fast shells so they can't skip through thin walls.
     const steps = Math.max(1, Math.ceil((s.speed * fly) / 0.6))
     const h = fly / steps
     let done = false
-    const t0 = s.t - dt
     for (let i = 0; i < steps && !done; i++) {
       const ox = s.x
       const oz = s.z

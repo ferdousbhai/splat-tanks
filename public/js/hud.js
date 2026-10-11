@@ -195,17 +195,17 @@ function levelBars(me) {
 }
 
 /** The aiming ring: at the mouse, or the middle of the screen in the driver's seat. Hidden otherwise. */
-export function crosshair(show, x, y) {
-  const c = $('crosshair')
-  put(c, 'display', show ? 'block' : 'none')
-  if (show) put(c, 'transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`)
+/** Shows or hides a fixed marker centred on screen point (x, y). */
+function marker(el, show, x, y) {
+  put(el, 'display', show ? 'block' : 'none')
+  if (show) put(el, 'transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`)
 }
+
+export const crosshair = (show, x, y) => marker($('crosshair'), show, x, y)
 
 /** Where the paint really lands when the ring is out of reach (main.js showReach); the ring dims meanwhile. */
 export function reach(show, x, y) {
-  const r = $('reach')
-  put(r, 'display', show ? 'block' : 'none')
-  if (show) put(r, 'transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`)
+  marker($('reach'), show, x, y)
   $('crosshair').classList.toggle('far', show)
 }
 function cooldown(el, readyAt, total, now, unlocked) {
