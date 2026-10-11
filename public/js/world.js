@@ -191,7 +191,10 @@ export const PADS = [
 /** Where the beach balls start: one in each quarter, mirrored like everything else. */
 export const BALLS = [[19, 17], [-19, 17], [19, -17], [-19, -17]]
 
-/** Static colliders: boxes {x,z,hx,hz} and circles {x,z,r}. Paint buckets are circles with `barrel` set. */
+/**
+ * Static colliders: boxes {x,z,hx,hz,top} and circles {x,z,r,top}, top being how tall it stands (a lobbed blob
+ * flies over anything lower). Paint buckets are circles with `barrel` set, and are hit at any height.
+ */
 export const colliders = { boxes: [], circles: [] }
 export const barrels = [] // paint buckets: { x, z, alive, mesh, backAt } (backAt: when a burst one comes back)
 
@@ -314,12 +317,13 @@ export function buildArena(seed) {
     // Scenery is out of reach, and the border walls sit outside the ARENA clamp in pushOut/shellObstacle.
     if (p.decor || p.edge) continue
     const swap = Math.abs(Math.sin(p.rot)) > 0.5
-    if (p.name === 'wall') colliders.boxes.push({ x: p.x, z: p.z, hx: swap ? 0.55 : 2.05, hz: swap ? 2.05 : 0.55 })
-    else if (p.name === 'crate') colliders.boxes.push({ x: p.x, z: p.z, hx: 1.02, hz: 1.02 })
-    else if (p.name === 'tower') colliders.boxes.push({ x: p.x, z: p.z, hx: 2.1, hz: 2.1 })
-    else if (p.name === 'rock') colliders.circles.push({ x: p.x, z: p.z, r: 1.45 })
-    else if (p.name === 'tree') colliders.circles.push({ x: p.x, z: p.z, r: 0.7 })
-    else if (p.name === 'tires') colliders.circles.push({ x: p.x, z: p.z, r: 0.85 })
+    // Heights from the Blender models.
+    if (p.name === 'wall') colliders.boxes.push({ x: p.x, z: p.z, hx: swap ? 0.55 : 2.05, hz: swap ? 2.05 : 0.55, top: 1.6 })
+    else if (p.name === 'crate') colliders.boxes.push({ x: p.x, z: p.z, hx: 1.02, hz: 1.02, top: 2 })
+    else if (p.name === 'tower') colliders.boxes.push({ x: p.x, z: p.z, hx: 2.1, hz: 2.1, top: 5.3 })
+    else if (p.name === 'rock') colliders.circles.push({ x: p.x, z: p.z, r: 1.45, top: 2 })
+    else if (p.name === 'tree') colliders.circles.push({ x: p.x, z: p.z, r: 0.7, top: 5 })
+    else if (p.name === 'tires') colliders.circles.push({ x: p.x, z: p.z, r: 0.85, top: 1.4 })
   }
   arenaGroup.add(bake(statics))
 
@@ -427,13 +431,14 @@ export function pushOut(pos, rad) {
 
 /**
  * Where a moving paint blob hits something this step: { nx, nz, barrel } or null.
- * `px,pz` is the previous position, used to tell which side of a box was hit.
+ * `px,pz` is the previous position, used to tell which side of a box was hit. y: the blob's height, which flies
+ * it over anything lower (leave it out to count everything, as a line of sight does).
  */
-export function shellObstacle(x, z, px, pz, rad) {
+export function shellObstacle(x, z, px, pz, rad, y = 0) {
   if (Math.abs(x) > ARENA - rad) return { nx: -Math.sign(x), nz: 0 }
   if (Math.abs(z) > ARENA - rad) return { nx: 0, nz: -Math.sign(z) }
   for (const b of colliders.boxes) {
-    if (Math.abs(x - b.x) > b.hx + rad || Math.abs(z - b.z) > b.hz + rad) continue
+    if (Math.abs(x - b.x) > b.hx + rad || Math.abs(z - b.z) > b.hz + rad || y - rad > b.top) continue
     const wasOutX = Math.abs(px - b.x) > b.hx + rad - 1e-3
     const wasOutZ = Math.abs(pz - b.z) > b.hz + rad - 1e-3
     if (wasOutX && !wasOutZ) return { nx: Math.sign(px - b.x), nz: 0 }
@@ -444,6 +449,7 @@ export function shellObstacle(x, z, px, pz, rad) {
   }
   for (const c of colliders.circles) {
     if (c.barrel !== undefined && !c.alive) continue
+    if (c.barrel === undefined && y - rad > c.top) continue
     const dx = x - c.x
     const dz = z - c.z
     const d = Math.hypot(dx, dz)

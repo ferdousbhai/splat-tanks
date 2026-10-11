@@ -10,6 +10,9 @@ import { emojiTexture, still } from './fx.js'
  */
 export const view = { seat: false, levels: true }
 
+/** Seconds a tank backs up with the stick held behind before it turns round. */
+const BACK_FOR = 0.6
+
 /** Yaw (three.js rotation.y) that faces direction (dx, dz); models face -Z. */
 export const yawOf = (dx, dz) => Math.atan2(-dx, -dz)
 export const dirOf = (yaw) => ({ x: -Math.sin(yaw), z: -Math.cos(yaw) })
@@ -125,6 +128,7 @@ export class Tank {
     this.flash = 0
     this.recoil = 0
     this.yawRate = 0 // how fast the hull is turning (radians a second)
+    this.backFor = 0 // how long the stick has pointed behind (drive)
     this.trailAt = null // host: where this tank's paint trail was last laid (trailTo)
     this.sway = { pitch: 0, pv: 0, roll: 0, rv: 0, fwd: 0, yaw: 0, kick: 0 } // the suspension, rocking on its springs
     this.tier = 0
@@ -222,9 +226,11 @@ export class Tank {
   /**
    * Steers toward a move direction (twin-stick style) like a tracked vehicle: the hull swings round at a turn
    * rate that eases in and out (quicker turning on the spot than at full speed), the tank speeds up and slows
-   * down with some weight, and the tracks grip, so sideways sliding dies away quickly.
+   * down with some weight, and the tracks grip, so sideways sliding dies away quickly. turnRound: a stick held
+   * behind backs up for a moment, then the tank turns round and drives that way (the driver's seat steers its
+   * own hull, so it backs up for as long as it's held).
    */
-  drive(mx, mz, dt) {
+  drive(mx, mz, dt, turnRound = true) {
     const len = Math.hypot(mx, mz)
     const f = dirOf(this.heading)
     const fwd = this.vel.x * f.x + this.vel.z * f.z
@@ -234,8 +240,10 @@ export class Tank {
     if (len > 0.1) {
       const want = yawOf(mx, mz)
       const diff = angleDiff(this.heading, want)
-      // Reverse instead of doing a U-turn when the stick points behind.
-      const back = Math.abs(diff) > 2.2
+      // Reverse instead of doing a U-turn when the stick points behind: a nudge back, not a long way.
+      const behind = Math.abs(diff) > 2.2
+      this.backFor = behind ? this.backFor + dt : 0
+      const back = behind && (!turnRound || this.backFor < BACK_FOR)
       const goal = back ? want + Math.PI : want
       const d = angleDiff(this.heading, goal)
       const rate = 6.5 - 2.5 * Math.min(1, Math.abs(fwd) / this.stats.speed)
@@ -243,6 +251,7 @@ export class Tank {
       const align = Math.max(0.25, Math.cos(d))
       speed = this.stats.speed * Math.min(1, len) * align * (back ? -0.75 : 1)
     }
+    else this.backFor = 0
     this.yawRate += (yawWant - this.yawRate) * Math.min(1, dt * 14)
     this.heading += this.yawRate * dt
     if (this.boosting) speed = top * (speed < 0 ? -1 : 1)

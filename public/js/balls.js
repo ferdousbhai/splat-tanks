@@ -102,8 +102,9 @@ function cap(b) {
   }
 }
 
-/** The ball a blob of radius r at (x, z) has hit, if any. */
-export function ballHit(x, z, r) {
+/** The ball a blob of radius r at (x, z), y high, has hit, if any. */
+export function ballHit(x, z, r, y = 0) {
+  if (y - r > BALL_R * 2) return null
   for (const b of balls) if ((x - b.x) ** 2 + (z - b.z) ** 2 < (BALL_R + r) ** 2) return b
   return null
 }

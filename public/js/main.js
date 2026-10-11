@@ -12,7 +12,7 @@ import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.j
 import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor, r2 } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, lineOfSight, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
-import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y } from './shells.js'
+import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y, flight } from './shells.js'
 import { updateFx, clearNearCamera, updateFloaters, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
@@ -900,7 +900,7 @@ function fire(t, mega = false, aim = null) {
 /** Shared controls for the player and bots: drive, aim, squirt, zoom, balloon. */
 function control(t, c, dt) {
   const n = now()
-  t.drive(c.mx, c.mz, dt)
+  t.drive(c.mx, c.mz, dt, !c.snap)
   // Where the turret should point: the aim while squirting is held; after a quick flick of the aim stick, or a
   // balloon tap, the aim as it was pressed, until that squirt has gone.
   if (c.fire || c.mega) t.dueAim = c.aimYaw
@@ -933,6 +933,8 @@ function control(t, c, dt) {
   // Move, then slide off walls and other tanks.
   t.pos.x += t.vel.x * dt
   t.pos.z += t.vel.z * dt
+  const wantX = t.pos.x
+  const wantZ = t.pos.z
   pushOut(t.pos, TANK_RADIUS)
   for (const o of game.tanks.values()) {
     if (o === t || !o.alive) continue
@@ -945,8 +947,27 @@ function control(t, c, dt) {
       t.pos.z = o.pos.z + (dz / d) * min
     }
   }
+  const ballX = t.pos.x
+  const ballZ = t.pos.z
   blockTank(t.pos)
+  // A ball's push doesn't count below: the host kicks the ball on with the speed the tank pushes it with.
+  const ballDx = t.pos.x - ballX
+  const ballDz = t.pos.z - ballZ
   pushOut(t.pos, TANK_RADIUS)
+  // Pressed against a wall, a prop or a tank, the tank loses its speed into it (so it doesn't send that speed to
+  // friends' devices, its dust and its suspension) and keeps the part along it, to slide.
+  let nx = t.pos.x - wantX - ballDx
+  let nz = t.pos.z - wantZ - ballDz
+  const l = Math.hypot(nx, nz)
+  if (l > 1e-4) {
+    nx /= l
+    nz /= l
+    const vn = t.vel.x * nx + t.vel.z * nz
+    if (vn < 0) {
+      t.vel.x -= vn * nx
+      t.vel.z -= vn * nz
+    }
+  }
 }
 
 // --- Player input ------------------------------------------------------------------------
@@ -1155,6 +1176,7 @@ function frame() {
 function battleStep(dt, n) {
   const m = game.match
   const me = game.me
+  flight.seat = firstPerson() ? me.id : null
   const live = n >= m.startAt && !m.over
   const tanks = tankList()
 
@@ -1278,8 +1300,32 @@ function battleStep(dt, n) {
   document.body.classList.toggle('seat', !!inside)
   // In the driver's seat the aim is the middle of the view, but only while the mouse is captured: when it is
   // free (cards up, or after Esc) the ring follows the mouse, so a child can always see where they're pointing.
-  if (inside && (input.touch || document.pointerLockElement)) hud.crosshair(true, innerWidth / 2, innerHeight / 2)
-  else hud.crosshair(mouseAims() && me?.alive, ((input.mouse.x + 1) / 2) * innerWidth, ((1 - input.mouse.y) / 2) * innerHeight)
+  if (inside && (input.touch || document.pointerLockElement)) {
+    hud.crosshair(true, innerWidth / 2, innerHeight / 2)
+    hud.reach(false)
+  } else {
+    const aiming = mouseAims() && me?.alive
+    hud.crosshair(aiming, ((input.mouse.x + 1) / 2) * innerWidth, ((1 - input.mouse.y) / 2) * innerHeight)
+    showReach(aiming && !inside ? me : null)
+  }
+}
+
+/**
+ * With the mouse beyond squirting range, a dot shows where the paint will really land (as far as it goes toward
+ * the ring), and the ring dims, so the ring never promises paint where it can't reach.
+ */
+const nozzle = new THREE.Vector3()
+function showReach(me) {
+  ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
+  const hit = me && ray.ray.intersectPlane(aimPlane, aimPoint)
+  me?.muzzleNodes[0].getWorldPosition(nozzle)
+  const d = hit ? Math.hypot(aimPoint.x - nozzle.x, aimPoint.z - nozzle.z) : 0
+  const far = d > me?.stats.range
+  if (far) {
+    const k = me.stats.range / d
+    nozzle.set(nozzle.x + (aimPoint.x - nozzle.x) * k, LAND_Y, nozzle.z + (aimPoint.z - nozzle.z) * k).project(camera)
+  }
+  hud.reach(far, ((nozzle.x + 1) / 2) * innerWidth, ((1 - nozzle.y) / 2) * innerHeight)
 }
 
 function hostStep(dt, n) {

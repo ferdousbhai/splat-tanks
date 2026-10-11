@@ -300,6 +300,8 @@ body.seat #periscope { display: block; }
   .touch-btn.mega { bottom: calc(var(--bottom) + 8px); right: calc(var(--right) + 64px); }
 }
 #crosshair { position: fixed; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 3px solid rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4); pointer-events: none; display: none; }
+#crosshair.far { opacity: 0.4; }
+#reach { position: fixed; left: 0; top: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px; background: #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45); pointer-events: none; display: none; }
 #crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: #fff; border-radius: 50%; }
 body.playing { cursor: none; }
 

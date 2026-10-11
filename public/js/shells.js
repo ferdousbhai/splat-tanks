@@ -12,7 +12,9 @@ const shineGeo = new THREE.SphereGeometry(0.1, 8, 6)
 const balloonGeo = new THREE.SphereGeometry(0.75, 18, 14).scale(1, 1.15, 1)
 const shineMat = new THREE.MeshBasicMaterial({ color: '#ffffff' })
 const blobMats = new Map() // one material per paint colour, shared by every blob
+const ghostMats = new Map() // see-through, for your own blobs seen from the driver's seat
 const blobMat = (color) => blobMats.get(color) ?? blobMats.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.2 })).get(color)
+const ghostMat = (color) => ghostMats.get(color) ?? ghostMats.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.2, transparent: true, opacity: 0.45, depthWrite: false })).get(color)
 
 const shells = new Map()
 
@@ -22,7 +24,7 @@ const shells = new Map()
 export function spawnShell(o) {
   if (shells.has(o.sid)) return
   const group = new THREE.Group()
-  const blob = new THREE.Mesh(o.mega ? balloonGeo : blobGeo, blobMat(o.color))
+  const blob = new THREE.Mesh(o.mega ? balloonGeo : blobGeo, (o.owner === flight.seat ? ghostMat : blobMat)(o.color))
   const shine = new THREE.Mesh(shineGeo, shineMat)
   shine.position.set(-0.12, 0.14, 0.05).multiplyScalar(o.mega ? 2.4 : 1)
   shine.scale.setScalar(o.mega ? 2 : 1)
@@ -41,14 +43,21 @@ export function spawnShell(o) {
 /** How high blobs leave the nozzle, and land (the floor's paint); main.js aims the mouse at LAND_Y. */
 const NOZZLE_Y = 1.1
 export const LAND_Y = 0.25
+const TANK_TOP = 1.8 // a lob higher than this flies over a tank
 
-/** A blob's height at fraction k of its flight: a parabola from the nozzle down to the floor. */
-const arcY = (s, k) => NOZZLE_Y - (NOZZLE_Y - LAND_Y) * k + 4 * s.apex * k * (1 - k)
+/** Seen from the driver's seat (main.js sets it): this tank's own blobs stay out of the aim ring (hideNear). */
+export const flight = { seat: null }
 
-/** A blob leaving the nozzle right by the driver's seat camera would fill the view, so it shows once clear. */
+/** A blob's height at fraction k of its flight: a parabola from the nozzle down to the floor, `apex` above the line. */
+const arcY = (apex, k) => NOZZLE_Y - (NOZZLE_Y - LAND_Y) * k + 4 * apex * k * (1 - k)
+
+/**
+ * A blob leaving the nozzle right by the driver's seat camera would fill the view, so it shows once clear. Your
+ * own, which climb through the middle of the view on their way out, show from 6 m and see-through.
+ */
 function hideNear(s) {
   const p = s.mesh.position
-  s.mesh.visible = !nearCamera(p.x, p.y, p.z, s.mega ? 3 : 1.5)
+  s.mesh.visible = !nearCamera(p.x, p.y, p.z, s.owner === flight.seat ? 6 : s.mega ? 3 : 1.5)
 }
 
 /** Hides blobs by the camera once it has moved into the driver's seat. */
@@ -83,12 +92,15 @@ export function updateShells(dt, tanks, hooks, hearing) {
     const steps = Math.max(1, Math.ceil((s.speed * fly) / 0.6))
     const h = fly / steps
     let done = false
+    const t0 = s.t - dt
     for (let i = 0; i < steps && !done; i++) {
       const ox = s.x
       const oz = s.z
       s.x += s.dx * s.speed * h
       s.z += s.dz * s.speed * h
-      const hit = shellObstacle(s.x, s.z, ox, oz, s.r)
+      // A lob flies over what is lower than it: walls and tanks it clears in the middle of its flight.
+      const y = arcY(s.apex, Math.min(1, (t0 + h * (i + 1)) / s.life))
+      const hit = shellObstacle(s.x, s.z, ox, oz, s.r, y)
       if (hit) {
         if (hit.barrel !== undefined) {
           hooks.barrel?.(s, hit.barrel)
@@ -118,7 +130,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
         break
       }
       for (const t of tanks) {
-        if (!t.alive || (t.id === s.owner && !s.owner2)) continue
+        if (!t.alive || (t.id === s.owner && !s.owner2) || y - s.r > TANK_TOP) continue
         const dx = t.pos.x - s.x
         const dz = t.pos.z - s.z
         if (dx * dx + dz * dz < (TANK_RADIUS + s.r) ** 2) {
@@ -129,7 +141,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
         }
       }
       // A robot's blob flies past the beach balls: they are left for the children.
-      const ball = !done && !s.bot && ballHit(s.x, s.z, s.r)
+      const ball = !done && !s.bot && ballHit(s.x, s.z, s.r, y)
       if (ball) {
         hooks.ball?.(s, ball)
         removeShell(s.sid)
@@ -149,7 +161,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
     // Up from the nozzle and down onto the floor at the end of its range, tipped along its path and
     // stretched a little by its speed, like a real drop of paint.
     const k = s.t / s.life
-    s.mesh.position.set(s.x, arcY(s, k), s.z)
+    s.mesh.position.set(s.x, arcY(s.apex, k), s.z)
     const climb = (LAND_Y - NOZZLE_Y + 4 * s.apex * (1 - 2 * k)) / s.range // the slope of arcY over the ground
     s.mesh.rotation.x = Math.atan(climb)
     if (!s.mega) s.blob.scale.set(0.9, 0.9, 1 + Math.min(0.35, Math.abs(climb) * 0.4))

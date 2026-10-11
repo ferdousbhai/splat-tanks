@@ -200,6 +200,14 @@ export function crosshair(show, x, y) {
   put(c, 'display', show ? 'block' : 'none')
   if (show) put(c, 'transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`)
 }
+
+/** Where the paint really lands when the ring is out of reach (main.js showReach); the ring dims meanwhile. */
+export function reach(show, x, y) {
+  const r = $('reach')
+  put(r, 'display', show ? 'block' : 'none')
+  if (show) put(r, 'transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`)
+  $('crosshair').classList.toggle('far', show)
+}
 function cooldown(el, readyAt, total, now, unlocked) {
   el.classList.toggle('locked', !unlocked)
   const left = Math.max(0, readyAt - now)
