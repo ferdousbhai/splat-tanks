@@ -904,8 +904,13 @@ function control(t, c, dt) {
   t.drive(c.mx, c.mz, dt, !c.snap)
   // Where the turret should point: the aim while squirting is held; after a quick flick of the aim stick, or a
   // balloon tap, the aim as it was pressed, until that squirt has gone.
-  if (c.fire || c.mega) t.dueAim = c.aimYaw
-  const aim = (t.shotDue || t.megaDue) && !c.fire ? t.dueAim : c.aimYaw
+  if (c.fire || c.mega) {
+    t.dueAim = c.aimYaw
+    t.dueAt = c.aimAt ? Object.assign(t.dueSpot, { x: c.aimAt.x, z: c.aimAt.z }) : null
+  }
+  const waiting = (t.shotDue || t.megaDue) && !c.fire
+  const aim = waiting ? t.dueAim : c.aimYaw
+  const aimAt = waiting ? t.dueAt : c.aimAt
   // The turret swings round to the aim instead of snapping, and stays on it while the hull turns. In the
   // driver's seat it is the view itself, so it follows at once.
   const swing = BASE.turretRate * dt
@@ -923,13 +928,13 @@ function control(t, c, dt) {
   if (t.megaDue && onAim) {
     t.megaDue = false
     t.megaReadyAt = n + BASE.megaCooldown * 1000
-    fire(t, true, c.aimAt)
+    fire(t, true, aimAt)
   }
   if (c.fire && n >= t.nextFireAt) t.shotDue = true
   if (t.shotDue && onAim) {
     t.shotDue = false
     t.nextFireAt = n + t.stats.reload * (n < t.rapidUntil ? 0.45 : 1) * 1000
-    fire(t, false, c.aimAt)
+    fire(t, false, aimAt)
   }
   // Move, then slide off walls and other tanks.
   t.pos.x += t.vel.x * dt
@@ -955,8 +960,8 @@ function control(t, c, dt) {
   const ballDx = t.pos.x - ballX
   const ballDz = t.pos.z - ballZ
   pushOut(t.pos, TANK_RADIUS)
-  // Pressed against a wall, a prop or a tank, the tank loses its speed into it (so it doesn't send that speed to
-  // friends' devices, its dust and its suspension) and keeps the part along it, to slide.
+  // Pressed against a wall, a prop or a tank, the tank shows no speed into it (to friends' devices, its dust and
+  // its suspension). Its tracks keep pushing (drive's own speed is untouched), so it slides along as before.
   let nx = t.pos.x - wantX - ballDx
   let nz = t.pos.z - wantZ - ballDz
   const l = Math.hypot(nx, nz)
@@ -1324,11 +1329,13 @@ const landing = new THREE.Vector3()
  */
 function showReach(me) {
   if (!me || !mouseGround()) return hud.reach(false)
+  // Measured from the nozzle as it will be once the turret has swung round to the mouse.
   me.muzzleNodes[0].getWorldPosition(nozzle)
-  const d = Math.hypot(aimPoint.x - nozzle.x, aimPoint.z - nozzle.z)
-  if (d <= me.stats.range) return hud.reach(false)
-  const k = me.stats.range / d
-  landing.set(nozzle.x + (aimPoint.x - nozzle.x) * k, LAND_Y, nozzle.z + (aimPoint.z - nozzle.z) * k).project(camera)
+  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z)
+  const d = Math.hypot(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
+  if (d - ahead <= me.stats.range) return hud.reach(false)
+  const k = (me.stats.range + ahead) / d
+  landing.set(me.pos.x + (aimPoint.x - me.pos.x) * k, LAND_Y, me.pos.z + (aimPoint.z - me.pos.z) * k).project(camera)
   hud.reach(true, ...toScreen(landing))
 }
 

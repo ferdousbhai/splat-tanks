@@ -109,9 +109,10 @@ export function updateShells(dt, tanks, hooks, hearing) {
           done = true
           break
         }
-        if (s.bounces > 0 && !s.mega) {
+        const dot = s.dx * hit.nx + s.dz * hit.nz
+        // Bounces off a side it is flying into; one landing on top of something just splats there.
+        if (s.bounces > 0 && !s.mega && !hit.top && dot < 0) {
           s.bounces--
-          const dot = s.dx * hit.nx + s.dz * hit.nz
           s.dx -= 2 * dot * hit.nx
           s.dz -= 2 * dot * hit.nz
           s.x = ox

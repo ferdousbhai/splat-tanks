@@ -539,6 +539,10 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 55
 
+- **A waiting click took the mouse's later distance (correctness):** a squirt or balloon waiting for the turret kept the clicked direction but, when it went, took the distance to wherever the mouse had moved by then. Clicked 6 m behind, then moved on, it landed 20 m away. It now keeps the clicked spot too (6 m).
+- **Sticky wall slides (correctness, from round 54):** taking a tank's speed into a wall also fed into its driving, whose grip then killed the sideways part, so a diagonal push slid along at about half speed (4 m/s instead of 7.3 at 45°). The tank now keeps its tracks' own speed (`drv`) apart from the speed it shows and sends (`vel`), and slides as before.
+- **Lobs landing inside props (correctness):** a lob coming down onto a crate, rock, wall or tyres was already over it, so it took a side's bounce from inside. Bouncy blobs ping-ponged there and then splatted in the middle, or were thrown 6 m back. A blob coming down from above now lands on top, and a bounce only happens off a side it is flying into.
+- **The reach dot from a swinging nozzle (correctness, plausible):** the dot measured from the nozzle where it was mid-swing, so it could show "out of reach" for a shot that reaches. It now measures as if the turret were already turned to the mouse.
 - **Tidy (code quality):**
   - The mouse's floor point is found once (`mouseGround`), and `showReach` stops early when nothing is aimed.
   - Projected points become screen pixels in one place (`toScreen`), and the ring and the reach dot share one marker helper.
