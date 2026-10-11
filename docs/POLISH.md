@@ -488,7 +488,7 @@ All three reviews came back clean: design (real painting to the end in WebKit an
 | 🏐 Beach balls, one in each quarter. A tank nudges a ball along, and a squirt knocks it (up to a gentle speed). Balls roll to a stop, bounce off walls and each other, and paint a stripe in the colour of whoever touched them last (later rounds: they roll back off the outer wall and off any wall or prop they are left against). A balloon or bucket nearby sends them rolling. They show on the minimap. Robots leave them for the children: they steer round them, their blobs fly past them, and their bumps and bursts roll a ball without taking its colour. Knocks make a soft bonk | `balls.js`, `main.js` `hostBall`, `hostStep`, `bigSplash` |
 | Fast trails stay solid: the host fills in splats between trail points when the gap would show, so a zooming tank or a fast ball leaves a stripe rather than dots | `main.js` `trailTo` |
 
-The host rolls the balls and sends them in a `bl` message, `[[x, z, vx, vz, toucher], …]`, 20 times a second while any ball moves, twice more as they come to rest (a quick message may be lost; from round 65), and once a second when they are all still. Other devices glide after the host's balls the way they follow tanks. Each device keeps its own tank out of the balls, and the host gives itself a 0.25 m reach, so a friend's tank still nudges the ball. A friend joining part way through gets the balls in the round's snapshot.
+The host rolls the balls and sends them in a `bl` message, `[[x, z, vx, vz, toucher], …]`, 20 times a second while any ball moves, twice more as they come to rest (rounds 65–66: a quick message may be lost), and once a second when they are all still. Other devices glide after the host's balls the way they follow tanks. Each device keeps its own tank out of the balls, and the host gives itself a 0.25 m reach, so a friend's tank still nudges the ball. A friend joining part way through gets the balls in the round's snapshot.
 
 ### Evidence
 
@@ -725,6 +725,10 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 ### Fresh audit, round 70
 
 - **Tidy (code quality):** one `snapSky` puts the camera on our tank for a round's start, its arrival and the driver's seat; a `vel` comment names `moveTank`; the rest sends' reason is given once; the README's ball sentence sits with what the host decides; the Pass 2 protocol note mentions the rest sends; and small wording and spacing.
+
+### Fresh audit, round 71
+
+- **Tidy (code quality):** the round-start camera line drops a guard that could never fail and says what happens for a joiner; `snapSky` always frames our own tank; `seatTank`'s comment says what shells.js does; the protocol note cites rounds 65–66; and two more missing blank lines in hud.js.
 
 ### Open (Pass 2)
 

@@ -180,6 +180,7 @@ export function bars(me, now, together) {
   put(box, 'html', buffs.map(([p]) => `<span class="buff">${p.icon}<i></i></span>`).join(''))
   buffs.forEach(([p, until], k) => put(box.children[k].firstElementChild, 'width', cssPct(Math.min(1, (until - now) / (p.seconds * 1000)))))
 }
+
 function levelBars(me) {
   // The bar shows your share of the whole floor, the same number as its label, so it only ever grows as you paint.
   put($('paintfill'), 'width', cssPct(cellsOf(me.slot) / CELLS))
@@ -299,6 +300,7 @@ let layerVersion = -1
 export function resetMinimap() {
   mapBg = null
 }
+
 export function minimap(tanks, me, pads, balls) {
   const c = $('minimap')
   const g = (mapCtx ??= c.getContext('2d'))

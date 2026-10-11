@@ -449,8 +449,9 @@ function startBattle(msg) {
   setScreen('battle')
   showHostButtons()
   document.body.classList.toggle('together', mode === 'together')
-  // Framing our tank from the start, if it is placed already (a friend joining is framed as it arrives: onSpawn).
-  if (game.me) snapSky(game.me)
+  // Framing our tank from the start (a friend joining part way through is placed a moment later, and framed then:
+  // onSpawn).
+  snapSky()
   // Everyone hears how the round works, including a player joining part way through.
   if (mode === 'together') {
     const n = layout.n
@@ -735,7 +736,7 @@ function onSpawn(msg) {
   t.alive = true
   // Our own tank arriving (a friend joining is placed a moment after the round's start): the sky camera frames it at
   // once rather than sweeping across the arena to it.
-  if (t === game.me) snapSky(t)
+  if (t === game.me) snapSky()
   // From the driver's seat the camera drops into this tank in the same frame, inside the rings: no burst then.
   if (!(t === game.me && seat.on)) levelBurst(msg.x, msg.z, t.color)
 }
@@ -1192,7 +1193,7 @@ function skyPos(target, out) {
 }
 
 /** Puts the sky camera straight onto our tank, with no sweep. */
-const snapSky = (me) => skyPos(skyTarget(me, camTarget), camPos)
+const snapSky = () => skyPos(skyTarget(game.me, camTarget), camPos)
 
 function updateCamera(dt) {
   const tall = upright()
@@ -1240,7 +1241,7 @@ function seatCamera(dt) {
   const p = seat.pitch - 0.06
   camera.lookAt(eye.x + d.x * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z + d.z * Math.cos(p) * 10)
   // Keep the top view ready to take over smoothly, and the shadows centred ahead of the tank.
-  snapSky(me)
+  snapSky()
   followSun()
 }
 
