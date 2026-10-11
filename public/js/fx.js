@@ -217,6 +217,9 @@ const v = new THREE.Vector3()
 export const toScreen = (v) => [((v.x + 1) / 2) * innerWidth, ((1 - v.y) / 2) * innerHeight]
 
 export function floatText(x, z, text, cls = '') {
+  // Starting right by the driver's seat camera, it would fly off the top or flash over the turret: the pickup's
+  // sound and the powers bar say it there.
+  if (nearCamera(x, 2.6, z)) return
   const el = document.createElement('div')
   el.className = `floater ${cls}`
   el.textContent = text

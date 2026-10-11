@@ -736,6 +736,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 - **A friend joining as the host left never got a tank (correctness, older):** a hello arriving while the old host was going reached a device that wasn't host yet, so no one answered it, and when that device took over it only said hello back. The friend waited on "Waiting for the host to start." for the rest of the round. A new host now gives a tank to anyone who said hello and has none.
 - **Paint slots past 255 (correctness, plausible):** with slots never reused in a round, about 245 joins in one round would have reached a slot the floor can't store. Past 255 a slot whose paint is all painted over is reused.
+- **A floating word from the driver's seat camera (design, cosmetic):** your own pickup's word ("💦 Super squirt") started at the seat camera and flew off the top or flashed over the turret. It is left out by the camera, where the pickup's sound and the powers bar already say it.
 - **Tidy (code quality):** `nextSlot` counts only the slots with a colour this round (every tank's is one), and a blank line in hud.js.
 
 ### Open (Pass 2)
