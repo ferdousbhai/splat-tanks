@@ -734,6 +734,8 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 72
 
+- **A friend joining as the host left never got a tank (correctness, older):** a hello arriving while the old host was going reached a device that wasn't host yet, so no one answered it, and when that device took over it only said hello back. The friend waited on "Waiting for the host to start." for the rest of the round. A new host now gives a tank to anyone who said hello and has none.
+- **Paint slots past 255 (correctness, plausible):** with slots never reused in a round, about 245 joins in one round would have reached a slot the floor can't store. Past 255 a slot whose paint is all painted over is reused.
 - **Tidy (code quality):** `nextSlot` counts only the slots with a colour this round (every tank's is one), and a blank line in hud.js.
 
 ### Open (Pass 2)
@@ -742,4 +744,5 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor. Likewise a friend pushing a ball straight into a wall bonks about twice a second (found in the round 62 audit).
 - **🤝 Paint together with no robots is slow to its first moment** (round 64): a child alone took about 8 minutes to finish the first quarter (12 for the whole floor), against about a minute with the default 2 robots. Robots paint about twice as fast and all on the part nearest done, while a child spreads paint over every part. A lower finishing mark with few painters, or a gentle pointer to the part nearest done, is for the owner, alongside the open "whether 85% feels right".
 - **A close tank's name tag floats high in the driver's seat** (round 65, cosmetic, older): a tank a few metres ahead has its tag drawn well above it, near the fraction strip. Placing it just above the hull in the seat, or hiding it close up, would tidy it.
+- **A child who drops and rejoins starts a new paint slot** (round 72, from round 71's fix): their old paint stays in their colour but no longer counts toward their share. Telling a rejoin from a newcomer would need a lasting player id from the lobby.
 - Real play by the children on an iPad: how the heavier driving, the turret swing and the beach balls feel in small hands (headless browsers can't show it).

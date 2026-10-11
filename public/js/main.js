@@ -110,6 +110,19 @@ function setupRoom(room) {
 }
 
 /** If the host leaves, the remaining player with the smallest id takes over, bots included. */
+/** Host: a tank (and a slot for their paint) for a friend who joined part way through a round. */
+function giveTank(id, h) {
+  flushPaint()
+  // A late painter starts as big as everyone else has grown.
+  // With every colour on a tank, share a robot's colour, never another child's.
+  const kids = new Set(tankList().filter((t) => !t.bot).map((t) => t.color))
+  let c = freeColor(h.color, new Set(tankList().map((t) => t.color)), new Set([...tankList().map((t) => t.color), ...[...game.humans.values()].map((x) => x.color)]))
+  if (kids.has(c)) c = COLORS.find((x) => !kids.has(x)) ?? c
+  broadcast({ t: 'add', e: { i: id, n: h.name, c, s: nextSlot(), ...(together() && { lv: grownLevel(partsDone()) }) } })
+  send(snapshot(), id)
+  game.tanks.get(id).respawnAt = now() + 800
+}
+
 function migrateHost() {
   const ids = [game.selfId, ...(game.room?.peers ?? [])].sort()
   game.hostId = ids[0]
@@ -126,6 +139,8 @@ function migrateHost() {
     // A player who joined just before the old host left still needs their tank placed.
     if (!t.alive && !t.respawnAt) t.respawnAt = now() + 800
   }
+  // A friend who said hello while the old host was going (so no one answered) still needs a tank.
+  if (game.phase === 'battle') for (const [id, h] of game.humans) if (!game.tanks.has(id)) giveTank(id, h)
   hello()
   showHostButtons()
 }
@@ -172,18 +187,8 @@ function handle(msg, from) {
         existing.name = h.name
         existing.refreshLabel()
       }
-      // Someone joined mid-game: the host gives them a tank (and a slot for their paint).
-      if (game.phase === 'battle' && !existing && isHost()) {
-        flushPaint()
-        // A late painter starts as big as everyone else has grown.
-        // With every colour on a tank, share a robot's colour, never another child's.
-        const kids = new Set(tankList().filter((t) => !t.bot).map((t) => t.color))
-        let c = freeColor(h.color, new Set(tankList().map((t) => t.color)), new Set([...tankList().map((t) => t.color), ...[...game.humans.values()].map((x) => x.color)]))
-        if (kids.has(c)) c = COLORS.find((x) => !kids.has(x)) ?? c
-        broadcast({ t: 'add', e: { i: from, n: h.name, c, s: nextSlot(), ...(together() && { lv: grownLevel(partsDone()) }) } })
-        send(snapshot(), from)
-        game.tanks.get(from).respawnAt = now() + 800
-      }
+      // Someone joined mid-game: the host gives them a tank.
+      if (game.phase === 'battle' && !existing && isHost()) giveTank(from, h)
       renderRoom()
       break
     }
@@ -291,7 +296,11 @@ function setBarrel(b, alive) {
  * (addTank gives every tank's slot a colour).
  */
 function nextSlot() {
-  return Math.max(0, ...usedSlots()) + 1
+  const next = Math.max(0, ...usedSlots()) + 1
+  if (next <= 255) return next
+  // The floor keeps 255 slots: after that many joins in one round, reuse one whose paint is all painted over.
+  for (let s = 1; s <= 255; s++) if (!cellsOf(s) && !tankList().some((t) => t.slot === s)) return s
+  return 255
 }
 
 function addTank(e) {
