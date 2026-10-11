@@ -185,6 +185,38 @@ export const sound = {
   },
 }
 
+// --- Engine ------------------------------------------------------------------------------
+
+let engine = null // { o, g, level }, made on first use
+/**
+ * Your own tank's engine: a soft, low purr that rises a little with speed (level 0..1) and dies away when it stops.
+ * Only your own, and well under the squirts (0.035 against a squirt's 0.22), so it stays in the background.
+ */
+export function engineHum(level) {
+  if (!ctx || ctx.state !== 'running' || (level === 0 && !engine?.level)) return
+  if (!engine) {
+    const o = ctx.createOscillator()
+    o.type = 'triangle'
+    const f = ctx.createBiquadFilter()
+    f.type = 'lowpass'
+    f.frequency.value = 420
+    const g = ctx.createGain()
+    g.gain.value = 0
+    o.connect(f).connect(g).connect(sfx)
+    o.start()
+    engine = { o, g, level: 0 }
+  }
+  engine.level = level
+  const t = ctx.currentTime
+  engine.g.gain.setTargetAtTime(0.035 * level, t, 0.15)
+  engine.o.frequency.setTargetAtTime(85 + 45 * level, t, 0.2)
+}
+
+// The game stops drawing (and so stops calling engineHum) in a hidden tab, but sound plays on: hush the purr.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && engine) engineHum(0)
+})
+
 // --- Announcer: uses the browser's speech voice when it has one ------------------------
 
 // Lines wait their turn instead of cutting each other off.
@@ -229,30 +261,6 @@ export function toggleMusic() {
   if (musicOn) startMusic()
   else stopMusic()
   return musicOn
-}
-
-/**
- * Your own tank's engine: a soft, low purr that rises a little with speed (level 0..1) and dies away when it stops.
- * Only your own, and well under the squirts, so it stays in the background.
- */
-let engine = null
-export function engineHum(level) {
-  if (!ctx || ctx.state !== 'running') return
-  if (!engine) {
-    const o = ctx.createOscillator()
-    o.type = 'triangle'
-    const f = ctx.createBiquadFilter()
-    f.type = 'lowpass'
-    f.frequency.value = 420
-    const g = ctx.createGain()
-    g.gain.value = 0
-    o.connect(f).connect(g).connect(sfx)
-    o.start()
-    engine = { o, g }
-  }
-  const t = ctx.currentTime
-  engine.g.gain.setTargetAtTime(0.035 * level, t, level > 0.05 ? 0.15 : 0.1)
-  engine.o.frequency.setTargetAtTime(85 + 45 * level, t, 0.2)
 }
 
 /** Lowers the music during menus and raises it while playing. */

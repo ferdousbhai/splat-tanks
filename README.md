@@ -19,8 +19,9 @@ Two ways to play, chosen on the menu:
   health, no knock-outs and no game over.
 
 Both ways have 🏐 beach balls to nudge or squirt along. A ball paints a stripe in the colour of whoever
-touched it last. Tanks drive like tracked vehicles on soft suspension, purr softly, leave fading tread marks, and lob
-paint in real arcs (with a mouse, the paint lands under the pointer, or where a dot shows past its reach).
+touched it last. Tanks drive like tracked vehicles on soft suspension (your own purrs softly), leave
+fading tread marks, and lob paint in real arcs (with a mouse, the paint lands under the pointer, or where
+a dot shows past its reach; with a stick or the keys it lands where the child can see it).
 
 The host's 🏠 takes everyone back to the menu.
 

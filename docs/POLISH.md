@@ -695,6 +695,16 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **The balls' stop message could be lost (correctness, plausible):** the quick channel doesn't resend, so the one extra send as the balls come to rest could be dropped, leaving a friend's last word of a ball "rolling fast" for up to a second. It is sent twice now.
 - **Tidy (code quality):** the `GAP` and `BONK_MOVING` comments say what they cover (about two missed messages; both uses of the speed), the bonk comment names `BONK_MOVING`, `nearCamera`'s comment sits on it again, the ball send asks `isHost()` once, the fade's use of `depthWrite` is explained, and round 64's log says what round 64 did.
 
+### Fresh audit, round 67
+
+- **The engine purred on in a hidden tab (code quality):** the game stops drawing in a hidden tab, and with it the calls that set the engine's level, but sound plays on, so a child switching away mid-drive left it purring. It is hushed when the tab hides, and makes no calls at all while it is quiet.
+- **Tidy (code quality):**
+  - The nozzle's distance ahead (with the squirt's recoil) is one helper, `nozzleAhead`, used by the reach dot and the seen spot.
+  - The seen spot's screen margins and its least distance are named, with what each clears.
+  - The engine has its own section, its comment sits on it, and it fades with one time constant.
+  - The balls' rest sends are a named count (`restSends`).
+  - The README says only your own tank purrs, and where a stick squirt lands.
+
 ### Open (Pass 2)
 
 - **Splat match: a child who just drives ends last (design, older, for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.

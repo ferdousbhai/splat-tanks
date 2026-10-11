@@ -13,7 +13,7 @@ export const view = { seat: false, seatTank: null, levels: true }
 
 /** Seconds a child's tank backs up with the stick held behind before it turns round (drive's backUp). */
 const BACK_FOR = 0.6
-/** Metres a squirt pulls the barrels back (main.js showReach allows for it). */
+/** Metres a squirt pulls the barrels back (main.js nozzleAhead allows for it). */
 export const RECOIL_KICK = 0.45
 
 /** Yaw (three.js rotation.y) that faces direction (dx, dz); models face -Z. */

@@ -59,7 +59,7 @@ const game = {
   lastPaintSend: 0,
   lastTrail: 0,
   lastBalls: 0,
-  ballsRolled: 0, // host: sends of the balls still to make after they came to rest
+  restSends: 0, // host: sends of the balls still to make after they came to rest (2: a quick message may be lost)
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
@@ -1015,21 +1015,34 @@ const aimPoint = new THREE.Vector3()
 const mouseNdc = new THREE.Vector2()
 
 /**
+ * How far the nozzle is ahead of the tank's middle (as it will be once the turret has swung round), plus how far a
+ * squirt has just pulled the barrel back, so what is measured from it doesn't flicker with each squirt.
+ */
+const nozzle = new THREE.Vector3()
+function nozzleAhead(me) {
+  me.muzzleNodes[0].getWorldPosition(nozzle)
+  return Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * RECOIL_KICK
+}
+
+/**
  * Where a squirt along `yaw` should land so the child sees it: as far as it can go, but no further than the floor
  * shows on screen, clear of the panel at the top and the controls at the bottom. (The sky camera looks only a few
  * metres ahead, so a full-range squirt toward the bottom of the screen, or the sides, landed out of sight.) For the
  * aim stick and squirting ahead; the mouse lands on its own point, and the driver's seat looks along the squirt.
  */
+const SEEN_SIDES = 0.05 // share of the screen's width kept clear at each side
+const SEEN_TOP = 0.2 // share of its height at the top: below the fraction strip, the clock and the board
+const SEEN_BOTTOM = 0.85 // share of its height down to: above the powers bar and the sticks
+const SEEN_LEAST = 4 // m: a squirt always goes at least this far, clear of the tank's own paint trail
 const seen = { x: 0, z: 0 }
 const onScreen = new THREE.Vector3()
 function seenSpot(me, yaw) {
   const d = dirOf(yaw)
-  me.muzzleNodes[0].getWorldPosition(nozzle)
-  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * RECOIL_KICK
+  const ahead = nozzleAhead(me)
   let r = me.stats.range
-  for (; r > 4; r -= 1) {
+  for (; r > SEEN_LEAST; r -= 1) {
     const [sx, sy] = toScreen(onScreen.set(me.pos.x + d.x * (ahead + r), LAND_Y, me.pos.z + d.z * (ahead + r)).project(camera))
-    if (sx > innerWidth * 0.05 && sx < innerWidth * 0.95 && sy > innerHeight * 0.2 && sy < innerHeight * 0.85) break
+    if (sx > innerWidth * SEEN_SIDES && sx < innerWidth * (1 - SEEN_SIDES) && sy > innerHeight * SEEN_TOP && sy < innerHeight * SEEN_BOTTOM) break
   }
   seen.x = me.pos.x + d.x * (ahead + r)
   seen.z = me.pos.z + d.z * (ahead + r)
@@ -1331,11 +1344,11 @@ function battleStep(dt, n) {
     // one of those quick messages is lost), and now and then when they're still (for a friend who just joined).
     if (isHost()) {
       const rolling = ballsMoving()
-      if (rolling || game.ballsRolled > 0 || n - game.lastBalls > 1000) {
+      if (rolling || game.restSends > 0 || n - game.lastBalls > 1000) {
         game.lastBalls = n
         sendFast({ t: 'bl', a: ballState() })
       }
-      game.ballsRolled = rolling ? 2 : Math.max(0, game.ballsRolled - 1)
+      game.restSends = rolling ? 2 : Math.max(0, game.restSends - 1)
     }
   }
   if (isHost() && ((game.statsDirty && n - game.lastStats > 150) || n - game.lastStats > 1000)) sendStats()
@@ -1402,7 +1415,6 @@ function edgeAt(p, a, k) {
   return Math.abs(at) > edge ? (Math.sign(at) * edge - p) / (a - p) : k
 }
 
-const nozzle = new THREE.Vector3()
 const landing = new THREE.Vector3()
 /**
  * With the mouse beyond squirting range, a dot shows where the paint will really land (as far as it goes toward
@@ -1411,9 +1423,7 @@ const landing = new THREE.Vector3()
 function showReach(me) {
   if (!me || !mouseGround()) return hud.reach(false)
   // Measured from the nozzle as it will be once the turret has swung round to the mouse.
-  me.muzzleNodes[0].getWorldPosition(nozzle)
-  // (Plus how far a squirt has just pulled the barrel back, so the dot doesn't flicker with each squirt.)
-  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * RECOIL_KICK
+  const ahead = nozzleAhead(me)
   const d = Math.hypot(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   if (d - ahead <= me.stats.range) return hud.reach(false)
   // No further than the outer wall, where the paint would splat.
