@@ -216,6 +216,7 @@ export function engineHum(level) {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && engine) engineHum(0)
 })
+addEventListener('pagehide', () => engine && engineHum(0))
 
 // --- Announcer: uses the browser's speech voice when it has one ------------------------
 

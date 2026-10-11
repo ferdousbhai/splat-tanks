@@ -450,7 +450,9 @@ function startBattle(msg) {
   showHostButtons()
   document.body.classList.toggle('together', mode === 'together')
   if (game.me) {
+    // Looking at our tank from the start (a friend joining has no countdown for the camera to swing round in).
     camPos.set(game.me.pos.x, 30, game.me.pos.z + 20)
+    camTarget.set(game.me.pos.x, 0, game.me.pos.z)
   }
   // Everyone hears how the round works, including a player joining part way through.
   if (mode === 'together') {
