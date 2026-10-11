@@ -23,10 +23,11 @@ paint in real arcs (with a mouse, the paint lands under the pointer).
 
 The host's 🏠 takes everyone back to the menu.
 
-The host decides where every splat lands and sends them in order (`pt` messages), and rolls the beach balls (`bl`), so every device
+The host decides where every splat lands and sends them in order (`pt` messages), so every device
 paints the same 1 m grid (`public/js/paint.js`) and agrees on the score. Painting together, the host also
 says when a part is finished (`pd`); every device fills it the same way from that grid (`public/js/parts.js`). The game id and Worker name
-stay `tank-clash` from the game's first version.
+stay `tank-clash` from the game's first version. The host also rolls the beach balls and sends where they
+are (`bl`).
 
 - `public/`: the game (static files deployed to Cloudflare). Entry point: `public/index.html`.
 - `blender/`: model sources. Rebuild with `blender --background --python blender/tanks.py` (and `blender/arena.py`,

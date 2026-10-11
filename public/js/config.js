@@ -29,6 +29,7 @@ export const BASE = {
   boostSpeed: 2.3,
   megaCooldown: 6,
   megaSplat: 6,
+  turretRate: 6.5, // radians a second a turret swings round: about half a second for a half turn
 }
 
 // Upgrade cards offered on every level up (pick 1 of 3).
@@ -98,6 +99,9 @@ export const BOT_LEVELS = {
   normal: { aimError: 0.1, reaction: 0.5, fireChance: 0.7, chase: 0.3, speed: 0.85, upgradeSmart: 0.6 },
   hard: { aimError: 0.05, reaction: 0.3, fireChance: 0.9, chase: 0.4, speed: 1, upgradeSmart: 0.9 },
 }
+
+/** Rounds to centimetres, for numbers sent to other devices. */
+export const r2 = (v) => Math.round(v * 100) / 100
 
 /** Deterministic random numbers, so every device builds the same arena from a seed. */
 export function rng(seed) {

@@ -290,7 +290,7 @@ let layerVersion = -1
 export function resetMinimap() {
   mapBg = null
 }
-export function minimap(tanks, me, pads, balls = []) {
+export function minimap(tanks, me, pads, balls) {
   const c = $('minimap')
   const g = (mapCtx ??= c.getContext('2d'))
   const S = c.width
@@ -336,10 +336,10 @@ export function minimap(tanks, me, pads, balls = []) {
     g.arc(X(p.x), X(p.z), 3, 0, Math.PI * 2)
     g.fill()
   }
+  g.strokeStyle = 'rgba(255,255,255,0.9)'
+  g.lineWidth = 1
   for (const b of balls) {
     g.fillStyle = b.color ?? '#ffffff'
-    g.strokeStyle = 'rgba(255,255,255,0.9)'
-    g.lineWidth = 1
     g.beginPath()
     g.arc(X(b.x), X(b.z), 3.2, 0, Math.PI * 2)
     g.fill()

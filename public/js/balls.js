@@ -3,14 +3,15 @@
 // where they are; every other device glides its balls after the host's.
 import * as THREE from 'three'
 import { scene, pushOut, BALLS } from './world.js'
-import { TANK_RADIUS } from './config.js'
+import { TANK_RADIUS, r2 } from './config.js'
+import { glideTo } from './tank.js'
 
 export const BALL_R = 1.15
 const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
 const TOP = 16 // m/s
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
 
-/** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz} } */
+/** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz}, trailAt } (trailAt: see main.js trailTo) */
 export const balls = []
 
 /** Beach ball gores round the middle, in one colour and white (or the rainbow before anyone has touched it). */
@@ -40,7 +41,7 @@ function makeBall() {
   const mesh = new THREE.Mesh(geo, mat)
   mesh.castShadow = true
   scene.add(mesh)
-  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0 } }
+  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0 }, trailAt: null }
 }
 
 /** Puts every ball back on its spot, still and in rainbow colours, for a new round. */
@@ -48,11 +49,10 @@ export function resetBalls() {
   while (balls.length < BALLS.length) balls.push(makeBall())
   BALLS.forEach(([x, z], i) => {
     const b = balls[i]
-    Object.assign(b, { x, z, vx: 0, vz: 0, target: null })
+    Object.assign(b, { x, z, vx: 0, vz: 0, target: null, trailAt: null })
     b.seen.vx = b.seen.vz = 0
     setOwner(b, null, null)
     b.mesh.position.set(x, BALL_R, z)
-    b.mesh.visible = true
   })
 }
 
@@ -85,14 +85,13 @@ function cap(b) {
 
 /** The ball a blob of radius r at (x, z) has hit, if any. */
 export function ballHit(x, z, r) {
-  for (const b of balls) if (b.mesh.visible && (x - b.x) ** 2 + (z - b.z) ** 2 < (BALL_R + r) ** 2) return b
+  for (const b of balls) if ((x - b.x) ** 2 + (z - b.z) ** 2 < (BALL_R + r) ** 2) return b
   return null
 }
 
 /** Keeps a tank this device drives out of the balls; the host's step then rolls the ball away from it. */
 export function blockTank(pos) {
   for (const b of balls) {
-    if (!b.mesh.visible) continue
     const dx = pos.x - b.x
     const dz = pos.z - b.z
     const d = Math.hypot(dx, dz)
@@ -107,7 +106,7 @@ export function blockTank(pos) {
 /**
  * Host: rolls the balls. A tank driving into a ball sends it off at about 1.4 times the tank's speed
  * (a tank is far heavier); balls slow down as they roll, bounce off walls and props, and knock each other on.
- * Returns the balls that were knocked hard this step, with the tank that did it, for sounds and colours.
+ * Returns each ball a tank pushed this step, with that tank, so the host can give it the tank's colour.
  */
 export function stepBalls(dt, tanks) {
   const pos = { x: 0, z: 0 }
@@ -181,12 +180,21 @@ export function stepBalls(dt, tanks) {
       if (d >= min + 0.25 || d < 1e-6) continue
       const nx = dx / d
       const nz = dz / d
-      if (d < min) {
-        b.x = t.pos.x + nx * min
-        b.z = t.pos.z + nz * min
-      }
       const vt = t.vel.x * nx + t.vel.z * nz
-      const vb = b.vx * nx + b.vz * nz
+      let vb = b.vx * nx + b.vz * nz
+      if (d < min) {
+        // Out of the tank, but at most 0.6 m a step: a friend's tank is placed a little ahead of where it was
+        // last heard of, and a big jump could carry the ball through a thin wall.
+        const out = Math.min(min - d, 0.6)
+        b.x += nx * out
+        b.z += nz * out
+        // A ball rolling into a tank bounces off it (a tank is far heavier).
+        if (vb < vt) {
+          b.vx -= 1.5 * (vb - vt) * nx
+          b.vz -= 1.5 * (vb - vt) * nz
+          vb = b.vx * nx + b.vz * nz
+        }
+      }
       if (vt > 0.3 && vt * 1.4 > vb) {
         b.vx += nx * (vt * 1.4 - vb)
         b.vz += nz * (vt * 1.4 - vb)
@@ -199,11 +207,19 @@ export function stepBalls(dt, tanks) {
       }
     }
   }
+  // A tank may have pressed a ball into a wall: back out, the way the ball came.
+  for (const b of balls) {
+    pos.x = b.x
+    pos.z = b.z
+    if (pushOut(pos, BALL_R)) {
+      b.x = pos.x
+      b.z = pos.z
+    }
+  }
   return knocked
 }
 
 /** The host's balls on the wire: [x, z, vx, vz, toucher id or 0] each. */
-const r2 = (v) => Math.round(v * 100) / 100
 export const ballState = () => balls.map((b) => [r2(b.x), r2(b.z), r2(b.vx), r2(b.vz), b.by ?? 0])
 export const ballsMoving = () => balls.some((b) => b.vx * b.vx + b.vz * b.vz > 0.01)
 
@@ -229,24 +245,11 @@ const spin = new THREE.Quaternion()
  * rolled, so it really rolls. onBump(ball, strength) is called when a ball's speed changes sharply.
  */
 export function renderBalls(dt, host, onBump) {
-  const now = performance.now()
   for (const b of balls) {
-    if (!b.mesh.visible) continue
     if (!host && b.target) {
-      const t = b.target
-      const lead = Math.min(0.15, (now - t.t) / 1000)
-      const gx = t.x + t.vx * lead
-      const gz = t.z + t.vz * lead
-      if (Math.hypot(gx - b.x, gz - b.z) > 6) {
-        b.x = gx
-        b.z = gz
-      } else {
-        const k = Math.min(1, dt * 12)
-        b.x += (gx - b.x) * k
-        b.z += (gz - b.z) * k
-      }
-      b.vx = t.vx
-      b.vz = t.vz
+      glideTo(b, b.target, dt, 6, 12)
+      b.vx = b.target.vx
+      b.vz = b.target.vz
     }
     const dx = b.x - b.mesh.position.x
     const dz = b.z - b.mesh.position.z

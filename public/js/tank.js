@@ -20,6 +20,24 @@ export const angleDiff = (a, b) => {
   return d
 }
 
+/**
+ * Glides point p ({ x, z }) toward a network state t ({ x, z, vx, vz, t }), carried on a little by its speed for
+ * the time since it was sent. Jumps there when it is more than `snap` metres off.
+ */
+export function glideTo(p, t, dt, snap, rate) {
+  const lead = Math.min(0.15, (performance.now() - t.t) / 1000)
+  const gx = t.x + t.vx * lead
+  const gz = t.z + t.vz * lead
+  if (Math.hypot(gx - p.x, gz - p.z) > snap) {
+    p.x = gx
+    p.z = gz
+  } else {
+    const k = Math.min(1, dt * rate)
+    p.x += (gx - p.x) * k
+    p.z += (gz - p.z) * k
+  }
+}
+
 function fallbackTank(tier) {
   const root = new THREE.Group()
   const s = 0.9 + tier * 0.1
@@ -105,6 +123,7 @@ export class Tank {
     this.flash = 0
     this.recoil = 0
     this.yawRate = 0 // how fast the hull is turning (radians a second)
+    this.trailAt = null // host: where this tank's paint trail was last laid (trailTo)
     this.sway = { pitch: 0, pv: 0, roll: 0, rv: 0, fwd: 0, yaw: 0, kick: 0 } // the suspension, rocking on its springs
     this.tier = 0
     this.firstPerson = false // seen from inside: the hull and turret are hidden, the barrels stay
@@ -228,7 +247,8 @@ export class Tank {
     const g = dirOf(this.heading)
     const side = this.vel.x * -g.z + this.vel.z * g.x
     // Tracks brake harder than they pull away; a zoom kicks in quickly.
-    const k = Math.min(1, dt * (this.boosting ? 10 : Math.abs(speed) > Math.abs(fwd) ? 4.5 : 6))
+    const pulling = speed * fwd >= 0 && Math.abs(speed) > Math.abs(fwd)
+    const k = Math.min(1, dt * (this.boosting ? 10 : pulling ? 4.5 : 6))
     const nf = Math.max(-top, Math.min(top, fwd + (speed - fwd) * k))
     const ns = side * Math.max(0, 1 - dt * 12)
     this.vel.x = g.x * nf - g.z * ns
@@ -251,17 +271,8 @@ export class Tank {
   follow(dt) {
     const t = this.target
     if (!t) return
-    const lead = Math.min(0.15, (performance.now() - t.t) / 1000)
-    const gx = t.x + t.vx * lead
-    const gz = t.z + t.vz * lead
+    glideTo(this.pos, t, dt, 8, 14)
     const k = Math.min(1, dt * 14)
-    if (Math.hypot(gx - this.pos.x, gz - this.pos.z) > 8) {
-      this.pos.x = gx
-      this.pos.z = gz
-    } else {
-      this.pos.x += (gx - this.pos.x) * k
-      this.pos.z += (gz - this.pos.z) * k
-    }
     this.vel.x = t.vx
     this.vel.z = t.vz
     this.heading += angleDiff(this.heading, t.h) * k
@@ -287,8 +298,9 @@ export class Tank {
     const fwd = this.vel.x * f.x + this.vel.z * f.z
     const yawRate = angleDiff(w.yaw, this.heading) / dt
     w.yaw = this.heading
-    // Smoothed: a tank another device drives changes speed in steps, 20 times a second.
-    const accel = (fwd - w.fwd) / dt
+    // From the smoothed speed (a tank another device drives changes speed in steps, 20 times a second); the
+    // gap to it, times its rate, is the acceleration whatever the frame rate.
+    const accel = (fwd - w.fwd) * 10
     w.fwd += (fwd - w.fwd) * Math.min(1, dt * 10)
     if (this.recoil > w.kick) w.pv += 0.9 // just squirted
     w.kick = this.recoil
@@ -297,7 +309,7 @@ export class Tank {
       this.body.rotation.x = 0
       return
     }
-    const pitchGoal = Math.max(-0.07, Math.min(0.07, accel * 0.006))
+    const pitchGoal = Math.max(-0.07, Math.min(0.07, accel * 0.004))
     const rollGoal = Math.max(-0.08, Math.min(0.08, -fwd * yawRate * 0.004))
     w.pv += ((pitchGoal - w.pitch) * 90 - w.pv * 11) * dt
     w.rv += ((rollGoal - w.roll) * 90 - w.rv * 11) * dt

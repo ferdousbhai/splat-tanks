@@ -9,7 +9,7 @@
 // levels, pickups, paint buckets and the bots, and tells everyone what happened.
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
-import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor } from './config.js'
+import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor, r2 } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, lineOfSight, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera } from './shells.js'
@@ -27,7 +27,6 @@ import { $ } from './hud.js'
 const show = (el, on = true) => (typeof el === 'string' ? $(el) : el).classList.toggle('hidden', !on)
 const now = () => performance.now()
 const r1 = (v) => Math.round(v * 10) / 10
-const r2 = (v) => Math.round(v * 100) / 100
 const r5 = (v) => Math.round(v * 1e5) / 1e5
 
 const game = {
@@ -69,6 +68,8 @@ let homeArmedUntil = 0 // in play, 🏠 needs a second tap before this time
 const isHost = () => game.hostId === game.selfId
 const together = () => game.match?.mode === 'together'
 const tankList = () => [...game.tanks.values()]
+/** A tank's colour by id, or null if it has gone (for a ball's last toucher). */
+const tankColor = (id) => game.tanks.get(id)?.color ?? null
 
 // --- Networking --------------------------------------------------------------------------
 
@@ -192,7 +193,7 @@ function handle(msg, from) {
       for (const [i, ...pose] of msg.a) setPose(game.tanks.get(i), ...pose)
       break
     case 'bl':
-      if (!isHost()) takeBallState(msg.a, (id) => game.tanks.get(id)?.color ?? null)
+      if (!isHost()) takeBallState(msg.a, tankColor)
       break
     case 'f': {
       const owner = game.tanks.get(msg.o)
@@ -437,7 +438,7 @@ function startBattle(msg) {
   for (const e of msg.roster) addTank(e)
   if (!game.me) addTank({ i: game.selfId, n: game.myName, c: game.myColor, s: nextSlot() })
   // Joining part way through: the balls are where the host has rolled them.
-  if (msg.balls) takeBallState(msg.balls, (id) => game.tanks.get(id)?.color ?? null, true)
+  if (msg.balls) takeBallState(msg.balls, tankColor, true)
   setScreen('battle')
   showHostButtons()
   document.body.classList.toggle('together', mode === 'together')
@@ -635,10 +636,10 @@ function bigSplash(x, z, radius, by) {
   })
 }
 
-/** Host: a blob knocks a ball along and turns it the squirter's colour; a balloon bursts on it. */
+/** Host: a blob knocks a ball along and turns it the squirter's colour. */
 function hostBall(b, s) {
+  if (!isHost()) return
   const by = game.tanks.get(s.owner)
-  if (s.mega) return bigSplash(s.x, s.z, s.splat, by)
   pushBall(b, s.dx, s.dz, 2.5, 8)
   if (by) setOwner(b, by.id, by.color)
 }
@@ -873,8 +874,8 @@ function onPartDone(msg) {
 
 // --- Squirting ---------------------------------------------------------------------------
 
-/** aim: how far away the paint should land (the mouse's point), else as far as it can go. */
-function fire(t, mega = false, aim = Infinity) {
+/** aim: where the paint should land ({ x, z }, the mouse's point), else as far as it can go. */
+function fire(t, mega = false, aim = null) {
   const s = t.stats
   const muzzles = t.muzzles()
   const out = []
@@ -891,7 +892,9 @@ function fire(t, mega = false, aim = Infinity) {
   }
   const splat = mega ? BASE.megaSplat * (1 + 0.1 * t.upgrades.big) : s.splat * (s.twin ? 0.85 : 1)
   const speed = mega ? s.shellSpeed * 0.7 : s.shellSpeed
-  const range = Math.max(3, Math.min(aim, mega ? s.range * 0.8 : s.range))
+  // Measured from the nozzle, which sits further forward on the bigger tiers.
+  const reach = aim ? Math.hypot(aim.x - from[0].x, aim.z - from[0].z) : Infinity
+  const range = Math.max(3, Math.min(reach, mega ? s.range * 0.8 : s.range))
   for (const [sid, x, z, dx, dz] of out) spawnShell({ sid, owner: t.id, x, z, dx, dz, speed, range, splat, bounces: mega ? 0 : s.bounces, mega, color: t.color })
   send({ t: 'f', o: t.id, m: mega ? 1 : 0, d: r2(splat), v: r2(speed), r: r2(range), b: mega ? 0 : s.bounces, s: out })
   t.recoil = 1
@@ -899,16 +902,13 @@ function fire(t, mega = false, aim = Infinity) {
   sound.shoot(ear.vol, mega, ear.mine)
 }
 
-/** How fast a turret swings round (radians a second): about half a second for a half turn. */
-const TURRET_RATE = 6.5
-
 /** Shared controls for the player and bots: drive, aim, squirt, zoom, balloon. */
 function control(t, c, dt) {
   const n = now()
   t.drive(c.mx, c.mz, dt)
   // The turret swings round to the aim instead of snapping, and stays on it while the hull turns. In the
   // driver's seat it is the view itself, so it follows at once.
-  const swing = TURRET_RATE * dt
+  const swing = BASE.turretRate * dt
   t.turretYaw = c.snap ? c.aimYaw : t.turretYaw + Math.max(-swing, Math.min(swing, angleDiff(t.turretYaw, c.aimYaw)))
   if (c.boost && n >= t.boostReadyAt) {
     t.boostUntil = n + BASE.boostTime * 1000
@@ -917,11 +917,11 @@ function control(t, c, dt) {
   }
   if (c.mega && t.stats.mega && n >= t.megaReadyAt) {
     t.megaReadyAt = n + BASE.megaCooldown * 1000
-    fire(t, true, c.range)
+    fire(t, true, c.aimAt)
   }
   if (c.fire && n >= t.nextFireAt) {
     t.nextFireAt = n + t.stats.reload * (n < t.rapidUntil ? 0.45 : 1) * 1000
-    fire(t, false, c.range)
+    fire(t, false, c.aimAt)
   }
   // Move, then slide off walls and other tanks.
   t.pos.x += t.vel.x * dt
@@ -956,8 +956,8 @@ function playerControls(me, dt) {
     ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
     if (ray.ray.intersectPlane(aimPlane, aimPoint)) {
       c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
-      // Paint lobs onto the point under the mouse, measured from the nozzle (about 1.5 m ahead of the middle).
-      c.range = Math.hypot(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z) - 1.5
+      // Paint lobs onto the point under the mouse.
+      c.aimAt = aimPoint
     }
   } else if (input.aimStick.active) {
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, yawOf(input.aimStick.x, input.aimStick.y)) * Math.min(1, dt * 18)
@@ -1194,7 +1194,8 @@ function battleStep(dt, n) {
     tank: landed,
     barrel: (s, i) => hostBucket(i, game.tanks.get(s.owner)),
     land: landed,
-    ball: (s, b) => isHost() && hostBall(b, s),
+    // A balloon bursts on a ball as it would anywhere.
+    ball: (s, b) => (s.mega ? landed(s) : hostBall(b, s)),
   }, hearing)
 
   if (isHost() && live) hostStep(dt, n)

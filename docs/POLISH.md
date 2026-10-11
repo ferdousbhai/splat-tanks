@@ -486,7 +486,6 @@ All three reviews came back clean: design (real painting to the end in WebKit an
 | Tread marks: each track presses a pattern into the sand, and through paint, which fades over about 30 s. It is only for looks and never counts as paint | `treads.js` |
 | Blobs fly a real arc, higher the farther they go, tipped and stretched along their path. With a mouse they land on the point under the pointer, so the aim ring is where the paint goes | `shells.js`, `main.js` `fire`, `playerControls` |
 | 🏐 Beach balls, one in each quarter. A tank nudges a ball along, and a squirt knocks it (up to a gentle speed). Balls roll to a stop, bounce off walls and each other, and paint a stripe in the colour of whoever touched them last. A balloon or bucket nearby sends them rolling. They show on the minimap. Robots steer round them and leave them for the children. Knocks make a soft bonk | `balls.js`, `main.js` `hostBall`, `hostStep`, `bigSplash` |
-
 | Fast trails stay solid: the host fills in splats between trail points when the gap would show, so a zooming tank or a fast ball leaves a stripe rather than dots | `main.js` `trailTo` |
 
 The host rolls the balls and sends them in a `bl` message, `[[x, z, vx, vz, toucher], …]`, 20 times a second while any ball moves and once a second when they are all still. Other devices glide after the host's balls the way they follow tanks. Each device keeps its own tank out of the balls, and the host gives itself a 0.25 m reach, so a friend's tank still nudges the ball. A friend joining part way through gets the balls in the round's snapshot.
@@ -498,4 +497,21 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - `ball.mjs`: a tank driving into a ball sends it rolling about 5 m. The ball takes the tank's colour and paints a stripe.
 - `duo.mjs` (`dev/two.html`): a guest's tank pushes a ball, and the host rolls it. The two devices end within 0.1–0.5 m of each other and agree on the ball's colour.
 - `modes.mjs`: Splat match at iPad landscape with touch, and the driver's seat view with the lower arc. Paint stays out of the middle of the view.
+
+### Fresh audit, round 53
+
+- **A ball rolling into a tank stuck to it (correctness):** a ball was only moved back out of a tank, keeping its speed into it. It sat against a parked tank still "rolling", which kept the `bl` messages and its trail going. On a friend's device the ball glided on ahead and shoved their parked tank about 5 m. A ball now bounces off a tank, and a friend's tank moves about 0.5 m at most (network lag).
+- **A ball pushed through a wall (correctness, plausible):** the host places a friend's tank slightly ahead of where it was last heard of. The ball is now moved out of a tank by at most 0.6 m a step, and out of walls again after the tanks.
+- **Tread marks never quite faded (correctness):** the canvas keeps alpha in whole steps, so the last 1–3 % of every mark stayed for the whole round, and the fade re-uploaded the texture every 2 s forever. Marks below 3 % are now hidden (`alphaTest`), and fading stops once everything is under that.
+- **Paint past the pointer on big tanks (correctness):** the mouse's range took the nozzle as 1.5 m ahead, but it is 2.1–2.5 m on the bigger tiers, so paint landed up to 1 m past the ring. The range is now measured from the real nozzle.
+- **Suspension tied to the frame rate (code quality):** the pitch came from the gap to the smoothed speed divided by the frame time, about 6× too big at 60 Hz and 12× at 120 Hz, so it just flipped between its limits. It now uses the smoothed derivative.
+- **Braking while reversing (code quality):** pushing the stick backwards while rolling forwards used the gentler pull-away rate. It now brakes.
+- **Tidy (code quality):**
+  - Balls and tanks share one glide helper (`glideTo`) and `r2`, and the arc's tilt uses its exact slope.
+  - `trailAt` is declared where tanks and balls are made.
+  - The turret rate moved to `BASE.turretRate`.
+  - A balloon hitting a ball goes through the same `landed` path as anywhere else.
+  - The dead `mesh.visible` checks are gone.
+  - The `stepBalls` comment now says what it returns.
+  - A split Pass 2 table row is mended.
 

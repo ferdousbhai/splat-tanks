@@ -16,7 +16,8 @@ tex.minFilter = THREE.LinearFilter
 // Between the paint (offset -2) and the chalk lines (-4), so marks show in paint and chalk stays on top.
 const mesh = new THREE.Mesh(
   new THREE.PlaneGeometry(ARENA * 2, ARENA * 2),
-  new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
+  // alphaTest: the canvas keeps alpha in whole steps, so the last faint traces never fade to nothing; hide them.
+  new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.03, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
 )
 mesh.rotation.x = -Math.PI / 2
 mesh.position.y = 0.035
@@ -29,16 +30,17 @@ const last = new Map() // tank id -> [left, right] track points where the last b
 let dirty = false
 let lastUpload = 0
 let lastFade = 0
+let fades = 0 // fade steps left before every mark is under the alphaTest (24 take even a fully dark one there)
 
 /** Where a tank's two tracks touch the ground. */
 function trackPoints(t) {
   const half = 0.62 + t.tier * 0.1 // the bigger tiers have wider hulls
-  const cx = Math.cos(t.heading)
-  const sx = -Math.sin(t.heading)
   // The hull's right is (cos h, -sin h) for a model that faces -Z.
+  const rx = Math.cos(t.heading)
+  const rz = -Math.sin(t.heading)
   return [
-    { x: t.pos.x - cx * half, z: t.pos.z - sx * half },
-    { x: t.pos.x + cx * half, z: t.pos.z + sx * half },
+    { x: t.pos.x - rx * half, z: t.pos.z - rz * half },
+    { x: t.pos.x + rx * half, z: t.pos.z + rz * half },
   ]
 }
 
@@ -78,12 +80,15 @@ export function updateTreads(tanks, now) {
         const f = (n * GAP) / d
         prev[i] = { x: prev[i].x + (pts[i].x - prev[i].x) * f, z: prev[i].z + (pts[i].z - prev[i].z) * f }
         dirty = true
+        fades = 24
       }
     }
   }
-  // Fade in steps every couple of seconds (a step is too small to notice); marks are gone after about 30 s.
-  if (now - lastFade > 2000) {
+  // Fade in steps every couple of seconds (a step is too small to notice). A single pass of marks is gone after
+  // about 30 s and even a much-driven patch within 50 s; then the fading stops until a tank drives again.
+  if (fades > 0 && now - lastFade > 2000) {
     lastFade = now
+    fades--
     g.save()
     g.globalCompositeOperation = 'destination-out'
     g.fillStyle = 'rgba(0, 0, 0, 0.14)'

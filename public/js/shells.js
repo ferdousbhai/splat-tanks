@@ -143,7 +143,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
     // stretched a little by its speed, like a real drop of paint.
     const k = s.t / s.life
     s.mesh.position.set(s.x, arcY(s, k), s.z)
-    const climb = (arcY(s, Math.min(1, k + 0.02)) - arcY(s, Math.max(0, k - 0.02))) / (0.04 * s.range)
+    const climb = (-0.85 + 4 * s.apex * (1 - 2 * k)) / s.range // the slope of arcY over the ground
     s.mesh.rotation.x = Math.atan(climb)
     if (!s.mega) s.blob.scale.set(0.9, 0.9, 1 + Math.min(0.35, Math.abs(climb) * 0.4))
     hideNear(s)
