@@ -757,12 +757,17 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **More handover corners (correctness, older and from rounds 73–74):** four-device tests found:
   - A device chosen to take over but slow to see the host go never learned it was chosen. Now a friend who says they follow us makes us host.
   - A device kept following a friend that had given way. Now, if the host we follow says it follows someone else, so do we.
-  - A friend who joined mid-round but was still in the menu could be chosen, leaving the round unrun. Now a friend playing the round is chosen first, and a hello says whether we are playing.
+  - A friend who joined mid-round but was still in the menu could be chosen, leaving the round unrun. Now a friend playing the round is chosen first, and a hello says whether we are playing (sent as play starts and stops, from round 76).
   - A device slow to see the old host go missed the new host's 🏠. Now 🏠 is obeyed from a friend who has claimed host.
   - A link closing as a message went could throw and stop it reaching other friends. Now the game catches it and goes on.
 
   In the tests, everyone ends up following one host, and 🏠 brings all of them to the menu.
 - **Tidy (code quality):** hosting's rules are written once, in order, above `hello()`, and each piece points to them; a friend's hello records whether they claim host; giving way sits beside taking over; and round 74's entries are filed as correctness, with round 73's left as it was.
+
+### Fresh audit, round 76
+
+- **Every device took over at once (code quality, from round 75):** nothing said hello when a round started or ended, so mid-round each device held its friends' menu hellos ("not playing") while judging itself as playing, ranked itself first, and took over, every one saying "You're the host now" until the claims settled. A device now says hello whenever it starts or stops playing.
+- **Tidy (code quality):** the Hosting comment adds the 🏠 rule and says why a joiner isn't chosen now that a friend following us makes us host; `send` and `sendFast` share one guarded `post`; `inRound` sits with the small helpers and replaces the two spelled-out tests.
 
 ### Open (Pass 2)
 

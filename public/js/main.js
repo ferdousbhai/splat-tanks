@@ -69,6 +69,8 @@ let homeArmedUntil = 0 // in play, 🏠 needs a second tap before this time
 const isHost = () => game.hostId === game.selfId
 const together = () => game.match?.mode === 'together'
 const tankList = () => [...game.tanks.values()]
+/** In a round (playing it, or its ending), not the menu or the results. */
+const inRound = () => game.phase === 'battle' || game.phase === 'ending'
 /** A tank's colour by id, or null if it has gone (for a ball's last toucher). */
 const tankColor = (id) => game.tanks.get(id)?.color ?? null
 
@@ -76,20 +78,15 @@ const tankColor = (id) => game.tanks.get(id)?.color ?? null
 
 // The ?solo room's send() does nothing, so these need no solo check.
 // A link closing as a message goes can throw: the message is lost to that friend, but the game goes on.
-const send = (msg, to) => {
+const post = (msg, opts) => {
   try {
-    game.room?.send(msg, to ? { to } : {})
+    game.room?.send(msg, opts)
   } catch (e) {
     console.warn('Could not send', msg.t, e)
   }
 }
-const sendFast = (msg) => {
-  try {
-    game.room?.send(msg, { fast: true })
-  } catch (e) {
-    console.warn('Could not send', msg.t, e)
-  }
-}
+const send = (msg, to) => post(msg, to ? { to } : {})
+const sendFast = (msg) => post(msg, { fast: true })
 /** Host: tell everyone, and apply it here too. */
 function broadcast(msg) {
   send(msg)
@@ -100,13 +97,15 @@ function broadcast(msg) {
  * Hosting. The host runs the rules (paint, robots, pickups, rounds); everyone else follows it. Its device can drop
  * out, so:
  * - A hello says who we are, whether we are host, and which host we follow (`knows`).
- * - Every device says hello whenever the host it follows changes, so everyone knows who knew which host.
- * - When the host leaves, we follow anyone who has already claimed it (we may be slow to see the host go); otherwise
- *   the smallest id among ourselves and those who knew it, and are playing the round if anyone is, takes over. A
- *   friend who joined as it left has heard from no host, and would never learn it had been chosen; one still in
- *   the menu has no round to run. (migrateHost)
+ * - Every device says hello whenever the host it follows changes, and whenever it starts or stops playing a round,
+ *   so everyone knows who knew which host and who is playing.
+ * - When the host leaves, we follow anyone who has already claimed it (we may be slow to see the host go); otherwise,
+ *   of ourselves and those who knew it, whoever is playing the round (if anyone is) and has the smallest id takes
+ *   over. A friend who joined as it left, or is still in the menu, has no round to run. (migrateHost)
  * - A friend who says they follow us makes us host, if we didn't know; and if the host we follow says it follows
- *   someone else, so do we. (handle: hello)
+ *   someone else (still here), so do we. (handle: hello)
+ * - 🏠 is obeyed from the host we follow, or from any friend who has claimed host (we may be slow to see the old one
+ *   go). (handle: menu)
  * - Of two claims still in the room, every device keeps the smaller id, whichever arrives first. (handle: hello)
  * - The device that gives way hands back the robots, the host's buttons and the splats it queued. (loseHost)
  */
@@ -115,7 +114,6 @@ function broadcast(msg) {
 function hello(to) {
   send({ t: 'hello', name: game.myName, color: game.myColor, host: isHost(), knows: game.hostId, playing: inRound() }, to)
 }
-const inRound = () => game.phase === 'battle' || game.phase === 'ending'
 
 function setupRoom(room) {
   game.room = room
@@ -152,7 +150,7 @@ function giveTank(id, h) {
   game.tanks.get(id).respawnAt = now() + 800
 }
 
-/** The host left: follow whoever has claimed it, or take over ourselves (see Hosting above). */
+/** The host left: follow whoever has claimed it, or choose who takes over (see Hosting above). */
 function migrateHost(gone) {
   const peers = game.room?.peers ?? []
   const claimed = peers.filter((p) => game.humans.get(p)?.host).sort()
@@ -219,7 +217,7 @@ const IN_ROUND = new Set(['pb', 'bl', 'f', 'lo', 'pt', 'hit', 'sp', 'st', 'pu', 
 
 function handle(msg, from) {
   if (!msg || typeof msg !== 'object') return
-  if (IN_ROUND.has(msg.t) && game.phase !== 'battle' && game.phase !== 'ending') return
+  if (IN_ROUND.has(msg.t) && !inRound()) return
   const t = game.tanks.get(msg.i)
   switch (msg.t) {
     case 'hello': {
@@ -331,7 +329,7 @@ function handle(msg, from) {
       onPartDone(msg)
       break
     case 'menu':
-      // (Or from a friend who has claimed host, if we are slow to see the old host go.)
+      // (See Hosting.)
       if (from === game.hostId || game.humans.get(from)?.host) toMenu()
       break
   }
@@ -591,7 +589,10 @@ function toMenu() {
 
 /** Which screen shows: the menu, a round ('battle') or the results ('end'). */
 function setScreen(phase) {
+  const wasPlaying = inRound()
   game.phase = phase
+  // Starting or stopping play: tell friends, so a handover picks someone playing the round (see Hosting).
+  if (inRound() !== wasPlaying) hello()
   // Tanks stop being drawn afresh behind the results: their name labels would sit over its lines.
   if (phase === 'end') for (const t of game.tanks.values()) t.label.visible = t.crown.visible = false
   // A new screen's buttons wait before they answer (style.css body.arriving): the results long enough for the
@@ -1343,7 +1344,7 @@ function frame() {
   const dt = Math.min(0.05, (n - last) / 1000)
   last = n
 
-  if (game.phase === 'battle' || game.phase === 'ending') battleStep(dt, n)
+  if (inRound()) battleStep(dt, n)
   updateFx(dt)
   updateFloaters(dt)
   updatePaint(n)
