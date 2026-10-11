@@ -128,6 +128,7 @@ export class Tank {
     this.dueAim = 0 // the aim it waits for (main.js control)
     this.dueSpot = { x: 0, z: 0 }
     this.dueAt = null // the mouse's floor point it waits for (this.dueSpot), or null
+    this.hosing = false // squirting held since a squirt went: the next go on time, without waiting
     this.target = null // remote: last network state
     this.flash = 0
     this.recoil = 0
@@ -251,8 +252,11 @@ export class Tank {
       const goal = back ? want + Math.PI : want
       const d = angleDiff(this.heading, goal)
       const rate = 6.5 - 2.5 * Math.min(1, Math.abs(fwd) / this.stats.speed)
-      yawWant = Math.max(-rate, Math.min(rate, d * 9))
-      const align = Math.max(0.25, Math.cos(d))
+      // Backing up for a moment goes straight back along the hull: steering its rear onto the stick first, only
+      // to turn round straight after, would be a wasted three-point turn.
+      const straightBack = back && turnRound
+      yawWant = straightBack ? 0 : Math.max(-rate, Math.min(rate, d * 9))
+      const align = straightBack ? 1 : Math.max(0.25, Math.cos(d))
       speed = this.stats.speed * Math.min(1, len) * align * (back ? -0.75 : 1)
     }
     else this.backFor = 0

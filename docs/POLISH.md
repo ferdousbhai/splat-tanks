@@ -555,6 +555,16 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 56
 
+- **Sweeping paint like a hose squirted far less (design, from round 53):** every squirt waited for the turret, so with squirting held and the aim swept round (how young children paint), squirts stopped until it settled: 1.2 a second swinging side to side, 0.3 twirling the stick, against about 2. Only a press's first squirt (and a balloon) waits now; while squirting is held the rest go on time from wherever the nozzle points (2 a second, evenly spaced).
+- **A diagonal pull behind did a three-point turn (design):** backing up first steered the rear onto the stick, then turned round the other way, about 225° of turning before the tank went where it was pointed. Backing up now goes straight back along the hull, then turns round directly.
+- **A flick while driving misfired again (correctness):** with the drive stick held, letting go of a flick handed the squirt straight to squirting ahead, which took over its aim (100–123° off). Squirting ahead now waits until a flicked squirt has gone.
+- **A click before any move aimed at an old spot (correctness):** a press didn't record where it was, so the first click after PLAY (no move over the arena yet) aimed at the middle of the screen or last round's spot. It now records where it was pressed.
+- **Robots stalled when a new host took over (correctness, from round 55):** a guest's robots only follow, so their tracks' speed was zero, and on taking over they stopped dead for half a second. They now carry on at the speed they were moving.
+- **Robots kept their speed after the round (correctness, older):** parked robots kept puffing dust through "Time's up!", and sent that speed to friends. Out of play they stand still like the player's tank.
+- **Small (correctness, plausible):**
+  - A tap during the reload is kept, and squirts as soon as the nozzle is ready.
+  - A blob landing on top of a prop splashes up there, not hidden inside it.
+  - The reach dot allows for a squirt's recoil, so it doesn't flicker.
 - **Tidy (code quality):**
   - A blob that comes down onto a prop is told by a zero normal, which already stops a bounce, rather than a separate `top` flag. The comment says why `y > 0` tells a blob from a line of sight.
   - The tracks' own speed is named `trackVel`, and it is zeroed with `vel` when the tank isn't driving.

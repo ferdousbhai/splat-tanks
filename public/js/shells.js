@@ -71,7 +71,8 @@ export function removeShell(sid, fx = true) {
   if (!s) return
   shells.delete(sid)
   scene.remove(s.mesh)
-  if (fx) splash(s.x, s.z, s.mega ? 2.5 : 0.8, s.color)
+  // Where it is: on the floor, or on top of a crate, rock or wall it came down onto.
+  if (fx) splash(s.x, s.z, s.mega ? 2.5 : 0.8, s.color, Math.max(0.6, s.mesh.position.y))
 }
 
 export function clearShells() {

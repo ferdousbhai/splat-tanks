@@ -115,7 +115,12 @@ function migrateHost() {
   hud.toast('👑 The host left. You are running the game now!')
   voice.say("The host left. You're the host now.")
   for (const t of game.tanks.values()) {
-    if (t.bot) t.local = true // the robots drive from here now (battleStep gives them brains)
+    if (t.bot && !t.local) {
+      t.local = true // the robots drive from here now (battleStep gives them brains)
+      // Followed until now, so their tracks pick up the speed they were seen moving at, without a stall.
+      t.trackVel.x = t.vel.x
+      t.trackVel.z = t.vel.z
+    }
     // A player who joined just before the old host left still needs their tank placed.
     if (!t.alive && !t.respawnAt) t.respawnAt = now() + 800
   }
@@ -926,9 +931,11 @@ function control(t, c, dt) {
     t.boostReadyAt = n + BASE.boostCooldown * 1000
     if (t === game.me) sound.boost()
   }
-  // A squirt or balloon waits until the turret has swung onto the aim, so a click lands where it was made
-  // rather than where the nozzle happened to point. Robots squirt while it swings: their aim wobbles a little on
+  // A press's first squirt, and a balloon, wait until the turret has swung onto the aim, so a click lands where it
+  // was made rather than where the nozzle happened to point. With squirting held (sweeping paint round like a
+  // hose), the rest go on time from wherever the nozzle points. Robots never wait: their aim wobbles a little on
   // purpose (BOT_LEVELS aimError), and waiting would leave them hardly squirting at all.
+  if (!c.fire) t.hosing = false
   const onAim = c.snap || t.bot || Math.abs(angleDiff(t.turretYaw, aim)) < 0.06
   if (c.mega && t.stats.mega && n >= t.megaReadyAt) t.megaDue = true
   if (t.megaDue && onAim) {
@@ -936,9 +943,11 @@ function control(t, c, dt) {
     t.megaReadyAt = n + BASE.megaCooldown * 1000
     fire(t, true, aimAt)
   }
-  if (c.fire && n >= t.nextFireAt) t.shotDue = true
-  if (t.shotDue && onAim) {
+  // A tap counts even while reloading: it squirts as soon as the nozzle is ready.
+  if ((c.fire && n >= t.nextFireAt) || c.tap) t.shotDue = true
+  if (t.shotDue && n >= t.nextFireAt && (onAim || t.hosing)) {
     t.shotDue = false
+    t.hosing = c.fire
     t.nextFireAt = n + t.stats.reload * (n < t.rapidUntil ? 0.45 : 1) * 1000
     fire(t, false, aimAt)
   }
@@ -996,7 +1005,7 @@ function mouseGround() {
 }
 
 function playerControls(me, dt) {
-  const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing || input.clicked, boost: input.boost, mega: input.mega }
+  const c = { mx: input.moveX, mz: input.moveZ, aimYaw: me.turretYaw, fire: input.firing || input.clicked, tap: input.clicked, boost: input.boost, mega: input.mega }
   if (firstPerson()) return seatControls(me, c, dt)
   if (mouseAims()) {
     if (mouseGround()) {
@@ -1006,7 +1015,8 @@ function playerControls(me, dt) {
     }
   } else if (input.aimStick.active) {
     c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (control)
-  } else if (drivingAlone()) {
+  } else if (drivingAlone() && !me.shotDue && !me.megaDue) {
+    // (Not while a flicked squirt waits for the turret: squirting ahead would take over its aim.)
     // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically.
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, me.heading) * Math.min(1, dt * 4)
     c.fire = true
@@ -1218,9 +1228,14 @@ function battleStep(dt, n) {
     me.vel.x = me.vel.z = me.trackVel.x = me.trackVel.z = 0
     input.look.dx = input.look.dy = 0 // mouse-look counts only while you drive, so the view can't jump at "Paint!"
   }
-  if (isHost() && live) {
+  if (isHost()) {
     for (const t of game.tanks.values()) {
       if (!t.bot || !t.alive) continue
+      // Out of play (the countdown, the round over), robots stand still like us.
+      if (!live) {
+        t.vel.x = t.vel.z = t.trackVel.x = t.trackVel.z = 0
+        continue
+      }
       const brain = game.brains.get(t.id) ?? game.brains.set(t.id, newBrain()).get(t.id)
       control(t, botControls(t, brain, tanks, game.pads, game.opts.difficulty, dt, together()), dt)
     }
@@ -1337,7 +1352,8 @@ function showReach(me) {
   if (!me || !mouseGround()) return hud.reach(false)
   // Measured from the nozzle as it will be once the turret has swung round to the mouse.
   me.muzzleNodes[0].getWorldPosition(nozzle)
-  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z)
+  // (Plus how far a squirt has just pulled the barrel back, so the dot doesn't flicker with each squirt.)
+  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * 0.45
   const d = Math.hypot(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   if (d - ahead <= me.stats.range) return hud.reach(false)
   const k = (me.stats.range + ahead) / d

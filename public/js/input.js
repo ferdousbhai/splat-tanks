@@ -107,6 +107,11 @@ export function bindMouse(canvas) {
     input.mouse.active = true
   })
   const press = (e) => {
+    // Where it was pressed, which a click straight after the menu (no move over the arena yet) needs.
+    if (!document.pointerLockElement) {
+      input.mouse.x = (e.clientX / innerWidth) * 2 - 1
+      input.mouse.y = -(e.clientY / innerHeight) * 2 + 1
+    }
     input.mouse.active = true
     input.mouseUsed = true
     if (e.button === 0) input.firing = input.clicked = true
