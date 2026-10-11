@@ -376,7 +376,12 @@ export function takeBallState(a, colorOf, jump = false) {
     const b = balls[i]
     if (!b) return
     b.target = { x, z, vx, vz, t: performance.now() }
-    if (jump) Object.assign(b, { x, z, vx, vz })
+    if (jump) {
+      // Straight there, mesh and all, as if it had been rolling there all along: no spin or bonk for the move.
+      Object.assign(b, { x, z, vx, vz })
+      b.mesh.position.set(x, BALL_R, z)
+      Object.assign(b.seen, { vx, vz, d: 0 })
+    }
     if ((by || null) !== b.by) setOwner(b, by || null, by ? colorOf(by) : null)
   })
 }

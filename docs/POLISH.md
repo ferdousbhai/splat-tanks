@@ -660,6 +660,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 63
 
+- **A friend joining heard the balls bonk (correctness, minor):** joining part way through, each ball rolling within 6 m of its starting spot was moved to the host's spot as if it had rolled there, spinning and bonking at once. Joining now puts the balls there outright, mesh and all.
 - **Tidy (code quality):**
   - A friend's ball's jump distance is one constant (`SNAP`), used by the glide, the spin and the bonk, and the bonk reads `jumped`.
   - `tryRoll`'s comment covers both ways it can be stuck, and the fit check's centimetre is explained.
