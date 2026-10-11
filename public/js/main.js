@@ -83,8 +83,9 @@ function broadcast(msg) {
   handle(msg, game.selfId)
 }
 
+/** Who we are, and who we take to be host (so if the host leaves, only a friend who knew it is chosen to take over). */
 function hello(to) {
-  send({ t: 'hello', name: game.myName, color: game.myColor, host: isHost() }, to)
+  send({ t: 'hello', name: game.myName, color: game.myColor, host: isHost(), knows: game.hostId }, to)
 }
 
 function setupRoom(room) {
@@ -102,7 +103,7 @@ function setupRoom(room) {
       t.dispose()
       game.tanks.delete(id)
     }
-    if (id === game.hostId) migrateHost()
+    if (id === game.hostId) migrateHost(id)
     renderRoom()
   })
   room.on('message', (msg, from) => handle(msg, from))
@@ -122,9 +123,13 @@ function giveTank(id, h) {
   game.tanks.get(id).respawnAt = now() + 800
 }
 
-/** If the host leaves, the remaining player with the smallest id takes over, bots included. */
-function migrateHost() {
-  const ids = [game.selfId, ...(game.room?.peers ?? [])].sort()
+/**
+ * If the host leaves, the remaining player with the smallest id takes over, bots included: of those who knew that
+ * host, since a friend who joined as it left has heard from no host and would never learn it had been chosen.
+ */
+function migrateHost(gone) {
+  const knew = (game.room?.peers ?? []).filter((p) => game.humans.get(p)?.knows === gone)
+  const ids = [game.selfId, ...knew].sort()
   game.hostId = ids[0]
   if (!isHost()) return
   hud.toast('👑 The host left. You are running the game now!')
@@ -176,12 +181,21 @@ function handle(msg, from) {
   const t = game.tanks.get(msg.i)
   switch (msg.t) {
     case 'hello': {
-      const h = { name: safeName(msg.name), color: safeColor(msg.color) }
+      const h = { name: safeName(msg.name), color: safeColor(msg.color), knows: msg.knows ?? null }
       // A friend arriving in the menu is said; one joining a round is shown in the feed when their tank arrives.
       // (Not the players already in the room when we arrive: their hellos all come in the first moments.)
       if (!game.humans.has(from) && game.phase === 'menu' && now() - game.joinedAt > 3000) voice.say(`${h.name} is here!`)
       game.humans.set(from, h)
-      if (msg.host) game.hostId = from
+      if (msg.host) {
+        // Two devices both taking over (they saw the room differently): the smaller id keeps it.
+        if (isHost() && from > game.selfId) hello(from)
+        else {
+          const was = game.hostId
+          game.hostId = from
+          // Tell everyone we know the host now, so we can be chosen if it leaves.
+          if (was !== from) hello()
+        }
+      }
       const existing = game.tanks.get(from)
       if (existing && existing.name !== h.name) {
         existing.name = h.name
