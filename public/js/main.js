@@ -110,6 +110,12 @@ function setupRoom(room) {
   hello()
 }
 
+/** We took over, but a friend with a smaller id did too: hand the robots and the host's buttons back. */
+function loseHost() {
+  for (const t of game.tanks.values()) if (t.bot) t.local = false
+  showHostButtons()
+}
+
 /** Host: a tank (and a slot for their paint) for a friend who joined part way through a round. */
 function giveTank(id, h) {
   flushPaint()
@@ -124,8 +130,8 @@ function giveTank(id, h) {
 }
 
 /**
- * If the host leaves, the remaining player with the smallest id takes over, bots included: of those who knew that
- * host, since a friend who joined as it left has heard from no host and would never learn it had been chosen.
+ * If the host leaves, whoever has the smallest id among those who knew it takes over, robots and all (a friend who
+ * joined as it left has heard from no host, and would never learn it had been chosen).
  */
 function migrateHost(gone) {
   const knew = (game.room?.peers ?? []).filter((p) => game.humans.get(p)?.knows === gone)
@@ -187,13 +193,17 @@ function handle(msg, from) {
       if (!game.humans.has(from) && game.phase === 'menu' && now() - game.joinedAt > 3000) voice.say(`${h.name} is here!`)
       game.humans.set(from, h)
       if (msg.host) {
-        // Two devices both taking over (they saw the room differently): the smaller id keeps it.
-        if (isHost() && from > game.selfId) hello(from)
-        else {
-          const was = game.hostId
+        // Two devices both taking over (they saw the room differently): every device keeps the one with the
+        // smaller id, so they all agree whichever claim arrives first.
+        const was = game.hostId
+        const live = was === game.selfId || (game.room?.peers ?? []).includes(was)
+        if (live && was < from) {
+          if (isHost()) hello(from) // tell the other claimant
+        } else if (was !== from) {
           game.hostId = from
+          if (was === game.selfId) loseHost()
           // Tell everyone we know the host now, so we can be chosen if it leaves.
-          if (was !== from) hello()
+          hello()
         }
       }
       const existing = game.tanks.get(from)

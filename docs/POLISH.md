@@ -741,9 +741,14 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 73
 
-- **No host after a friend joined as the host left (correctness, older):** if the host's device dropped and a friend joined in the 20 s or so before the others noticed, and the newcomer's id happened to sort first, the others chose the newcomer to take over. It had heard from no host and never learned it was chosen, so the round froze and no one could start another. A hello now says who the sender takes to be host, and only a friend who knew the host that left can be chosen. Two devices that both take over settle on the smaller id. In a test where the newcomer sorts first, a remaining friend takes over and the newcomer gets a tank, both in a round and in the menu.
+- **No host after a friend joined as the host left (correctness, older):** if the host's device dropped and a friend joined in the 20 s or so before the others noticed, and the newcomer's id happened to sort first, the others chose the newcomer to take over. It had heard from no host and never learned it was chosen, so the round froze and no one could start another. A hello now says who the sender takes to be host, and only a friend who knew the host that left can be chosen. Two devices that both take over settle on the smaller id (on every device, from round 74). In a test where the newcomer sorts first, a remaining friend takes over and the newcomer gets a tank, both in a round and in the menu.
 - **A balloon's "at Lv 4" went unsaid in the driver's seat (code quality, from round 72):** leaving out floating words by the seat camera also dropped "🎈 at Lv 4!", which nothing else says. The voice says it there.
 - **Tidy (code quality):** `migrateHost`'s comment sits on it again, `giveTank`'s grown-level comment sits on its line, `nextSlot`'s comment covers the reuse past 255, and the floating words' start height is named.
+
+### Fresh audit, round 74
+
+- **Two hosts settled only between themselves (code quality, from round 73):** when two devices both took over, the one with the larger id gave way but kept driving the robots and showing the host's buttons. A third friend took whichever claim arrived last, so it could be left following the device that gave way. Every device now keeps the host with the smaller id while it is still in the room, whichever claim arrives first, and a device that gives way hands the robots and buttons back.
+- **Tidy (code quality):** `migrateHost`'s comment reads plainly.
 
 ### Open (Pass 2)
 
