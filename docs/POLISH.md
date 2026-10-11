@@ -575,6 +575,15 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 57
 
+- **After driving alone, the next press squirted wherever the turret pointed (correctness, from round 56):** squirting ahead on its own counted as hosing, and hosing never ended while it ran. So the first flick or click after driving went off at once along the turret, without waiting (up to 78° off, about 40% of flicks). A new press now always waits for its own aim, and squirting ahead never counts as hosing (3° or less).
+- **A click in the driver's seat froze the view (correctness, from round 56):** a click during the reload made the seat's turret, and with it the camera, hold the old aim while you looked round, then jump 80°. Nothing waits in the seat now; its aim is the view.
+- **A click while driving landed metres off (correctness, from round 56):** a click kept during the reload went along the direction clicked from where the tank had been, up to 5 m off after driving on. While a clicked squirt waits, it now keeps aiming at the clicked spot (0.15–0.17 m).
+- **A ball pushed into a corner froze and drummed (design):** a child pushing a ball into a corner or against a prop left both stopped dead. The tank still showed full speed, with dust and that speed sent to friends. The ball kept its speed into the wall, sent 20 messages a second and bonked about 8 times a second.
+  - The ball now loses its speed into the wall.
+  - A tank pushing a ball that can't go on stops against it as against a wall.
+  - The ball squeezes out sideways past the tank to whichever side is open. Wedged in a corner with no side open, it just rests, quietly, and rolls back out when the tank backs off.
+  - A ball that isn't moving never bonks.
+- **The reach dot outside the arena (design):** near an edge it could sit on the grass beyond the outer wall, where the paint splats on the wall. It now stops at the wall.
 - **Splashes on top of props were still hidden (code quality):** round 56 raised a splash to the blob's height, but kept offsets measured from the floor, so its ring sat inside the prop. It also used the blob's height from the frame before, and raised splashes on tanks and balls into the air. A blob that comes down on a prop now splashes at that prop's top. Everything else splashes on the floor as before.
 - **Taps during the reload were only kept for the mouse (code quality):** pushing the aim stick out now counts as a press too, so a child's quick flick during the reload isn't lost either.
 - **Tidy (code quality):**

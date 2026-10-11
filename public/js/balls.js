@@ -110,18 +110,24 @@ export function ballHit(x, z, r) {
   return null
 }
 
-/** Keeps a tank this device drives out of the balls; the host's step then rolls the ball away from it. */
-export function blockTank(pos) {
+/**
+ * Keeps a tank this device drives out of the balls; the host's step then rolls the ball away from it. Returns true
+ * if a ball it was kept out of is up against a wall, so for now that ball stops the tank like a wall.
+ */
+export function blockTank(p) {
+  let held = false
   for (const b of balls) {
-    const dx = pos.x - b.x
-    const dz = pos.z - b.z
+    const dx = p.x - b.x
+    const dz = p.z - b.z
     const d = Math.hypot(dx, dz)
     const min = BALL_R + TANK_RADIUS
     if (d < min && d > 0.001) {
-      pos.x = b.x + (dx / d) * min
-      pos.z = b.z + (dz / d) * min
+      p.x = b.x + (dx / d) * min
+      p.z = b.z + (dz / d) * min
+      held ||= againstWall(b)
     }
   }
+  return held
 }
 
 /**
@@ -129,8 +135,48 @@ export function blockTank(pos) {
  * far heavier), about 8–10 m from a full-speed bump; balls slow down as they roll, bounce off walls and props, and knock each other on.
  * Returns each ball a tank pushed this step, with that tank, so the host can give it the tank's colour.
  */
+const pos = { x: 0, z: 0 } // scratch
+
+/** Moves a ball out of walls and props, bouncing off what it was rolling into. Returns true if it touched one. */
+function offWalls(b) {
+  pos.x = b.x
+  pos.z = b.z
+  if (!pushOut(pos, BALL_R)) return false
+  let nx = pos.x - b.x
+  let nz = pos.z - b.z
+  const l = Math.hypot(nx, nz)
+  if (l > 1e-6) {
+    nx /= l
+    nz /= l
+    const vn = b.vx * nx + b.vz * nz
+    if (vn < 0) {
+      b.vx -= 1.6 * vn * nx
+      b.vz -= 1.6 * vn * nz
+    }
+  }
+  b.x = pos.x
+  b.z = pos.z
+  return true
+}
+
+/** True if a ball is up against a wall or prop (so a tank pushing it there can't move it on). */
+function againstWall(b) {
+  pos.x = b.x
+  pos.z = b.z
+  return pushOut(pos, BALL_R + 0.05)
+}
+
+/** Which way (+1 or -1) along (tx, tz) a ball has room to squeeze out, or 0 if neither (wedged in a corner). */
+function squeezeSide(b, tx, tz) {
+  for (const s of [1, -1]) {
+    pos.x = b.x + tx * s * 0.6
+    pos.z = b.z + tz * s * 0.6
+    if (!pushOut(pos, BALL_R)) return s
+  }
+  return 0
+}
+
 export function stepBalls(dt, tanks) {
-  const pos = { x: 0, z: 0 }
   for (const b of balls) {
     // Rolling slows a ball gently, then brings it to a stop.
     const s = Math.hypot(b.vx, b.vz)
@@ -143,24 +189,7 @@ export function stepBalls(dt, tanks) {
     if (Math.abs(b.z) > ARENA - EDGE) b.vz -= Math.sign(b.z) * RISE * dt
     b.x += b.vx * dt
     b.z += b.vz * dt
-    pos.x = b.x
-    pos.z = b.z
-    if (pushOut(pos, BALL_R)) {
-      let nx = pos.x - b.x
-      let nz = pos.z - b.z
-      const l = Math.hypot(nx, nz)
-      if (l > 1e-6) {
-        nx /= l
-        nz /= l
-        const vn = b.vx * nx + b.vz * nz
-        if (vn < 0) {
-          b.vx -= 1.6 * vn * nx
-          b.vz -= 1.6 * vn * nz
-        }
-      }
-      b.x = pos.x
-      b.z = pos.z
-    }
+    offWalls(b)
   }
   // Ball against ball: equal weights, so they trade the speed along the line between them.
   for (let i = 0; i < balls.length; i++) {
@@ -203,6 +232,21 @@ export function stepBalls(dt, tanks) {
       if (d >= min + 0.25 || d < 1e-6) continue
       const nx = dx / d
       const nz = dz / d
+      // Pressed into a corner or against a prop, a real ball squeezes out sideways past the tank, to whichever
+      // side is open. (The tank stops against it meanwhile, as against a wall: main.js control.)
+      if (Math.hypot(b.vx, b.vz) < 1 && againstWall(b)) {
+        const s = squeezeSide(b, -nz, nx)
+        if (s) {
+          b.vx += -nz * s * 4
+          b.vz += nx * s * 4
+          knocked.push({ b, t })
+        } else {
+          // Wedged between the tank and a corner: it just rests there until the tank backs off or comes at it
+          // from the side.
+          b.vx = b.vz = 0
+          continue
+        }
+      }
       const vt = t.vel.x * nx + t.vel.z * nz
       let vb = b.vx * nx + b.vz * nz
       if (d < min) {
@@ -230,14 +274,9 @@ export function stepBalls(dt, tanks) {
       }
     }
   }
-  // A tank may have pressed a ball into a wall: back out, the way the ball came.
+  // A tank may have pressed a ball into a wall: back out, losing its speed into it, the way the ball came.
   for (const b of balls) {
-    pos.x = b.x
-    pos.z = b.z
-    if (pushOut(pos, BALL_R)) {
-      b.x = pos.x
-      b.z = pos.z
-    }
+    if (offWalls(b)) cap(b)
   }
   return knocked
 }
@@ -285,8 +324,9 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
+    // Only a ball that really moves bonks (one held against a wall doesn't drum).
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)
-    if (jolt > 2.5) onBump?.(b, Math.min(1, jolt / 10))
+    if (jolt > 2.5 && d > 0.01) onBump?.(b, Math.min(1, jolt / 10))
     b.seen.vx = b.vx
     b.seen.vz = b.vz
   }
