@@ -748,6 +748,8 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 ### Fresh audit, round 74
 
 - **Two hosts settled only between themselves (code quality, from round 73):** when two devices both took over, the one with the larger id gave way but kept driving the robots and showing the host's buttons. A third friend took whichever claim arrived last, so it could be left following the device that gave way. Every device now keeps the host with the smaller id while it is still in the room, whichever claim arrives first, and a device that gives way hands the robots and buttons back.
+- **A slow device followed a friend who wasn't host (correctness, from round 74's first fix):** a device slow to see the host go ignored the new host's claim while the old one still seemed there, then chose by stale records and followed a friend who wasn't host. It missed the 🏠 and stayed in a round no one was running. A device choosing a new host now first takes anyone who has already claimed it.
+- **Several hosts at once after a second handover (correctness, from round 73):** only a new host said hello after a handover, so everyone else's record of who they follow went stale, and when that host left too, each remaining device found no one who knew it and took over itself, saying "You're the host now", until the smaller id's claim arrived. Every device now says hello whenever its host changes, and a device giving way drops the splats it queued meanwhile.
 - **Tidy (code quality):** `migrateHost`'s comment reads plainly.
 
 ### Open (Pass 2)

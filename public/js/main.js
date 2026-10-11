@@ -113,6 +113,7 @@ function setupRoom(room) {
 /** We took over, but a friend with a smaller id did too: hand the robots and the host's buttons back. */
 function loseHost() {
   for (const t of game.tanks.values()) if (t.bot) t.local = false
+  game.paintQueue = [] // splats decided while we thought we were host: the real host decides
   showHostButtons()
 }
 
@@ -131,13 +132,19 @@ function giveTank(id, h) {
 
 /**
  * If the host leaves, whoever has the smallest id among those who knew it takes over, robots and all (a friend who
- * joined as it left has heard from no host, and would never learn it had been chosen).
+ * joined as it left has heard from no host, and would never learn it had been chosen), unless someone has already
+ * claimed it.
  */
 function migrateHost(gone) {
-  const knew = (game.room?.peers ?? []).filter((p) => game.humans.get(p)?.knows === gone)
-  const ids = [game.selfId, ...knew].sort()
-  game.hostId = ids[0]
-  if (!isHost()) return
+  const peers = game.room?.peers ?? []
+  // Someone may have taken over already, if we were slow to see the host go (we ignored the claim while it was here).
+  const claimed = peers.filter((p) => game.humans.get(p)?.knows === p).sort()
+  const knew = peers.filter((p) => game.humans.get(p)?.knows === gone)
+  game.hostId = claimed[0] ?? [game.selfId, ...knew].sort()[0]
+  if (!isHost()) {
+    hello() // tell everyone who we follow now, so the next handover goes by it
+    return
+  }
   hud.toast('👑 The host left. You are running the game now!')
   voice.say("The host left. You're the host now.")
   for (const t of game.tanks.values()) {
