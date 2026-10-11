@@ -105,6 +105,10 @@ function placeBanners() {
   s.style.bottom = `${above}px`
   b.style.bottom = `${above + (s.classList.contains('show') ? s.offsetHeight : 0)}px`
 }
+// The bottom panel grows when a power's pill appears in it (or shrinks as one ends): keep the lines above it then too,
+// or a pickup would slide the panel over "Two quarters make one half!".
+new ResizeObserver(() => placeBanners()).observe(document.querySelector('#hud .bottom'))
+
 /** soft: a passing note (a paint bucket) that never replaces a sub-line still on screen. */
 export function subBanner(text, ms = 2000, soft = false) {
   const s = $('subbanner')
