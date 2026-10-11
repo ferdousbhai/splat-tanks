@@ -17,7 +17,7 @@ import { updateFx, clearNearCamera, updateFloaters, toScreen, splash, muzzleFlas
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey, mouseSurfaces, mouseAims, drivingAlone } from './input.js'
-import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
+import { unlockAudio, sound, voice, toggleMusic, musicIntensity, engineHum } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import { updateTreads, clearTreads } from './treads.js'
 import { balls, resetBalls, stepBalls, squirtBall, burstBalls, setOwner, blockTank, ballState, ballsMoving, takeBallState, renderBalls, fadeNearCamera } from './balls.js'
@@ -1014,6 +1014,28 @@ const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -LAND_Y) // where b
 const aimPoint = new THREE.Vector3()
 const mouseNdc = new THREE.Vector2()
 
+/**
+ * Where a squirt along `yaw` should land so the child sees it: as far as it can go, but no further than the floor
+ * shows on screen, clear of the panel at the top and the controls at the bottom. (The sky camera looks only a few
+ * metres ahead, so a full-range squirt toward the bottom of the screen, or the sides, landed out of sight.) For the
+ * aim stick and squirting ahead; the mouse lands on its own point, and the driver's seat looks along the squirt.
+ */
+const seen = { x: 0, z: 0 }
+const onScreen = new THREE.Vector3()
+function seenSpot(me, yaw) {
+  const d = dirOf(yaw)
+  me.muzzleNodes[0].getWorldPosition(nozzle)
+  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * RECOIL_KICK
+  let r = me.stats.range
+  for (; r > 4; r -= 1) {
+    const [sx, sy] = toScreen(onScreen.set(me.pos.x + d.x * (ahead + r), LAND_Y, me.pos.z + d.z * (ahead + r)).project(camera))
+    if (sx > innerWidth * 0.05 && sx < innerWidth * 0.95 && sy > innerHeight * 0.2 && sy < innerHeight * 0.85) break
+  }
+  seen.x = me.pos.x + d.x * (ahead + r)
+  seen.z = me.pos.z + d.z * (ahead + r)
+  return seen
+}
+
 /** The floor point under the mouse (aimPoint, where blobs land), or null. */
 function mouseGround() {
   ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
@@ -1032,10 +1054,12 @@ function playerControls(me, dt) {
   } else if (input.aimStick.active || input.flicked) {
     // (Or a flick of the aim stick over within a frame: it keeps its direction.)
     c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (squirt)
+    c.aimAt = seenSpot(me, c.aimYaw)
   } else if (drivingAlone() && !me.shotDue && !me.megaDue) {
     // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically, but not while
     // a squirt or balloon pressed a moment ago waits for the turret (squirting ahead would take over its aim).
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, me.heading) * Math.min(1, dt * 4)
+    c.aimAt = seenSpot(me, c.aimYaw)
     c.fire = c.auto = true
   }
   return c
@@ -1215,6 +1239,8 @@ function frame() {
   updatePaint(n)
   updateCamera(dt)
   fadeNearCamera() // after the camera has moved this frame
+  const me = game.me
+  engineHum(game.phase === 'battle' && me?.alive ? Math.min(1, Math.hypot(me.vel.x, me.vel.z) / me.stats.speed) : 0)
   renderer.render(scene, camera)
   input.boost = input.mega = input.clicked = input.flicked = false
   input.pick = 0

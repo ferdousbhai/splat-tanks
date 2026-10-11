@@ -690,6 +690,8 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 66
 
+- **A child's paint landed out of sight (design, older):** with the aim stick or squirting ahead, every blob flew its whole 22 m, but the sky camera looks only a few metres ahead. On an iPad, squirting down landed below the screen, down-left and down-right at its very edge, and up under the fraction strip. A phone was the same, and on a portrait iPad left and right went off the sides. Squirting toward yourself, a natural way for a child to push, painted nothing they could see. A stick or keys squirt now lands as far as it can go but no further than the floor shows on screen, clear of the top panel and the bottom controls: about 11–14 m down, about 16 m up, the full range to the sides on a landscape iPad. The mouse still lands on its point, and the driver's seat looks along the squirt.
+- **Silent tanks (design):** the driving looks heavy and real, but made no sound. Your own tank now has a soft, low engine purr that rises a little with speed and dies away when it stops. It is only your own, and well under the squirts.
 - **Tidy (code quality):** the `GAP` and `BONK_MOVING` comments say what they cover (about two missed messages; both uses of the speed), the bonk comment names `BONK_MOVING`, `nearCamera`'s comment sits on it again, the ball send asks `isHost()` once, the fade's use of `depthWrite` is explained, and round 64's log says what round 64 did.
 
 ### Open (Pass 2)
