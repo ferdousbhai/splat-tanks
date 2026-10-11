@@ -573,3 +573,14 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - Round 55's log no longer lists two tidies that the same round undid.
   - The README mentions the dot past the mouse's reach.
 
+### Fresh audit, round 57
+
+- **Splashes on top of props were still hidden (code quality):** round 56 raised a splash to the blob's height, but kept offsets measured from the floor, so its ring sat inside the prop. It also used the blob's height from the frame before, and raised splashes on tanks and balls into the air. A blob that comes down on a prop now splashes at that prop's top. Everything else splashes on the floor as before.
+- **Taps during the reload were only kept for the mouse (code quality):** pushing the aim stick out now counts as a press too, so a child's quick flick during the reload isn't lost either.
+- **Tidy (code quality):**
+  - `Tank.stop()` stands a tank still in the three places that did it by hand.
+  - The barrels' kick is one constant (`RECOIL_KICK`), shared with the reach dot.
+  - The waiting-squirt fields say what they do.
+  - The squirt-ahead comment says what the branch is for first.
+  - `drive` skips the steering maths while backing straight up.
+

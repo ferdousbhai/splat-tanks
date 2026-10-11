@@ -13,6 +13,8 @@ export const view = { seat: false, seatTank: null, levels: true }
 
 /** Seconds a tank backs up with the stick held behind before it turns round. */
 const BACK_FOR = 0.6
+/** Metres a squirt pulls the barrels back (main.js showReach allows for it). */
+export const RECOIL_KICK = 0.45
 
 /** Yaw (three.js rotation.y) that faces direction (dx, dz); models face -Z. */
 export const yawOf = (dx, dz) => Math.atan2(-dx, -dz)
@@ -124,11 +126,11 @@ export class Tank {
     this.boostReadyAt = 0
     this.megaReadyAt = 0
     this.nextFireAt = 0
-    this.shotDue = this.megaDue = false // a squirt or balloon waiting for the turret to reach the aim
+    this.shotDue = this.megaDue = false // a squirt or balloon waiting for the reload and for the turret to reach the aim
     this.dueAim = 0 // the aim it waits for (main.js control)
-    this.dueSpot = { x: 0, z: 0 }
+    this.dueSpot = { x: 0, z: 0 } // the storage dueAt points at, so nothing is made each frame
     this.dueAt = null // the mouse's floor point it waits for (this.dueSpot), or null
-    this.hosing = false // squirting held since a squirt went: the next go on time, without waiting
+    this.hosing = false // squirting has been held since the last squirt, so the next goes on time from wherever the nozzle points (main.js control)
     this.target = null // remote: last network state
     this.flash = 0
     this.recoil = 0
@@ -249,14 +251,15 @@ export class Tank {
       const behind = Math.abs(diff) > 2.2
       this.backFor = behind ? this.backFor + dt : 0
       const back = behind && (!turnRound || this.backFor < BACK_FOR)
-      const goal = back ? want + Math.PI : want
-      const d = angleDiff(this.heading, goal)
-      const rate = 6.5 - 2.5 * Math.min(1, Math.abs(fwd) / this.stats.speed)
+      let align = 1
       // Backing up for a moment goes straight back along the hull: steering its rear onto the stick first, only
-      // to turn round straight after, would be a wasted three-point turn.
-      const straightBack = back && turnRound
-      yawWant = straightBack ? 0 : Math.max(-rate, Math.min(rate, d * 9))
-      const align = straightBack ? 1 : Math.max(0.25, Math.cos(d))
+      // to turn round straight after, would be a wasted three-point turn. (The seat steers it along the view.)
+      if (!(back && turnRound)) {
+        const d = angleDiff(this.heading, back ? want + Math.PI : want)
+        const rate = 6.5 - 2.5 * Math.min(1, Math.abs(fwd) / this.stats.speed)
+        yawWant = Math.max(-rate, Math.min(rate, d * 9))
+        align = Math.max(0.25, Math.cos(d))
+      }
       speed = this.stats.speed * Math.min(1, len) * align * (back ? -0.75 : 1)
     }
     else this.backFor = 0
@@ -274,10 +277,15 @@ export class Tank {
     this.trackVel.z = this.vel.z = g.z * nf + g.x * ns
   }
 
+  /** Stands still: no speed shown, sent, or pushed by the tracks. */
+  stop() {
+    this.vel.x = this.vel.z = this.trackVel.x = this.trackVel.z = 0
+  }
+
   place(x, z, heading = 0) {
     this.pos.x = x
     this.pos.z = z
-    this.vel.x = this.vel.z = this.trackVel.x = this.trackVel.z = 0
+    this.stop()
     this.yawRate = 0
     this.heading = heading
     this.sway.yaw = heading
@@ -346,7 +354,7 @@ export class Tank {
     this.recoil = Math.max(0, this.recoil - dt * 5)
     for (const b of this.barrels) {
       b.position.copy(b.userData.rest)
-      b.position.z += this.recoil * 0.45
+      b.position.z += this.recoil * RECOIL_KICK
     }
     this.flash = Math.max(0, this.flash - dt * 6)
     this.tintMat.emissive.setRGB(this.flash * 0.5, this.flash * 0.5, this.flash * 0.5)

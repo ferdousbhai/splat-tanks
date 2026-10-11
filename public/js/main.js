@@ -11,7 +11,7 @@ import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
 import { TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor, r2 } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, lineOfSight, barrels, PADS, SPAWNS } from './world.js'
-import { Tank, yawOf, dirOf, angleDiff, view } from './tank.js'
+import { Tank, yawOf, dirOf, angleDiff, view, RECOIL_KICK } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y } from './shells.js'
 import { updateFx, clearNearCamera, updateFloaters, toScreen, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
 import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
@@ -943,7 +943,8 @@ function control(t, c, dt) {
     t.megaReadyAt = n + BASE.megaCooldown * 1000
     fire(t, true, aimAt)
   }
-  // A tap counts even while reloading: it squirts as soon as the nozzle is ready.
+  // A press (a click or tap, or the aim stick pushed out) counts even while reloading: it squirts as soon as the
+  // nozzle is ready.
   if ((c.fire && n >= t.nextFireAt) || c.tap) t.shotDue = true
   if (t.shotDue && n >= t.nextFireAt && (onAim || t.hosing)) {
     t.shotDue = false
@@ -1016,8 +1017,8 @@ function playerControls(me, dt) {
   } else if (input.aimStick.active) {
     c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (control)
   } else if (drivingAlone() && !me.shotDue && !me.megaDue) {
-    // (Not while a flicked squirt waits for the turret: squirting ahead would take over its aim.)
-    // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically.
+    // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically, but not while
+    // a squirt or balloon pressed a moment ago waits for the turret (squirting ahead would take over its aim).
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, me.heading) * Math.min(1, dt * 4)
     c.fire = true
   }
@@ -1225,7 +1226,7 @@ function battleStep(dt, n) {
   // Our tank and (on the host) the bots.
   if (me?.alive && live) control(me, playerControls(me, dt), dt)
   else if (me) {
-    me.vel.x = me.vel.z = me.trackVel.x = me.trackVel.z = 0
+    me.stop()
     input.look.dx = input.look.dy = 0 // mouse-look counts only while you drive, so the view can't jump at "Paint!"
   }
   if (isHost()) {
@@ -1233,7 +1234,7 @@ function battleStep(dt, n) {
       if (!t.bot || !t.alive) continue
       // Out of play (the countdown, the round over), robots stand still like us.
       if (!live) {
-        t.vel.x = t.vel.z = t.trackVel.x = t.trackVel.z = 0
+        t.stop()
         continue
       }
       const brain = game.brains.get(t.id) ?? game.brains.set(t.id, newBrain()).get(t.id)
@@ -1353,7 +1354,7 @@ function showReach(me) {
   // Measured from the nozzle as it will be once the turret has swung round to the mouse.
   me.muzzleNodes[0].getWorldPosition(nozzle)
   // (Plus how far a squirt has just pulled the barrel back, so the dot doesn't flicker with each squirt.)
-  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * 0.45
+  const ahead = Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * RECOIL_KICK
   const d = Math.hypot(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
   if (d - ahead <= me.stats.range) return hud.reach(false)
   const k = (me.stats.range + ahead) / d

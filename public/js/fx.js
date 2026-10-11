@@ -60,8 +60,12 @@ export function muzzleFlash(x, y, z, dx, dz, color, big = false) {
   }
 }
 
-/** A paint splash: drops of colour fly up and fall. size: 0.8 = blob, 2.5 = balloon, 3 = bucket. y: how high (on top of a prop, a blob splashes up there). */
-export function splash(x, z, size = 1, color = '#ff6ec7', y = 0.6) {
+/**
+ * A paint splash: drops of colour fly up and fall. size: 0.8 = blob, 2.5 = balloon, 3 = bucket. ground: the
+ * height of what it splashes on (a blob coming down on top of a prop splashes up there).
+ */
+export function splash(x, z, size = 1, color = '#ff6ec7', ground = 0) {
+  const y = ground + 0.6
   // By the camera (driver's seat): no pop or ring, and a few small drops that stay low. A balloon's or bucket's
   // pop and ring grow several metres wide, so they count as near from further away.
   const near = nearCamera(x, y, z, 6 + 3 * size)
@@ -70,7 +74,7 @@ export function splash(x, z, size = 1, color = '#ff6ec7', y = 0.6) {
     pop.position.set(x, y, z)
     spawn(pop, { life: 0.18, size: 0.5 * size, grow: 5 * size })
     const ring = mesh(ringGeo, '#ffffff', 0.7, true)
-    ring.position.set(x, y - 0.45, z)
+    ring.position.set(x, ground + 0.15, z)
     spawn(ring, { life: 0.3, size: 0.5 * size, grow: 8 * size })
   }
   const n = near ? 3 : Math.round(8 * size)
@@ -78,7 +82,7 @@ export function splash(x, z, size = 1, color = '#ff6ec7', y = 0.6) {
     const a = Math.random() * Math.PI * 2
     const sp = (near ? 1.5 : 2 + Math.random() * 5) * Math.sqrt(size)
     const d = mesh(ball, i % 4 ? color : '#ffffff')
-    d.position.set(x, near ? y - 0.3 : y, z)
+    d.position.set(x, near ? ground + 0.3 : y, z)
     spawn(d, { life: 0.6 + Math.random() * 0.5, size: near ? 0.08 : 0.12 + Math.random() * 0.12 * size, vx: Math.cos(a) * sp, vy: near ? 1 + Math.random() : 4 + Math.random() * 5 * Math.sqrt(size), vz: Math.sin(a) * sp, g: 20, fade: false })
   }
 }

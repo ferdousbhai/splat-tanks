@@ -66,13 +66,13 @@ export function hideNearCamera() {
   for (const s of shells.values()) hideNear(s)
 }
 
-export function removeShell(sid, fx = true) {
+/** ground: the height of what it splashes on (the top of a prop it came down onto; else the floor). */
+export function removeShell(sid, fx = true, ground = 0) {
   const s = shells.get(sid)
   if (!s) return
   shells.delete(sid)
   scene.remove(s.mesh)
-  // Where it is: on the floor, or on top of a crate, rock or wall it came down onto.
-  if (fx) splash(s.x, s.z, s.mega ? 2.5 : 0.8, s.color, Math.max(0.6, s.mesh.position.y))
+  if (fx) splash(s.x, s.z, s.mega ? 2.5 : 0.8, s.color, ground)
 }
 
 export function clearShells() {
@@ -128,7 +128,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
           continue
         }
         hooks.land?.(s)
-        removeShell(s.sid)
+        removeShell(s.sid, true, hit.ground)
         const ear = hearing(s.x, s.z, s.owner)
         sound.splat(ear.vol * 0.6, ear.mine)
         done = true
