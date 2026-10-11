@@ -656,6 +656,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - The stuck-ball docs list a stuck ball among what can be in the way.
   - The `min` aliases of `REACH` are gone, and a long comment is wrapped.
   - Open items are gathered below.
+- **A stray bonk when a ball jumps (correctness, plausible):** on a friend's device a ball that jumps to the host's spot (after a stall, or on joining) no longer counts that frame for a bonk.
 
 ### Open (Pass 2)
 

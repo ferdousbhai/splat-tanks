@@ -410,8 +410,10 @@ export function renderBalls(dt, host, onBump) {
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)
     const fast = Math.max(Math.hypot(b.vx, b.vz), Math.hypot(b.seen.vx, b.seen.vz))
     // (Moving this frame or the last: the frame a ball reaches a wall, it may only cover the last bit to it.)
-    if (jolt > Math.max(2.5, 0.4 * fast) && Math.max(d, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
-    b.seen.d = d
+    // (Not the frame a ball jumps to where the host says it is, after a stall or on joining: it didn't roll there.)
+    const rolled = d < 6 ? d : 0
+    if (d < 6 && jolt > Math.max(2.5, 0.4 * fast) && Math.max(rolled, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
+    b.seen.d = rolled
     b.seen.vx = b.vx
     b.seen.vz = b.vz
   }
