@@ -1303,12 +1303,14 @@ function battleStep(dt, n) {
     if (a.length) sendFast({ t: 'pb', a })
     // The balls while they roll, once more as they come to rest (so friends' last word of them is "still"), and
     // now and then when they're still (for a friend who just joined).
-    const rolling = isHost() && ballsMoving()
-    if (isHost() && (rolling || game.ballsRolled || n - game.lastBalls > 1000)) {
-      game.lastBalls = n
-      sendFast({ t: 'bl', a: ballState() })
+    if (isHost()) {
+      const rolling = ballsMoving()
+      if (rolling || game.ballsRolled || n - game.lastBalls > 1000) {
+        game.lastBalls = n
+        sendFast({ t: 'bl', a: ballState() })
+      }
+      game.ballsRolled = rolling
     }
-    game.ballsRolled = rolling
   }
   if (isHost() && ((game.statsDirty && n - game.lastStats > 150) || n - game.lastStats > 1000)) sendStats()
 

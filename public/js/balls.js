@@ -20,8 +20,12 @@ const EDGE = 4 // metres by the outer wall where a ball rolls back into play, as
 const RISE = 2.5 // m/s² it rolls back with: beats rolling's slowing up to about 2 m/s, a brisk walk
 const LEFT_FOR = 500 // ms after a tank was last by it before a still ball against a wall or prop rolls off it
 const ROLL_OFF = 2 // m/s it rolls off with, which carries it about a metre clear
-const BONK_MOVING = 0.6 // m/s a ball must be rolling at (this frame or the last) to bonk
-const GAP = 150 // ms without word of a rolling ball (three of the host's 50 ms messages missed) is a hiccup
+// m/s a ball must be rolling at to bonk (this frame or the last), and the least a gap in the host's word about it
+// can hide
+const BONK_MOVING = 0.6
+// ms without word of a rolling ball (about two of the host's messages, every 50 ms or a little more, missed) is a
+// hiccup
+const GAP = 150
 const SNAP = 6 // metres: further off than this, a friend's ball jumps to the host's spot instead of rolling there
 const TOUCH = 0.05 // metres: this close to a wall or prop, a ball is touching it
 const REACH = BALL_R + TANK_RADIUS // centre to centre, a tank touching a ball
@@ -409,7 +413,7 @@ export function takeBallState(a, colorOf, jump = false) {
 export function fadeNearCamera() {
   for (const b of balls) {
     const close = nearCamera(b.x, BALL_R, b.z, BALL_R + 3)
-    if (close === b.mat.depthWrite) {
+    if (close === b.mat.depthWrite) { // depthWrite is off exactly while faded
       Object.assign(b.mat, { opacity: close ? SEE_THROUGH : 1, depthWrite: !close })
       b.mesh.renderOrder = close ? 4 : 0 // after the treads (1), chalk (2) and fraction labels (3)
     }
@@ -442,7 +446,7 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
-    // Only a ball that really moves bonks (faster than 0.6 m/s): one held against a wall doesn't drum. And only a
+    // Only a ball that really moves bonks (faster than BONK_MOVING): one held against a wall doesn't drum. And only a
     // real knock: a tank topping up a ball it is already pushing along changes its speed a little for how fast it
     // is going, four times a second, which would make a steady drum while dribbling.
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)

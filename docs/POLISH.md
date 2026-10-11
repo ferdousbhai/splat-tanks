@@ -670,7 +670,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 ### Fresh audit, round 64
 
 - **A ball filling the driver's seat view (design):** pushed along from the seat, a ball sat just ahead of the nozzle and covered about 40% of the screen. Within about 3 m of the seat camera (from its surface) it now shows see-through, as your own blobs do.
-- **A stray bonk after a network hiccup (correctness, minor):** when a friend's device heard nothing from the host about a rolling ball for half a second or more, its speed caught up all at once, which counted as a knock. The frame after a gap of more than 150 ms about a rolling ball is now quiet.
+- **A stray bonk after a network hiccup (correctness, minor):** when a friend's device heard nothing from the host for more than 150 ms, a fast ball's speed caught up all at once, which counted as a knock. The frame after such a gap is now quiet.
 - **Small (correctness, plausible):** a robot lets go of a friend who has gone home at once, and a mouse lock refused just after Esc no longer leaves an error in the console.
 - **Tidy (code quality):**
   - Putting a ball somewhere outright (a new round, a friend joining) is one helper (`placeBall`).
@@ -681,12 +681,16 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 65
 
-- **Real knocks swallowed after a quiet spell (code quality and correctness, from round 64):** the host sends still balls only once a second, so the first knock after everything had been still came after a long gap and was taken for a hiccup: friends heard 1 of 12. A ball rolling slowly to a stop and knocked again within a second was missed the same way (9 of 12). Now only a gap about a ball last heard rolling fast enough to bonk counts (`GAP`, 150 ms; `BONK_MOVING`), and the host sends the balls once more as they come to rest.
+- **Real knocks swallowed after a quiet spell (code quality and correctness, from round 64):** the host sends still balls only once a second, so the first knock after everything had been still came after a long gap and was taken for a hiccup: friends heard 1 of 12. A ball rolling slowly to a stop and knocked again within a second was missed the same way (9 of 12). Now only a gap about a ball last heard rolling fast enough to bonk counts (`GAP`, 150 ms; `BONK_MOVING`, 0.6 m/s), and the host sends the balls once more as they come to rest.
 - **Tidy (code quality):**
   - A ball goes see-through by the seat camera at the same opacity as your own blobs (`SEE_THROUGH`, in `fx.js` beside `nearCamera`, whose comment now names it).
   - It fades once the camera has moved for the frame (it was a frame late going in and out of the seat), draws over the floor's marks while faded, and is transparent from the start, so fading needs no new shader on an iPad.
   - `takeBallState` reads the clock once per message.
   - Round 64's gap and the fade's comment say what the code does.
+
+### Fresh audit, round 66
+
+- **Tidy (code quality):** the `GAP` and `BONK_MOVING` comments say what they cover (about two missed messages; both uses of the speed), the bonk comment names `BONK_MOVING`, `nearCamera`'s comment sits on it again, the ball send asks `isHost()` once, the fade's use of `depthWrite` is explained, and round 64's log says what round 64 did.
 
 ### Open (Pass 2)
 
