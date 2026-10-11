@@ -660,16 +660,25 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 63
 
-- **A friend joining heard the balls bonk (correctness, minor):** joining part way through, each ball rolling within 6 m of its starting spot was moved to the host's spot as if it had rolled there, spinning and bonking at once. Joining now puts the balls there outright, mesh and all.
+- **A friend joining heard the balls bonk (correctness, minor):** joining part way through, each ball within 6 m of its starting spot spun to the host's spot as if it had rolled there, and a rolling one bonked. Joining now puts the balls there outright, mesh and all.
 - **Tidy (code quality):**
   - A friend's ball's jump distance is one constant (`SNAP`), used by the glide, the spin and the bonk, and the bonk reads `jumped`.
   - `tryRoll`'s comment covers both ways it can be stuck, and the fit check's centimetre is explained.
   - Robots set `backUp` beside their steering, and skip the pickup loop while boxed in.
   - Round 62's log gives its bonk counts and stuck robots in one unit each, with its entries in order.
 
+### Fresh audit, round 64
+
+- **Tidy (code quality):**
+  - Putting a ball somewhere outright (a new round, a friend joining) is one helper (`placeBall`).
+  - `glideTo` says when it jumped, so `renderBalls` no longer guesses it from how far the mesh moved.
+  - The aiming ring's comment is back on `crosshair`.
+  - The `tryRoll` comment and two README paragraphs are re-wrapped, and a dangling `else` is tidied.
+  - Round 63's joining entry is put precisely, and an Open item cites where it was found.
+
 ### Open (Pass 2)
 
 - **Splat match: a child who just drives ends last (design, older, for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.
-- **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor. Likewise a friend pushing a ball straight into a wall bonks about twice a second (round 62).
+- **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor. Likewise a friend pushing a ball straight into a wall bonks about twice a second (found in the round 62 audit).
 - Real play by the children on an iPad: how the heavier driving, the turret swing and the beach balls feel in small hands (headless browsers can't show it).
 

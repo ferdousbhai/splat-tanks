@@ -28,7 +28,7 @@ export const angleDiff = (a, b) => {
 
 /**
  * Glides point p ({ x, z }) toward a network state t ({ x, z, vx, vz, t }), carried on a little by its speed for
- * the time since it was sent. Jumps there when it is more than `snap` metres off.
+ * the time since it was sent. Jumps there when it is more than `snap` metres off, and then returns true.
  */
 export function glideTo(p, t, dt, snap, rate) {
   const lead = Math.min(0.15, (performance.now() - t.t) / 1000)
@@ -37,11 +37,12 @@ export function glideTo(p, t, dt, snap, rate) {
   if (Math.hypot(gx - p.x, gz - p.z) > snap) {
     p.x = gx
     p.z = gz
-  } else {
-    const k = Math.min(1, dt * rate)
-    p.x += (gx - p.x) * k
-    p.z += (gz - p.z) * k
+    return true
   }
+  const k = Math.min(1, dt * rate)
+  p.x += (gx - p.x) * k
+  p.z += (gz - p.z) * k
+  return false
 }
 
 function fallbackTank(tier) {
@@ -263,8 +264,7 @@ export class Tank {
         align = Math.max(0.25, Math.cos(d))
       }
       speed = this.stats.speed * Math.min(1, len) * align * (back ? -0.75 : 1)
-    }
-    else this.backFor = 0
+    } else this.backFor = 0
     this.yawRate += (yawWant - this.yawRate) * Math.min(1, dt * 14)
     this.heading += this.yawRate * dt
     if (this.boosting) speed = top * (speed < 0 ? -1 : 1)

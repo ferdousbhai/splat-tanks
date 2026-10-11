@@ -8,11 +8,12 @@ sounds, a gentle voice, no shaking, no hurry (see `docs/AUDIT_2026-10-10.md` and
 Two ways to play, chosen on the menu:
 
 - **🤝 Paint together** (the default). Chalk lines cut the floor into equal parts: halves, thirds or
-  quarters (square quarters and strip quarters take turns). Everyone paints together with no clock;
-  the fraction strip at the top shows each part filling. When a part is nearly painted its gaps fill in
-  and the game names the fraction ("Two quarters painted! Two quarters make one half!"), and every
-  tank grows a tier, except at the last part (Squirter → Splasher → Roller → Titan with quarters). The round ends with "Four quarters make
-  one whole!" and a picture of the floor everyone painted. Robots help with the part nearest to done.
+  quarters (square quarters and strip quarters take turns). Everyone paints together with no clock; the
+  fraction strip at the top shows each part filling. When a part is nearly painted its gaps fill in and
+  the game names the fraction ("Two quarters painted! Two quarters make one half!"), and every tank grows
+  a tier, except at the last part (Squirter → Splasher → Roller → Titan with quarters). The round ends
+  with "Four quarters make one whole!" and a picture of the floor everyone painted. Robots help with the
+  part nearest to done.
 - **⏱️ Splat match.** The original round: 2, 3 or 5 minutes, each tank paints its own colour, levels up
   and picks upgrade cards. Splashing another tank just turns it your colour for a moment: there is no
   health, no knock-outs and no game over.
@@ -23,11 +24,11 @@ paint in real arcs (with a mouse, the paint lands under the pointer, or where a 
 
 The host's 🏠 takes everyone back to the menu.
 
-The host decides where every splat lands and sends them in order (`pt` messages), so every device
-paints the same 1 m grid (`public/js/paint.js`) and agrees on the score. Painting together, the host also
-says when a part is finished (`pd`); every device fills it the same way from that grid (`public/js/parts.js`). The game id and Worker name
-stay `tank-clash` from the game's first version. The host also rolls the beach balls and sends where they
-are (`bl`).
+The host decides where every splat lands and sends them in order (`pt` messages), so every device paints
+the same 1 m grid (`public/js/paint.js`) and agrees on the score. Painting together, the host also says
+when a part is finished (`pd`); every device fills it the same way from that grid (`public/js/parts.js`).
+The game id and Worker name stay `tank-clash` from the game's first version. The host also rolls the
+beach balls and sends where they are (`bl`).
 
 - `public/`: the game (static files deployed to Cloudflare). Entry point: `public/index.html`.
 - `blender/`: model sources. Rebuild with `blender --background --python blender/tanks.py` (and `blender/arena.py`,

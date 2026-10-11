@@ -194,13 +194,13 @@ function levelBars(me) {
   }
 }
 
-/** The aiming ring: at the mouse, or the middle of the screen in the driver's seat. Hidden otherwise. */
 /** Shows or hides a fixed marker centred on screen point (x, y). */
 function marker(el, show, x, y) {
   put(el, 'display', show ? 'block' : 'none')
   if (show) put(el, 'transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`)
 }
 
+/** The aiming ring: at the mouse, or the middle of the screen in the driver's seat. Hidden otherwise. */
 export const crosshair = (show, x, y) => marker($('crosshair'), show, x, y)
 
 /** Where the paint really lands when the ring is out of reach (main.js showReach); the ring dims meanwhile. */

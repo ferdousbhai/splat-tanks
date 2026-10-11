@@ -62,11 +62,17 @@ export function resetBalls() {
   while (balls.length < BALLS.length) balls.push(makeBall())
   BALLS.forEach(([x, z], i) => {
     const b = balls[i]
-    Object.assign(b, { x, z, vx: 0, vz: 0, target: null, trailAt: null, touchedAt: 0, rolledOff: false })
-    b.seen.vx = b.seen.vz = b.seen.d = 0
+    placeBall(b, x, z)
+    Object.assign(b, { target: null, trailAt: null, touchedAt: 0, rolledOff: false })
     setOwner(b, null, null)
-    b.mesh.position.set(x, BALL_R, z)
   })
+}
+
+/** Puts a ball somewhere outright, mesh and all, as if it had been rolling like that all along: no spin or bonk. */
+function placeBall(b, x, z, vx = 0, vz = 0) {
+  Object.assign(b, { x, z, vx, vz })
+  b.mesh.position.set(x, BALL_R, z)
+  Object.assign(b.seen, { vx, vz, d: 0 })
 }
 
 /** The tank that touched the ball last: its stripes and the paint it leaves take that tank's colour. */
@@ -188,10 +194,10 @@ function offWalls(b) {
 }
 
 /**
- * Tries moving a ball PROBE along (dx, dz) (a unit direction) among the walls and props, as it would roll, from
- * where it sits clear of them: returns how far it got along (dx, dz), and leaves the start in `from` and the end in
- * `pos` (both the start when it is stuck: another ball stops it, or nowhere it ends does a ball fit). Asking the walls this way, rather than which way they face,
- * also catches a corner and a gap narrower than the ball.
+ * Tries moving a ball PROBE along (dx, dz) (a unit direction) among the walls and props, as it would roll, from where
+ * it sits clear of them: returns how far it got along (dx, dz), and leaves the start in `from` and the end in `pos`
+ * (both the start when it is stuck: another ball stops it, or nowhere it ends does a ball fit). Asking the walls this
+ * way, rather than which way they face, also catches a corner and a gap narrower than the ball.
  */
 function tryRoll(b, dx, dz, chain = balls.length) {
   // Another ball just ahead that is stuck itself (a chain of balls pushed into a wall) stops this one too, as far
@@ -376,12 +382,7 @@ export function takeBallState(a, colorOf, jump = false) {
     const b = balls[i]
     if (!b) return
     b.target = { x, z, vx, vz, t: performance.now() }
-    if (jump) {
-      // Straight there, mesh and all, as if it had been rolling there all along: no spin or bonk for the move.
-      Object.assign(b, { x, z, vx, vz })
-      b.mesh.position.set(x, BALL_R, z)
-      Object.assign(b.seen, { vx, vz, d: 0 })
-    }
+    if (jump) placeBall(b, x, z, vx, vz)
     if ((by || null) !== b.by) setOwner(b, by || null, by ? colorOf(by) : null)
   })
 }
@@ -395,8 +396,9 @@ const spin = new THREE.Quaternion()
  */
 export function renderBalls(dt, host, onBump) {
   for (const b of balls) {
+    let jumped = false
     if (!host && b.target) {
-      glideTo(b, b.target, dt, SNAP, 12)
+      jumped = glideTo(b, b.target, dt, SNAP, 12)
       // Carried on by its speed, a ball the host has just bounced off a wall would show inside it for a moment.
       settle(b)
       b.vx = b.target.vx
@@ -405,7 +407,6 @@ export function renderBalls(dt, host, onBump) {
     const dx = b.x - b.mesh.position.x
     const dz = b.z - b.mesh.position.z
     const d = Math.hypot(dx, dz)
-    const jumped = d >= SNAP
     if (d > 1e-4 && !jumped) {
       // Rolling along (dx, dz) turns the ball about the axis up × direction.
       spin.setFromAxisAngle(axis.set(dz / d, 0, -dx / d), d / BALL_R)
