@@ -29,6 +29,9 @@ const now = () => performance.now()
 const r1 = (v) => Math.round(v * 10) / 10
 const r5 = (v) => Math.round(v * 1e5) / 1e5
 
+/** Sends of the balls as they come to rest: two, as a quick message may be lost. */
+const REST_SENDS = 2
+
 const game = {
   phase: 'loading',
   room: null,
@@ -59,7 +62,7 @@ const game = {
   lastPaintSend: 0,
   lastTrail: 0,
   lastBalls: 0,
-  restSends: 0, // host: sends of the balls still to make after they came to rest (2: a quick message may be lost)
+  restSends: 0, // host: sends of the balls still to make after they came to rest (REST_SENDS)
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
@@ -450,9 +453,8 @@ function startBattle(msg) {
   showHostButtons()
   document.body.classList.toggle('together', mode === 'together')
   if (game.me) {
-    // Looking at our tank from the start (a friend joining has no countdown for the camera to swing round in).
-    camPos.set(game.me.pos.x, 30, game.me.pos.z + 20)
-    camTarget.set(game.me.pos.x, 0, game.me.pos.z)
+    // Framing our tank from the start (a friend joining has no countdown for the camera to swing round in).
+    skyPos(skyTarget(game.me, camTarget), camPos)
   }
   // Everyone hears how the round works, including a player joining part way through.
   if (mode === 'together') {
@@ -1016,15 +1018,22 @@ const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -LAND_Y) // where b
 const aimPoint = new THREE.Vector3()
 const mouseNdc = new THREE.Vector2()
 
+const nozzle = new THREE.Vector3()
 /**
  * How far the nozzle is ahead of the tank's middle (as it will be once the turret has swung round), plus how far a
  * squirt has just pulled the barrel back, so what is measured from it doesn't flicker with each squirt.
  */
-const nozzle = new THREE.Vector3()
 function nozzleAhead(me) {
   me.muzzleNodes[0].getWorldPosition(nozzle)
   return Math.hypot(nozzle.x - me.pos.x, nozzle.z - me.pos.z) + me.recoil * RECOIL_KICK
 }
+
+const SEEN_SIDES = 0.05 // share of the screen's width kept clear at each side
+const SEEN_TOP = 0.2 // share of its height at the top: below the fraction strip, the clock and the board
+const SEEN_BOTTOM = 0.15 // share of its height at the bottom: above the powers bar and the sticks
+const SEEN_LEAST = 4 // m: a squirt always goes at least this far, clear of the tank's own paint trail
+const seen = { x: 0, z: 0 }
+const onScreen = new THREE.Vector3()
 
 /**
  * Where a squirt along `yaw` should land so the child sees it: as far as it can go, but no further than the floor
@@ -1032,19 +1041,13 @@ function nozzleAhead(me) {
  * metres ahead, so a full-range squirt toward the bottom of the screen, or the sides, landed out of sight.) For the
  * aim stick and squirting ahead; the mouse lands on its own point, and the driver's seat looks along the squirt.
  */
-const SEEN_SIDES = 0.05 // share of the screen's width kept clear at each side
-const SEEN_TOP = 0.2 // share of its height at the top: below the fraction strip, the clock and the board
-const SEEN_BOTTOM = 0.85 // share of its height down to: above the powers bar and the sticks
-const SEEN_LEAST = 4 // m: a squirt always goes at least this far, clear of the tank's own paint trail
-const seen = { x: 0, z: 0 }
-const onScreen = new THREE.Vector3()
 function seenSpot(me, yaw) {
   const d = dirOf(yaw)
   const ahead = nozzleAhead(me)
   let r = me.stats.range
   for (; r > SEEN_LEAST; r -= 1) {
     const [sx, sy] = toScreen(onScreen.set(me.pos.x + d.x * (ahead + r), LAND_Y, me.pos.z + d.z * (ahead + r)).project(camera))
-    if (sx > innerWidth * SEEN_SIDES && sx < innerWidth * (1 - SEEN_SIDES) && sy > innerHeight * SEEN_TOP && sy < innerHeight * SEEN_BOTTOM) break
+    if (sx > innerWidth * SEEN_SIDES && sx < innerWidth * (1 - SEEN_SIDES) && sy > innerHeight * SEEN_TOP && sy < innerHeight * (1 - SEEN_BOTTOM)) break
   }
   seen.x = me.pos.x + d.x * (ahead + r)
   seen.z = me.pos.z + d.z * (ahead + r)
@@ -1175,6 +1178,19 @@ const camWant = new THREE.Vector3() // scratch
 const demoTanks = [] // parked in the menu's arena until the first match
 let menuAngle = 0
 
+/** Where the sky camera looks for our tank: a little ahead of it along the turret while it plays. */
+function skyTarget(me, out) {
+  const look = me.alive ? 4 : 0
+  const d = dirOf(me.turretYaw)
+  return out.set(me.pos.x + d.x * look, 0, me.pos.z + d.z * look)
+}
+
+/** Where the sky camera stands to look at `target`: high up and behind it (higher on an upright screen). */
+function skyPos(target, out) {
+  const portrait = innerHeight > innerWidth
+  return out.set(target.x, portrait ? 40 : 30, target.z + (portrait ? 18 : 19))
+}
+
 function updateCamera(dt) {
   const portrait = innerHeight > innerWidth
   const inside = firstPerson()
@@ -1203,15 +1219,8 @@ function updateCamera(dt) {
     camera.lookAt(0, 0, 0)
     return
   }
-  const me = game.me
-  if (me) {
-    const look = me.alive ? 4 : 0
-    const d = dirOf(me.turretYaw)
-    camTarget.lerp(camWant.set(me.pos.x + d.x * look, 0, me.pos.z + d.z * look), Math.min(1, dt * 5))
-  }
-  const height = portrait ? 40 : 30
-  const back = portrait ? 18 : 19
-  camPos.lerp(camWant.set(camTarget.x, height, camTarget.z + back), Math.min(1, dt * 6))
+  if (game.me) camTarget.lerp(skyTarget(game.me, camWant), Math.min(1, dt * 5))
+  camPos.lerp(skyPos(camTarget, camWant), Math.min(1, dt * 6))
   camera.position.copy(camPos)
   camera.lookAt(camTarget.x, 0, camTarget.z)
   followSun()
@@ -1228,8 +1237,7 @@ function seatCamera(dt) {
   const p = seat.pitch - 0.06
   camera.lookAt(eye.x + d.x * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z + d.z * Math.cos(p) * 10)
   // Keep the top view ready to take over smoothly, and the shadows centred ahead of the tank.
-  camTarget.set(me.pos.x + d.x * 4, 0, me.pos.z + d.z * 4)
-  camPos.set(camTarget.x, 30, camTarget.z + 19)
+  skyPos(skyTarget(me, camTarget), camPos)
   followSun()
 }
 
@@ -1350,7 +1358,7 @@ function battleStep(dt, n) {
         game.lastBalls = n
         sendFast({ t: 'bl', a: ballState() })
       }
-      game.restSends = rolling ? 2 : Math.max(0, game.restSends - 1)
+      game.restSends = rolling ? REST_SENDS : Math.max(0, game.restSends - 1)
     }
   }
   if (isHost() && ((game.statsDirty && n - game.lastStats > 150) || n - game.lastStats > 1000)) sendStats()

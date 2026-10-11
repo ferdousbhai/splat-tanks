@@ -189,7 +189,7 @@ export const sound = {
 
 let engine = null // { f, g, lfo, level }, made on first use
 /**
- * Your own tank's engine: a soft purr (low rumbling noise with a slow wobble, not a tone, so it never fights the
+ * Your own tank's engine: a soft purr (low rumbling noise with a quick soft wobble, not a tone, so it never fights the
  * music's bass) that grows a little with speed (level 0..1) and dies away when it stops. Only your own, and at full
  * speed a touch under the music's own level (about 0.007 against 0.0086 on average), so it stays in the background.
  */
@@ -201,8 +201,7 @@ export function engineHum(level) {
     src.loop = true
     const f = ctx.createBiquadFilter()
     f.type = 'lowpass'
-    f.Q.value = 0.7
-    // The purr: loudness wobbling softly, ten times a second.
+    // The purr: loudness wobbling softly, nine to twelve times a second, quicker with speed.
     const wob = ctx.createGain()
     wob.gain.value = 0.6
     const lfo = ctx.createOscillator()
@@ -224,11 +223,11 @@ export function engineHum(level) {
   engine.lfo.frequency.setTargetAtTime(9 + 3 * level, t, 0.2)
 }
 
-// The game stops drawing (and so stops calling engineHum) in a hidden tab, but sound plays on: hush the purr.
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && engine) engineHum(0)
-})
-addEventListener('pagehide', () => engine && engineHum(0))
+// The game stops drawing (and so stops calling engineHum) in a hidden tab or as the page goes, but sound plays on:
+// hush the purr then.
+const hushEngine = () => engineHum(0)
+addEventListener('pagehide', hushEngine)
+document.addEventListener('visibilitychange', () => document.hidden && hushEngine())
 
 // --- Announcer: uses the browser's speech voice when it has one ------------------------
 
