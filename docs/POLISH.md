@@ -732,6 +732,10 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **A power's pill slid the bottom panel over the sub-line (design, older):** on landscape screens the banner and its sub-line are placed just above the bottom panel when they are shown. Picking up a Super squirt or Big brush while one was up added a pill that grew the panel 18–23 px over the line, hiding half of "Two quarters make one half!" (2 of 3 laptop rounds, for up to 14 s) or the driver's seat hint. The lines now move up whenever the panel changes size.
 - **Tidy (code quality):** the round-start camera line drops a guard that could never fail and says what happens for a joiner; `snapSky` always frames our own tank; `seatTank`'s comment says what shells.js does; the protocol note cites rounds 65–66; and two more missing blank lines in hud.js.
 
+### Fresh audit, round 72
+
+- **Tidy (code quality):** `nextSlot` counts only the slots with a colour this round (every tank's is one), and a blank line in hud.js.
+
 ### Open (Pass 2)
 
 - **Splat match: a child who just drives ends last (design, older, for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.

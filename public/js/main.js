@@ -286,9 +286,12 @@ function setBarrel(b, alive) {
 
 // --- Match setup -------------------------------------------------------------------------
 
-/** A paint slot no one has used this round: not a player who has left either, or a newcomer would take their paint. */
+/**
+ * A paint slot no one has used this round, counting players who have left, or a newcomer would take their paint
+ * (addTank gives every tank's slot a colour).
+ */
 function nextSlot() {
-  return Math.max(0, ...tankList().map((t) => t.slot), ...usedSlots()) + 1
+  return Math.max(0, ...usedSlots()) + 1
 }
 
 function addTank(e) {
