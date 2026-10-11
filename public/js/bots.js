@@ -94,7 +94,7 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
     brain.sweep += dt * 1.6
     want = yawOf(mx, mz) + Math.sin(brain.sweep) * 0.9
   }
-  out.aimYaw = want // the turret swings round to it like everyone's (main.js control)
+  out.aimYaw = want // the turret swings round to it like everyone's (main.js squirt)
   out.fire = Math.random() < cfg.fireChance
   // Balloons go toward open floor near the middle, where they paint the most.
   if (bot.stats.mega && now > bot.megaReadyAt && Math.hypot(me.x, me.z) < ARENA * 0.8 && Math.random() < dt * 0.5) out.mega = true

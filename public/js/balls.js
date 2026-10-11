@@ -113,7 +113,8 @@ export function ballHit(x, z, r) {
 
 /**
  * Keeps a tank this device drives out of the balls; the host's step then rolls the ball away from it. Returns true
- * if a ball it was kept out of is up against a wall, so for now that ball stops the tank like a wall.
+ * if a ball it was kept out of has a wall or prop in its way beyond it (wallInWay), so for now that ball stops the
+ * tank like a wall.
  */
 export function blockTank(p) {
   let held = false
@@ -132,6 +133,7 @@ export function blockTank(p) {
 }
 
 const pos = { x: 0, z: 0 } // scratch
+const wall = { x: 0, z: 0 } // scratch: wallInWay's answer
 
 /** Moves a ball out of walls and props, bouncing off what it was rolling into. Returns true if it touched one. */
 function offWalls(b) {
@@ -156,10 +158,9 @@ function offWalls(b) {
 }
 
 /**
- * The wall or prop in a ball's way (within WALL_NEAR) when pushed along (nx, nz): the unit normal pointing out of
- * it, or null. One merely beside it, as the ball rolls along a wall, doesn't count.
+ * The wall or prop in a ball's way (within WALL_NEAR, and within 60° of straight ahead) when pushed along (nx, nz):
+ * the unit normal pointing out of it, or null. One merely beside it, as the ball rolls along a wall, doesn't count.
  */
-const wall = { x: 0, z: 0 }
 function wallInWay(b, nx, nz) {
   pos.x = b.x
   pos.z = b.z
@@ -253,16 +254,18 @@ export function stepBalls(dt, tanks) {
           vb = b.vx * nx + b.vz * nz
         }
       }
-      if (vt > 0.3 && vt * KICK > vb) {
-        b.vx += nx * (vt * KICK - vb)
-        b.vz += nz * (vt * KICK - vb)
+      const kick = vt * KICK
+      if (vt > 0.3 && kick > vb) {
+        b.vx += nx * (kick - vb)
+        b.vz += nz * (kick - vb)
         // A tank brushing past sideways rolls the ball along a little too.
         const side = (push.x * -nz + push.z * nx) * 0.3
         b.vx += -nz * side
         b.vz += nx * side
-        // Pushed into a wall or prop, a ball can only roll along it, and no faster than it was pushed. Pushed
+        // Pushed into a wall or prop, a ball can only roll along it, and no faster than the push sends it. Pushed
         // straight in (or into a corner) that leaves nothing, and it rests there, held, until the tank backs off
-        // or comes at it from the side. (The tank stops against it meanwhile: blockTank.)
+        // or comes at it from the side; a crawl along it just rests too. (The tank stops against it meanwhile:
+        // blockTank.)
         const w = wallInWay(b, nx, nz)
         if (w) {
           const vn = b.vx * w.x + b.vz * w.z
@@ -271,8 +274,7 @@ export function stepBalls(dt, tanks) {
             b.vz -= vn * w.z
           }
           const sp = Math.hypot(b.vx, b.vz)
-          const most = vt * KICK
-          const k = sp < 0.5 ? 0 : Math.min(1, most / sp)
+          const k = sp < 0.5 ? 0 : Math.min(1, kick / sp)
           b.vx *= k
           b.vz *= k
         }
@@ -281,10 +283,8 @@ export function stepBalls(dt, tanks) {
       }
     }
   }
-  // A tank may have pressed a ball into a wall: back out, losing its speed into it, the way the ball came.
-  for (const b of balls) {
-    if (offWalls(b)) cap(b)
-  }
+  // A tank may have pressed a ball into a wall or prop: move it back out.
+  for (const b of balls) offWalls(b)
   return knocked
 }
 
@@ -331,7 +331,7 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
-    // Only a ball that really moves bonks (faster than 0.6 m/s): one wedged against a wall doesn't drum.
+    // Only a ball that really moves bonks (faster than 0.6 m/s): one held against a wall doesn't drum.
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)
     if (jolt > 2.5 && d > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
     b.seen.vx = b.vx

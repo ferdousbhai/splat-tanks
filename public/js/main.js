@@ -1029,7 +1029,7 @@ function playerControls(me, dt) {
     }
   } else if (input.aimStick.active || (input.touch && input.clicked)) {
     // (Or a flick of the aim stick over within a frame: it keeps its direction.)
-    c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (control)
+    c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (squirt)
   } else if (drivingAlone() && !me.shotDue && !me.megaDue) {
     // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically, but not while
     // a squirt or balloon pressed a moment ago waits for the turret (squirting ahead would take over its aim).
@@ -1357,12 +1357,6 @@ function battleStep(dt, n) {
   }
 }
 
-const nozzle = new THREE.Vector3()
-const landing = new THREE.Vector3()
-/**
- * With the mouse beyond squirting range, a dot shows where the paint will really land (as far as it goes toward
- * the ring), and the ring dims, so the ring never promises paint where it can't reach.
- */
 /**
  * Shortens the fraction k of the way from p to a (one axis) to stop at the outer wall, less about a blob's radius
  * (where shellObstacle stops it).
@@ -1373,6 +1367,12 @@ function edgeAt(p, a, k) {
   return Math.abs(at) > edge ? (Math.sign(at) * edge - p) / (a - p) : k
 }
 
+const nozzle = new THREE.Vector3()
+const landing = new THREE.Vector3()
+/**
+ * With the mouse beyond squirting range, a dot shows where the paint will really land (as far as it goes toward
+ * the ring), and the ring dims, so the ring never promises paint where it can't reach.
+ */
 function showReach(me) {
   if (!me || !mouseGround()) return hud.reach(false)
   // Measured from the nozzle as it will be once the turret has swung round to the mouse.

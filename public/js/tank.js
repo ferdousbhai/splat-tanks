@@ -127,10 +127,10 @@ export class Tank {
     this.megaReadyAt = 0
     this.nextFireAt = 0
     this.shotDue = this.megaDue = false // a squirt or balloon waiting for the reload and for the turret to reach the aim
-    this.dueAim = 0 // the aim it waits for (main.js control)
+    this.dueAim = 0 // the aim it waits for (main.js squirt)
     this.dueSpot = { x: 0, z: 0 } // the storage dueAt points at, so nothing is made each frame
     this.dueAt = null // the mouse's floor point it waits for (this.dueSpot), or null
-    this.hosing = false // squirting has been held since the last squirt, so the next goes on time from wherever the nozzle points (main.js control)
+    this.hosing = false // squirting has been held since the last squirt, so the next goes on time from wherever the nozzle points (main.js squirt)
     this.target = null // remote: last network state
     this.flash = 0
     this.recoil = 0

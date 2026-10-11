@@ -482,7 +482,7 @@ All three reviews came back clean: design (real painting to the end in WebKit an
 | --- | --- |
 | Tanks drive like tracked vehicles: the hull's turn eases in and out, and it turns quicker on the spot than at full speed. The tank pulls away with some weight and brakes harder than it accelerates, and the tracks grip, so sideways sliding dies away | `tank.js` `drive` |
 | The hull rocks on its suspension: it squats as it pulls away, noses down as it stops, leans out of turns and rocks back when it squirts. It is worked out from how the tank moves, so friends' tanks rock too. It settles after one small rock and is off under `prefers-reduced-motion` | `tank.js` `suspend` |
-| The turret swings round to the aim (about half a second for a half turn) and stays on it while the hull turns. In the driver's seat it is the view, so it follows at once | `main.js` `control`, `BASE.turretRate` |
+| The turret swings round to the aim (about half a second for a half turn) and stays on it while the hull turns. In the driver's seat it is the view, so it follows at once | `main.js` `squirt`, `BASE.turretRate` |
 | Tread marks: each track presses a pattern into the sand, and through paint, which fades over about 30 s. It is only for looks and never counts as paint | `treads.js` |
 | Blobs fly a real arc, higher the farther they go, tipped and stretched along their path. With a mouse they land on the point under the pointer, so the aim ring is where the paint goes | `shells.js`, `main.js` `fire`, `playerControls` |
 | 🏐 Beach balls, one in each quarter. A tank nudges a ball along, and a squirt knocks it (up to a gentle speed). Balls roll to a stop, bounce off walls and each other, and paint a stripe in the colour of whoever touched them last. A balloon or bucket nearby sends them rolling. They show on the minimap. Robots leave them for the children: they steer round them, their blobs fly past them, and their bumps and bursts roll a ball without taking its colour. Knocks make a soft bonk | `balls.js`, `main.js` `hostBall`, `hostStep`, `bigSplash` |
@@ -581,7 +581,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **A ball pushed into a corner froze and drummed (design):** a child pushing a ball into a corner or against a prop left both stopped dead. The tank still showed full speed, with dust and that speed sent to friends. The ball kept its speed into the wall, sent 20 messages a second and bonked about 8 times a second.
   - The ball now loses its speed into the wall.
   - A tank pushing a ball that can't go on stops against it as against a wall.
-  - The ball squeezes out sideways past the tank to whichever side is open. Wedged in a corner with no side open, it just rests, quietly, until the tank backs off or comes at it from the side (by the outer wall it then rolls back out).
+  - The ball squeezes out sideways past the tank to whichever side is open. Wedged in a corner with no side open, it just rests, quietly, and rolls back out when the tank backs off.
   - A ball that isn't moving never bonks.
 - **The reach dot outside the arena (design):** near an edge it could sit on the grass beyond the outer wall, where the paint splats on the wall. It now stops at the wall.
 - **Splashes on top of props were still hidden (code quality):** round 56 raised a splash to the blob's height, but kept offsets measured from the floor, so its ring sat inside the prop. It also used the blob's height from the frame before, and raised splashes on tanks and balls into the air. A blob that comes down on a prop now splashes at that prop's top. Everything else splashes on the floor as before.
@@ -595,7 +595,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 58
 
-- **Balls against walls, simplified (correctness and code quality):** round 57's sideways squeeze ran whenever any tank was within reach of a slow ball by a wall. A parked tank, one backing away, or a passing robot flung the ball off at 4 m/s and took it for that colour. Its wall check also ignored which side the wall was on, so pushing a ball along a wall stopped the tank and popped the ball off. Pushing diagonally into a wall could also build a ball up to 10 m/s, and a wedged ball and the outer wall's roll-back took turns, bonking. All of it is replaced by one rule: a ball pushed into a wall or prop in its way keeps only the part of the push along it, no faster than the push. Pushed straight in, or into a corner, nothing is left and it rests, held, until the tank backs off or comes from the side. Only a wall in the push's way counts, and the tank stops against such a ball as against the wall. Results:
+- **Balls against walls, simplified (correctness and code quality):** round 57's sideways squeeze ran whenever any tank was within reach of a slow ball by a wall. A parked tank, one backing away, or a passing robot flung the ball off at 4 m/s and took it for that colour. Its wall check also ignored which side the wall was on, so pushing a ball along a wall stopped the tank and popped the ball off. Pushing diagonally into a wall could also build a ball up to 10 m/s, and a wedged ball and the outer wall's roll-back took turns, bonking. All of it is replaced by one rule: a ball pushed into a wall or prop in its way keeps only the part of the push along it, no faster than the push sends it. Pushed straight in, or into a corner, nothing is left and it rests, held, until the tank backs off or comes from the side. Only a wall in the push's way counts, and the tank stops against such a ball as against the wall. Results:
   - A parked or departing tank leaves a ball alone.
   - A push along a wall rolls the ball along it.
   - A corner held for 20 s gives 3–4 bonks instead of dozens.
@@ -606,4 +606,14 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - The reach dot's wall clamp is a small helper without per-frame arrays.
   - The bonk only counts a ball moving faster than 0.6 m/s, whatever the frame rate.
   - `stepBalls`' comment sits on it again.
+
+### Fresh audit, round 59
+
+- **Tidy (code quality):**
+  - Comments follow the code after round 58: references to `control` now name `squirt`, "wedged" is now "held", and `blockTank`'s comment describes the wall-in-the-way check.
+  - The ball's top speed along a wall is said to be what the push sends it (1.15× the push), and a crawl along a wall resting is noted.
+  - `wallInWay`'s 60° rule is spelled out.
+  - The final wall pass just moves balls back out (its cap did nothing).
+  - `showReach` and `wallInWay` have their comments back on them.
+  - Round 57's log is as it was.
 
