@@ -208,6 +208,7 @@ export function reach(show, x, y) {
   marker($('reach'), show, x, y)
   $('crosshair').classList.toggle('far', show)
 }
+
 function cooldown(el, readyAt, total, now, unlocked) {
   el.classList.toggle('locked', !unlocked)
   const left = Math.max(0, readyAt - now)

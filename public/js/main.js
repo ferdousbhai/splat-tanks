@@ -59,7 +59,7 @@ const game = {
   lastPaintSend: 0,
   lastTrail: 0,
   lastBalls: 0,
-  restSends: 0, // host: sends of the balls still to make since they came to rest (counts down from REST_SENDS)
+  restSends: 0, // host: sends of the balls still to make now they are at rest (counts down from REST_SENDS)
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
@@ -450,7 +450,7 @@ function startBattle(msg) {
   showHostButtons()
   document.body.classList.toggle('together', mode === 'together')
   // Framing our tank from the start, if it is placed already (a friend joining is framed as it arrives: onSpawn).
-  if (game.me) skyPos(skyTarget(game.me, camTarget), camPos)
+  if (game.me) snapSky(game.me)
   // Everyone hears how the round works, including a player joining part way through.
   if (mode === 'together') {
     const n = layout.n
@@ -735,7 +735,7 @@ function onSpawn(msg) {
   t.alive = true
   // Our own tank arriving (a friend joining is placed a moment after the round's start): the sky camera frames it at
   // once rather than sweeping across the arena to it.
-  if (t === game.me) skyPos(skyTarget(t, camTarget), camPos)
+  if (t === game.me) snapSky(t)
   // From the driver's seat the camera drops into this tank in the same frame, inside the rings: no burst then.
   if (!(t === game.me && seat.on)) levelBurst(msg.x, msg.z, t.color)
 }
@@ -1191,8 +1191,11 @@ function skyPos(target, out) {
   return upright() ? out.set(target.x, 40, target.z + 18) : out.set(target.x, 30, target.z + 19)
 }
 
+/** Puts the sky camera straight onto our tank, with no sweep. */
+const snapSky = (me) => skyPos(skyTarget(me, camTarget), camPos)
+
 function updateCamera(dt) {
-  const portrait = upright()
+  const tall = upright()
   const inside = firstPerson()
   view.seat = !!inside
   view.seatTank = inside ? game.me.id : null
@@ -1202,7 +1205,7 @@ function updateCamera(dt) {
     if (inside) seat.yaw = game.me.turretYaw
   }
   if (!inside && document.pointerLockElement) document.exitPointerLock()
-  setLens(inside ? (portrait ? 80 : 70) : portrait ? 62 : 45, inside ? 0.1 : 0.5)
+  setLens(inside ? (tall ? 80 : 70) : tall ? 62 : 45, inside ? 0.1 : 0.5)
   turnLabels(inside ? game.me.turretYaw : 0)
   if (inside) {
     seatCamera(dt)
@@ -1237,7 +1240,7 @@ function seatCamera(dt) {
   const p = seat.pitch - 0.06
   camera.lookAt(eye.x + d.x * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z + d.z * Math.cos(p) * 10)
   // Keep the top view ready to take over smoothly, and the shadows centred ahead of the tank.
-  skyPos(skyTarget(me, camTarget), camPos)
+  snapSky(me)
   followSun()
 }
 
@@ -1353,8 +1356,8 @@ function battleStep(dt, n) {
     game.lastNet = n
     const a = tanks.filter((t) => t.alive && (t === me || (t.bot && isHost()))).map(poseOf)
     if (a.length) sendFast({ t: 'pb', a })
-    // The balls while they roll, twice more as they come to rest (so friends' last word of them is "still", even if
-    // one of those quick messages is lost), and now and then when they're still (for a friend who just joined).
+    // The balls while they roll, twice more as they come to rest (REST_SENDS: so friends' last word of them is
+    // "still"), and now and then when they're still (for a friend who just joined).
     if (isHost()) {
       const rolling = ballsMoving()
       if (rolling || game.restSends > 0 || n - game.lastBalls > 1000) {

@@ -119,7 +119,7 @@ export class Tank {
     this.paintColor = new THREE.Color(color) // the last colour that splashed this tank
     this.paintT = 0 // 1 right after a splash, wearing off to 0
     this.pos = { x: 0, z: 0 }
-    this.vel = { x: 0, z: 0 } // how the tank is moving, as shown and sent (main.js control takes out what a wall stops)
+    this.vel = { x: 0, z: 0 } // how the tank is moving, as shown and sent (main.js moveTank takes out what a wall stops)
     this.trackVel = { x: 0, z: 0 } // the speed its tracks are pushing with (drive)
     this.heading = 0
     this.turretYaw = 0
