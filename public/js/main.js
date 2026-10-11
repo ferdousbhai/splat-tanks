@@ -29,9 +29,6 @@ const now = () => performance.now()
 const r1 = (v) => Math.round(v * 10) / 10
 const r5 = (v) => Math.round(v * 1e5) / 1e5
 
-/** Sends of the balls as they come to rest: two, as a quick message may be lost. */
-const REST_SENDS = 2
-
 const game = {
   phase: 'loading',
   room: null,
@@ -62,7 +59,7 @@ const game = {
   lastPaintSend: 0,
   lastTrail: 0,
   lastBalls: 0,
-  restSends: 0, // host: sends of the balls still to make after they came to rest (REST_SENDS)
+  restSends: 0, // host: sends of the balls still to make since they came to rest (counts down from REST_SENDS)
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
@@ -452,10 +449,8 @@ function startBattle(msg) {
   setScreen('battle')
   showHostButtons()
   document.body.classList.toggle('together', mode === 'together')
-  if (game.me) {
-    // Framing our tank from the start (a friend joining has no countdown for the camera to swing round in).
-    skyPos(skyTarget(game.me, camTarget), camPos)
-  }
+  // Framing our tank from the start, if it is placed already (a friend joining is framed as it arrives: onSpawn).
+  if (game.me) skyPos(skyTarget(game.me, camTarget), camPos)
   // Everyone hears how the round works, including a player joining part way through.
   if (mode === 'together') {
     const n = layout.n
@@ -1181,6 +1176,9 @@ const camWant = new THREE.Vector3() // scratch
 const demoTanks = [] // parked in the menu's arena until the first match
 let menuAngle = 0
 
+/** An upright screen (a phone or iPad held portrait): the camera sits higher and sees wider. */
+const upright = () => innerHeight > innerWidth
+
 /** Where the sky camera looks for our tank: a little ahead of it along the turret while it plays. */
 function skyTarget(me, out) {
   const look = me.alive ? 4 : 0
@@ -1190,12 +1188,11 @@ function skyTarget(me, out) {
 
 /** Where the sky camera stands to look at `target`: high up and behind it (higher on an upright screen). */
 function skyPos(target, out) {
-  const portrait = innerHeight > innerWidth
-  return out.set(target.x, portrait ? 40 : 30, target.z + (portrait ? 18 : 19))
+  return upright() ? out.set(target.x, 40, target.z + 18) : out.set(target.x, 30, target.z + 19)
 }
 
 function updateCamera(dt) {
-  const portrait = innerHeight > innerWidth
+  const portrait = upright()
   const inside = firstPerson()
   view.seat = !!inside
   view.seatTank = inside ? game.me.id : null
@@ -1271,6 +1268,9 @@ function frame() {
   input.boost = input.mega = input.clicked = input.flicked = false
   input.pick = 0
 }
+
+/** The balls are sent more than once as they come to rest: a quick message may be lost. */
+const REST_SENDS = 2
 
 function battleStep(dt, n) {
   const m = game.match

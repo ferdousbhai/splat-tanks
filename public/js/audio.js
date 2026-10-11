@@ -187,7 +187,7 @@ export const sound = {
 
 // --- Engine ------------------------------------------------------------------------------
 
-let engine = null // { f, f2, g, lfo, level }, made on first use
+let engine = null // { filters, g, lfo, level }, made on first use
 /**
  * Your own tank's engine: a soft purr (low rumbling noise with a quick soft wobble, not a tone, so it never fights the
  * music's bass) that grows a little with speed (level 0..1) and dies away when it stops. Only your own, and at full
@@ -219,12 +219,12 @@ export function engineHum(level) {
     src.connect(f).connect(f2).connect(wob).connect(g).connect(sfx)
     src.start()
     lfo.start()
-    engine = { f, f2, g, lfo, level: 0 }
+    engine = { filters: [f, f2], g, lfo, level: 0 }
   }
   engine.level = level
   const t = ctx.currentTime
   engine.g.gain.setTargetAtTime(0.1 * level, t, 0.15)
-  for (const f of [engine.f, engine.f2]) f.frequency.setTargetAtTime(120 + 70 * level, t, 0.2)
+  for (const f of engine.filters) f.frequency.setTargetAtTime(120 + 70 * level, t, 0.2)
   engine.lfo.frequency.setTargetAtTime(9 + 3 * level, t, 0.2)
 }
 

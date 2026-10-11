@@ -713,10 +713,14 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **A joiner's camera still swept in (correctness, from round 67):** a friend joining part way through gets their tank a moment after the round starts, so the camera framed the arena's middle and then swept 40–50 m across to the tank. It now frames our tank the moment it arrives.
 - **The engine kept making calls after stopping (correctness, minor):** a tank easing to a stop never quite reaches 0, so the engine's level stayed a hair above it and its calls ran every frame for minutes. Levels under 1% count as quiet.
 - **Tidy (code quality):**
-  - The sky camera's framing is two helpers (`skyTarget`, `skyPos`) used by the camera, the driver's seat and a round's start, so a round starts framed exactly as play goes on (it still swung a little before).
+  - The sky camera's framing is two helpers (`skyTarget`, `skyPos`) used by the camera, the driver's seat, a round's start and our tank's arrival, so a round starts framed exactly as play goes on (it still swung a little before).
   - `nozzleAhead`'s and `seenSpot`'s comments sit on them, and the bottom margin reads like the others.
   - The rest sends' count is named (`REST_SENDS`).
-  - The engine's two hush listeners share one function, like speech's, its wobble is described as it is, and its filter keeps the default Q.
+  - The engine's two hush listeners share one function, like speech's, its wobble is described as it is, and its filters keep the default Q.
+
+### Fresh audit, round 69
+
+- **Tidy (code quality):** the round-start camera comment gives its real reason, `REST_SENDS` sits by the ball sends, one `upright()` decides both the camera's lens and its height, the engine keeps its filters in a list, and round 68's tidy list matches round 68.
 
 ### Open (Pass 2)
 
