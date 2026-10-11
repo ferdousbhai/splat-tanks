@@ -135,6 +135,13 @@ export const sound = {
     if (!ctx) return
     tone(now(), 0.3, { freq: 180, to: 420, type: 'sine', peak: 0.12 })
   },
+  /** A beach ball knocked along: a soft, hollow bonk. */
+  thump(vol = 1, mine = false) {
+    if (!ctx || vol < 0.05 || !spaced('thump', mine)) return
+    const t = now()
+    tone(t, 0.16, { freq: 210, to: 130, type: 'sine', peak: 0.22 * vol })
+    tone(t, 0.1, { freq: 420, to: 300, type: 'triangle', peak: 0.05 * vol })
+  },
   bounce(vol = 1, mine = false) {
     if (!ctx || vol < 0.05 || !spaced('bounce', mine)) return
     tone(now(), 0.08, { freq: 900, to: 1400, type: 'triangle', peak: 0.12 * vol })

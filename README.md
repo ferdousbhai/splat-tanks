@@ -17,9 +17,13 @@ Two ways to play, chosen on the menu:
   and picks upgrade cards. Splashing another tank just turns it your colour for a moment: there is no
   health, no knock-outs and no game over.
 
+Both ways have 🏐 beach balls to nudge or squirt along. A ball paints a stripe in the colour of whoever
+touched it last. Tanks drive like tracked vehicles on soft suspension, leave fading tread marks, and lob
+paint in real arcs (with a mouse, the paint lands under the pointer).
+
 The host's 🏠 takes everyone back to the menu.
 
-The host decides where every splat lands and sends them in order (`pt` messages), so every device
+The host decides where every splat lands and sends them in order (`pt` messages), and rolls the beach balls (`bl`), so every device
 paints the same 1 m grid (`public/js/paint.js`) and agrees on the score. Painting together, the host also
 says when a part is finished (`pd`); every device fills it the same way from that grid (`public/js/parts.js`). The game id and Worker name
 stay `tank-clash` from the game's first version.

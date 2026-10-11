@@ -475,3 +475,27 @@ All three reviews came back clean: design (real painting to the end in WebKit an
 - Real play by the children: whether 85% feels right, and whether thirds are too abstract for the youngest.
 - On a real iPad: that speech opens when a stick drag ends (headless engines can't show iOS's gesture rule).
 - Not deployed yet. Deploy with `npm run deploy` and then `publish_game` (see README).
+
+## Pass 2 (2026-10-11): more realistic, more to play with, still calm
+
+| Change | Where |
+| --- | --- |
+| Tanks drive like tracked vehicles: the hull's turn eases in and out, and it turns quicker on the spot than at full speed. The tank pulls away with some weight and brakes harder than it accelerates, and the tracks grip, so sideways sliding dies away | `tank.js` `drive` |
+| The hull rocks on its suspension: it squats as it pulls away, noses down as it stops, leans out of turns and rocks back when it squirts. It is worked out from how the tank moves, so friends' tanks rock too. It settles after one small rock and is off under `prefers-reduced-motion` | `tank.js` `suspend` |
+| The turret swings round to the aim (about half a second for a half turn) and stays on it while the hull turns. In the driver's seat it is the view, so it follows at once | `main.js` `control`, `TURRET_RATE` |
+| Tread marks: each track presses a pattern into the sand, and through paint, which fades over about 30 s. It is only for looks and never counts as paint | `treads.js` |
+| Blobs fly a real arc, higher the farther they go, tipped and stretched along their path. With a mouse they land on the point under the pointer, so the aim ring is where the paint goes | `shells.js`, `main.js` `fire`, `playerControls` |
+| 🏐 Beach balls, one in each quarter. A tank nudges a ball along, and a squirt knocks it (up to a gentle speed). Balls roll to a stop, bounce off walls and each other, and paint a stripe in the colour of whoever touched them last. A balloon or bucket nearby sends them rolling. They show on the minimap. Robots steer round them and leave them for the children. Knocks make a soft bonk | `balls.js`, `main.js` `hostBall`, `hostStep`, `bigSplash` |
+
+| Fast trails stay solid: the host fills in splats between trail points when the gap would show, so a zooming tank or a fast ball leaves a stripe rather than dots | `main.js` `trailTo` |
+
+The host rolls the balls and sends them in a `bl` message, `[[x, z, vx, vz, toucher], …]`, 20 times a second while any ball moves and once a second when they are all still. Other devices glide after the host's balls the way they follow tanks. Each device keeps its own tank out of the balls, and the host gives itself a 0.25 m reach, so a friend's tank still nudges the ball. A friend joining part way through gets the balls in the round's snapshot.
+
+### Evidence
+
+Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`). They report 0 errors in Chromium and WebKit.
+
+- `ball.mjs`: a tank driving into a ball sends it rolling about 5 m. The ball takes the tank's colour and paints a stripe.
+- `duo.mjs` (`dev/two.html`): a guest's tank pushes a ball, and the host rolls it. The two devices end within 0.1–0.5 m of each other and agree on the ball's colour.
+- `modes.mjs`: Splat match at iPad landscape with touch, and the driver's seat view with the lower arc. Paint stays out of the middle of the view.
+

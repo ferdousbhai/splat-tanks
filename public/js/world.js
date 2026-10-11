@@ -188,6 +188,9 @@ export const PADS = [
   [9, 9], [-9, 9], [9, -9], [-9, -9], [26, 0], [-26, 0], [0, 26], [0, -26], [30, 28], [-30, -28],
 ]
 
+/** Where the beach balls start: one in each quarter, mirrored like everything else. */
+export const BALLS = [[19, 17], [-19, 17], [19, -17], [-19, -17]]
+
 /** Static colliders: boxes {x,z,hx,hz} and circles {x,z,r}. Paint buckets are circles with `barrel` set. */
 export const colliders = { boxes: [], circles: [] }
 export const barrels = [] // paint buckets: { x, z, alive, mesh, backAt } (backAt: when a burst one comes back)
@@ -213,6 +216,7 @@ export function buildArena(seed) {
     blocked.every((b) => Math.hypot(b.x - x, b.z - z) > b.r + rad)
   for (const [x, z] of SPAWNS) blocked.push({ x, z, r: 6 })
   for (const [x, z] of PADS) blocked.push({ x, z, r: 3 })
+  for (const [x, z] of BALLS) blocked.push({ x, z, r: 3.5 })
   blocked.push({ x: 0, z: 0, r: 5 })
 
   // Center landmark.

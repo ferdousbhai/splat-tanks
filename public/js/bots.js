@@ -4,6 +4,7 @@ import { BOT_LEVELS, ARENA } from './config.js'
 import { lineOfSight, pushOut, freeSpot } from './world.js'
 import { yawOf, angleDiff } from './tank.js'
 import { bareSpot } from './parts.js'
+import { balls, BALL_R } from './balls.js'
 
 const PRIORITY = ['big', 'reload', 'wide', 'multi', 'speed', 'velocity', 'ricochet']
 
@@ -69,7 +70,9 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
       const tx = mx * c - mz * s
       const tz = mx * s + mz * c
       const probe = { x: me.x + tx * 3, z: me.z + tz * 3 }
-      if (!pushOut(probe, 1.3)) {
+      // Robots steer round the beach balls and leave them for the children.
+      const ball = balls.some((b) => Math.hypot(b.x - probe.x, b.z - probe.z) < BALL_R + 1.3)
+      if (!pushOut(probe, 1.3) && !ball) {
         mx = tx
         mz = tz
         break

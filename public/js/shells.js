@@ -5,6 +5,7 @@ import { TANK_RADIUS } from './config.js'
 import { splash, sparks, shellTrail, nearCamera } from './fx.js'
 import { sound } from './audio.js'
 import { yawOf } from './tank.js'
+import { ballHit } from './balls.js'
 
 const blobGeo = new THREE.SphereGeometry(0.32, 14, 10).scale(1, 1, 1.35)
 const shineGeo = new THREE.SphereGeometry(0.1, 8, 6)
@@ -28,12 +29,17 @@ export function spawnShell(o) {
   blob.castShadow = true
   group.add(blob, shine)
   group.position.set(o.x, 1.1, o.z)
+  group.rotation.order = 'YXZ' // turn to the heading, then tip along the arc
   group.rotation.y = yawOf(o.dx, o.dz)
   scene.add(group)
-  const s = { ...o, life: o.range / o.speed, t: 0, mesh: group, trail: 0, r: o.mega ? 0.5 : 0.25 }
+  // A real lob: the farther it is thrown, the higher it flies, and it comes down on the floor at its range.
+  const s = { ...o, life: o.range / o.speed, t: 0, mesh: group, blob, trail: 0, r: o.mega ? 0.5 : 0.25, apex: 0.4 + o.range * 0.06 }
   hideNear(s)
   shells.set(o.sid, s)
 }
+
+/** A blob's height at fraction k of its flight: a parabola from the nozzle (1.1 m) to the floor (0.25 m). */
+const arcY = (s, k) => 1.1 - 0.85 * k + 4 * s.apex * k * (1 - k)
 
 /** A blob leaving the nozzle right by the driver's seat camera would fill the view, so it shows once clear. */
 function hideNear(s) {
@@ -60,7 +66,8 @@ export function clearShells() {
 
 /**
  * Moves every blob. Calls hooks.tank(blob, tank) when it splats a tank, hooks.barrel(blob, index)
- * when it hits a paint bucket, and hooks.land(blob) when it splats on a wall or the floor.
+ * when it hits a paint bucket, hooks.ball(blob, ball) when it hits a beach ball, and hooks.land(blob) when it
+ * splats on a wall or the floor.
  * hearing(x, z, owner) returns { vol: 0..1, mine } for sounds.
  */
 export function updateShells(dt, tanks, hooks, hearing) {
@@ -115,6 +122,14 @@ export function updateShells(dt, tanks, hooks, hearing) {
           break
         }
       }
+      const ball = !done && ballHit(s.x, s.z, s.r)
+      if (ball) {
+        hooks.ball?.(s, ball)
+        removeShell(s.sid)
+        const ear = hearing(s.x, s.z, s.owner)
+        sound.splat(ear.vol * 0.6, ear.mine)
+        done = true
+      }
     }
     if (done) continue
     if (s.t > s.life) {
@@ -124,9 +139,13 @@ export function updateShells(dt, tanks, hooks, hearing) {
       sound.splat(ear.vol * 0.5, ear.mine)
       continue
     }
-    // A little lob: up, then down onto the floor at the end of its range.
+    // Up from the nozzle and down onto the floor at the end of its range, tipped along its path and
+    // stretched a little by its speed, like a real drop of paint.
     const k = s.t / s.life
-    s.mesh.position.set(s.x, 1.1 + 2.4 * k * (1 - k) - 0.8 * k * k, s.z)
+    s.mesh.position.set(s.x, arcY(s, k), s.z)
+    const climb = (arcY(s, Math.min(1, k + 0.02)) - arcY(s, Math.max(0, k - 0.02))) / (0.04 * s.range)
+    s.mesh.rotation.x = Math.atan(climb)
+    if (!s.mega) s.blob.scale.set(0.9, 0.9, 1 + Math.min(0.35, Math.abs(climb) * 0.4))
     hideNear(s)
     s.trail += dt
     if (s.trail > 0.04 && s.mesh.visible) {

@@ -19,6 +19,8 @@ import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey, mouseSurfaces, mouseAims, drivingAlone } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
+import { updateTreads, clearTreads } from './treads.js'
+import { balls, resetBalls, stepBalls, pushBall, setOwner, blockTank, ballState, ballsMoving, takeBallState, renderBalls, BALL_R } from './balls.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
@@ -57,6 +59,7 @@ const game = {
   paintQueue: [], // host: splats not yet sent
   lastPaintSend: 0,
   lastTrail: 0,
+  lastBalls: 0,
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
@@ -142,7 +145,7 @@ function showHostOptions() {
 const grownLevel = (done) => TIERS[Math.min(TIERS.length, 1 + done) - 1].level
 
 /** What happens inside a round; a late one arriving after the host's 🏠 is dropped. */
-const IN_ROUND = new Set(['pb', 'f', 'lo', 'pt', 'hit', 'sp', 'st', 'pu', 'pk', 'bx', 'bu', 'pd'])
+const IN_ROUND = new Set(['pb', 'bl', 'f', 'lo', 'pt', 'hit', 'sp', 'st', 'pu', 'pk', 'bx', 'bu', 'pd'])
 
 function handle(msg, from) {
   if (!msg || typeof msg !== 'object') return
@@ -187,6 +190,9 @@ function handle(msg, from) {
       break
     case 'pb':
       for (const [i, ...pose] of msg.a) setPose(game.tanks.get(i), ...pose)
+      break
+    case 'bl':
+      if (!isHost()) takeBallState(msg.a, (id) => game.tanks.get(id)?.color ?? null)
       break
     case 'f': {
       const owner = game.tanks.get(msg.o)
@@ -312,6 +318,7 @@ function snapshot() {
     // 0 for a bucket that's up, else the milliseconds until it comes back, so a joiner who later hosts keeps the time.
     barrels: barrels.map((b) => (b.alive ? 0 : Math.max(1, b.backAt - n))),
     paint: encodePaint(),
+    balls: ballState(),
   }
 }
 
@@ -404,6 +411,8 @@ function startBattle(msg) {
   game.brains.clear()
   game.me = null
   clearShells()
+  clearTreads()
+  resetBalls()
   // The new match first, so the pads below take its respawn times.
   const n = now()
   game.match = { seed: msg.seed, mode, endsAt: mode === 'match' ? n + msg.rem : Infinity, startAt: n + msg.cd, over: false, countdown: mode === 'match' ? Math.ceil(msg.cd / 1000) + 1 : 0 }
@@ -427,6 +436,8 @@ function startBattle(msg) {
   else resetPaint()
   for (const e of msg.roster) addTank(e)
   if (!game.me) addTank({ i: game.selfId, n: game.myName, c: game.myColor, s: nextSlot() })
+  // Joining part way through: the balls are where the host has rolled them.
+  if (msg.balls) takeBallState(msg.balls, (id) => game.tanks.get(id)?.color ?? null, true)
   setScreen('battle')
   showHostButtons()
   document.body.classList.toggle('together', mode === 'together')
@@ -611,10 +622,25 @@ function bigSplash(x, z, radius, by) {
     if (!t.alive || t === by) continue
     if (Math.hypot(t.pos.x - x, t.pos.z - z) < radius + TANK_RADIUS) splashTank(t, by, null)
   }
+  for (const b of balls) {
+    const d = Math.hypot(b.x - x, b.z - z)
+    if (d < radius + BALL_R) {
+      pushBall(b, b.x - x || 1, b.z - z, 7 * (1 - d / (radius + BALL_R)) + 2, 12)
+      if (by) setOwner(b, by.id, by.color)
+    }
+  }
   const match = game.match
   barrels.forEach((b, i) => {
     if (b.alive && Math.hypot(b.x - x, b.z - z) < radius) setTimeout(() => hostBucket(i, by, match), 150)
   })
+}
+
+/** Host: a blob knocks a ball along and turns it the squirter's colour; a balloon bursts on it. */
+function hostBall(b, s) {
+  const by = game.tanks.get(s.owner)
+  if (s.mega) return bigSplash(s.x, s.z, s.splat, by)
+  pushBall(b, s.dx, s.dz, 2.5, 8)
+  if (by) setOwner(b, by.id, by.color)
 }
 
 /** match: the round this bucket burst in; a timer from an earlier round does nothing. */
@@ -847,7 +873,8 @@ function onPartDone(msg) {
 
 // --- Squirting ---------------------------------------------------------------------------
 
-function fire(t, mega = false) {
+/** aim: how far away the paint should land (the mouse's point), else as far as it can go. */
+function fire(t, mega = false, aim = Infinity) {
   const s = t.stats
   const muzzles = t.muzzles()
   const out = []
@@ -864,7 +891,7 @@ function fire(t, mega = false) {
   }
   const splat = mega ? BASE.megaSplat * (1 + 0.1 * t.upgrades.big) : s.splat * (s.twin ? 0.85 : 1)
   const speed = mega ? s.shellSpeed * 0.7 : s.shellSpeed
-  const range = mega ? s.range * 0.8 : s.range
+  const range = Math.max(3, Math.min(aim, mega ? s.range * 0.8 : s.range))
   for (const [sid, x, z, dx, dz] of out) spawnShell({ sid, owner: t.id, x, z, dx, dz, speed, range, splat, bounces: mega ? 0 : s.bounces, mega, color: t.color })
   send({ t: 'f', o: t.id, m: mega ? 1 : 0, d: r2(splat), v: r2(speed), r: r2(range), b: mega ? 0 : s.bounces, s: out })
   t.recoil = 1
@@ -872,11 +899,17 @@ function fire(t, mega = false) {
   sound.shoot(ear.vol, mega, ear.mine)
 }
 
+/** How fast a turret swings round (radians a second): about half a second for a half turn. */
+const TURRET_RATE = 6.5
+
 /** Shared controls for the player and bots: drive, aim, squirt, zoom, balloon. */
 function control(t, c, dt) {
   const n = now()
   t.drive(c.mx, c.mz, dt)
-  t.turretYaw = c.aimYaw
+  // The turret swings round to the aim instead of snapping, and stays on it while the hull turns. In the
+  // driver's seat it is the view itself, so it follows at once.
+  const swing = TURRET_RATE * dt
+  t.turretYaw = c.snap ? c.aimYaw : t.turretYaw + Math.max(-swing, Math.min(swing, angleDiff(t.turretYaw, c.aimYaw)))
   if (c.boost && n >= t.boostReadyAt) {
     t.boostUntil = n + BASE.boostTime * 1000
     t.boostReadyAt = n + BASE.boostCooldown * 1000
@@ -884,11 +917,11 @@ function control(t, c, dt) {
   }
   if (c.mega && t.stats.mega && n >= t.megaReadyAt) {
     t.megaReadyAt = n + BASE.megaCooldown * 1000
-    fire(t, true)
+    fire(t, true, c.range)
   }
   if (c.fire && n >= t.nextFireAt) {
     t.nextFireAt = n + t.stats.reload * (n < t.rapidUntil ? 0.45 : 1) * 1000
-    fire(t)
+    fire(t, false, c.range)
   }
   // Move, then slide off walls and other tanks.
   t.pos.x += t.vel.x * dt
@@ -905,13 +938,14 @@ function control(t, c, dt) {
       t.pos.z = o.pos.z + (dz / d) * min
     }
   }
+  blockTank(t.pos)
   pushOut(t.pos, TANK_RADIUS)
 }
 
 // --- Player input ------------------------------------------------------------------------
 
 const ray = new THREE.Raycaster()
-const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.1)
+const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.25) // where blobs land
 const aimPoint = new THREE.Vector3()
 const mouseNdc = new THREE.Vector2()
 
@@ -920,7 +954,11 @@ function playerControls(me, dt) {
   if (firstPerson()) return seatControls(me, c, dt)
   if (mouseAims()) {
     ray.setFromCamera(mouseNdc.set(input.mouse.x, input.mouse.y), camera)
-    if (ray.ray.intersectPlane(aimPlane, aimPoint)) c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
+    if (ray.ray.intersectPlane(aimPlane, aimPoint)) {
+      c.aimYaw = yawOf(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z)
+      // Paint lobs onto the point under the mouse, measured from the nozzle (about 1.5 m ahead of the middle).
+      c.range = Math.hypot(aimPoint.x - me.pos.x, aimPoint.z - me.pos.z) - 1.5
+    }
   } else if (input.aimStick.active) {
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, yawOf(input.aimStick.x, input.aimStick.y)) * Math.min(1, dt * 18)
   } else if (drivingAlone()) {
@@ -1003,6 +1041,7 @@ function seatControls(me, c, dt) {
   c.mx = d.x * ahead - d.z * right
   c.mz = d.z * ahead + d.x * right
   c.aimYaw = seat.yaw
+  c.snap = true
   return c
 }
 
@@ -1155,6 +1194,7 @@ function battleStep(dt, n) {
     tank: landed,
     barrel: (s, i) => hostBucket(i, game.tanks.get(s.owner)),
     land: landed,
+    ball: (s, b) => isHost() && hostBall(b, s),
   }, hearing)
 
   if (isHost() && live) hostStep(dt, n)
@@ -1180,6 +1220,11 @@ function battleStep(dt, n) {
     game.lastNet = n
     const a = tanks.filter((t) => t.alive && (t === me || (t.bot && isHost()))).map(poseOf)
     if (a.length) sendFast({ t: 'pb', a })
+    // The balls while they roll, and now and then when they're still (for a friend who just joined).
+    if (isHost() && (ballsMoving() || n - game.lastBalls > 1000)) {
+      game.lastBalls = n
+      sendFast({ t: 'bl', a: ballState() })
+    }
   }
   if (isHost() && ((game.statsDirty && n - game.lastStats > 150) || n - game.lastStats > 1000)) sendStats()
 
@@ -1198,6 +1243,11 @@ function battleStep(dt, n) {
     else if (speed > 3 && dustT > 0.08) dust(t.pos.x - fwd.x * 1.2, t.pos.z - fwd.z * 1.2, Math.min(1, speed / 10))
   }
   if (dustT > 0.08) dustT = 0
+  updateTreads(game.tanks.values(), n)
+  renderBalls(dt, isHost(), (b, k) => {
+    const ear = hearing(b.x, b.z, b.by)
+    sound.thump(ear.vol * k, ear.mine)
+  })
   for (const p of game.pads) {
     if (!p.kind || still.matches) continue
     p.sprite.position.y = 1.6 + Math.sin(n / 700 + p.i) * 0.2
@@ -1215,7 +1265,7 @@ function battleStep(dt, n) {
     hud.fraction(game.progress, me?.alive ? partAt(me.pos.x, me.pos.z) : -1)
   } else hud.timer(m.over ? 0 : Math.min(m.endsAt - n, m.endsAt - m.startAt))
   if (me) hud.bars(me, n, together())
-  hud.minimap(tanks, me, game.pads)
+  hud.minimap(tanks, me, game.pads, balls)
   const inside = firstPerson()
   document.body.classList.toggle('seat', !!inside)
   // In the driver's seat the aim is the middle of the view, but only while the mouse is captured: when it is
@@ -1228,8 +1278,16 @@ function hostStep(dt, n) {
   // Wheels leave a paint trail; zooming as a Roller (or with the big brush) paints a wide stripe.
   const trail = n - game.lastTrail > 120
   if (trail) game.lastTrail = n
+  // A rolling ball paints a stripe in the colour of the tank that touched it last.
+  for (const { b, t } of stepBalls(dt, tankList())) setOwner(b, t.id, t.color)
+  for (const b of balls) {
+    const by = b.by && game.tanks.get(b.by)
+    if (!by || Math.hypot(b.vx, b.vz) <= 1.2) b.trailAt = null
+    else if (trail) trailTo(b, b.x, b.z, 0.9, by)
+  }
   for (const t of game.tanks.values()) {
     if (!t.alive) {
+      t.trailAt = null
       if (n >= t.respawnAt && t.respawnAt) {
         t.respawnAt = 0
         const spot = pickSpawn(t)
@@ -1238,9 +1296,10 @@ function hostStep(dt, n) {
       }
       continue
     }
-    if (trail && Math.hypot(t.vel.x, t.vel.z) > 1) {
+    if (Math.hypot(t.vel.x, t.vel.z) <= 1) t.trailAt = null
+    else if (trail) {
       const wide = n < t.rollerUntil || (t.stats.roller && t.boosting)
-      hostPaint(t.pos.x, t.pos.z, wide ? Math.max(2.4, t.stats.trail * 2) : t.stats.trail, t)
+      trailTo(t, t.pos.x, t.pos.z, wide ? Math.max(2.4, t.stats.trail * 2) : t.stats.trail, t)
     }
     for (const p of game.pads) {
       if (!p.kind || Math.hypot(p.x - t.pos.x, p.z - t.pos.z) > TANK_RADIUS + 1) continue
@@ -1260,6 +1319,19 @@ function hostStep(dt, n) {
     }
     if (partsDone() === layout.n) endMatch()
   } else if (n >= game.match.endsAt) endMatch()
+}
+
+/**
+ * Host: paints a trail from where `o` (a tank or ball) last painted to (x, z), filling in splats where the gap
+ * would show, so a zooming tank or a fast ball leaves a solid stripe rather than dots.
+ */
+function trailTo(o, x, z, r, by) {
+  const from = o.trailAt
+  const d = from ? Math.hypot(x - from.x, z - from.z) : 0
+  const n = d < 8 ? Math.min(6, Math.floor(d / (1.4 * r))) : 0
+  for (let k = 1; k <= n; k++) hostPaint(from.x + ((x - from.x) * k) / (n + 1), from.z + ((z - from.z) * k) / (n + 1), r, by)
+  hostPaint(x, z, r, by)
+  o.trailAt = { x, z }
 }
 
 /** The start point farthest from other tanks. */
@@ -1411,7 +1483,7 @@ async function boot() {
   show('menu')
   if (!isHost()) voice.say('Waiting for the host to start.')
   if (params.has('autostart')) hostStartMatch()
-  if (params.has('debug')) window.__tank = { game, hud, input, camera, addXp, setLevel, step: () => frame(), renderer, layout, partProgress, broadcast, voice }
+  if (params.has('debug')) window.__tank = { game, hud, input, camera, addXp, setLevel, step: () => frame(), renderer, layout, partProgress, broadcast, voice, balls }
 }
 
 boot().catch((e) => {

@@ -104,14 +104,15 @@ export class Tank {
     this.target = null // remote: last network state
     this.flash = 0
     this.recoil = 0
-    this.tilt = 0
+    this.yawRate = 0 // how fast the hull is turning (radians a second)
+    this.sway = { pitch: 0, pv: 0, roll: 0, rv: 0, fwd: 0, yaw: 0, kick: 0 } // the suspension, rocking on its springs
     this.tier = 0
     this.firstPerson = false // seen from inside: the hull and turret are hidden, the barrels stay
 
     this.root = new THREE.Group()
     this.root.visible = false
     scene.add(this.root)
-    this.body = new THREE.Group() // tilts on acceleration
+    this.body = new THREE.Group() // rocks on the suspension (suspend)
     this.root.add(this.body)
     this.baseColor = new THREE.Color(color)
     this.tintMat = new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.15 })
@@ -197,10 +198,18 @@ export class Tank {
     return this.muzzleNodes.map((m) => m.getWorldPosition(new THREE.Vector3()))
   }
 
-  /** Steers toward a move direction (twin-stick style) and eases the velocity toward it. */
+  /**
+   * Steers toward a move direction (twin-stick style) like a tracked vehicle: the hull swings round at a turn
+   * rate that eases in and out (quicker turning on the spot than at full speed), the tank speeds up and slows
+   * down with some weight, and the tracks grip, so sideways sliding dies away quickly.
+   */
   drive(mx, mz, dt) {
     const len = Math.hypot(mx, mz)
+    const f = dirOf(this.heading)
+    const fwd = this.vel.x * f.x + this.vel.z * f.z
+    const top = this.stats.speed * BASE.boostSpeed
     let speed = 0
+    let yawWant = 0
     if (len > 0.1) {
       const want = yawOf(mx, mz)
       const diff = angleDiff(this.heading, want)
@@ -208,28 +217,32 @@ export class Tank {
       const back = Math.abs(diff) > 2.2
       const goal = back ? want + Math.PI : want
       const d = angleDiff(this.heading, goal)
-      const turn = 7 * dt
-      this.heading += Math.max(-turn, Math.min(turn, d))
-      const align = Math.max(0.25, Math.cos(angleDiff(this.heading, goal)))
+      const rate = 6.5 - 2.5 * Math.min(1, Math.abs(fwd) / this.stats.speed)
+      yawWant = Math.max(-rate, Math.min(rate, d * 9))
+      const align = Math.max(0.25, Math.cos(d))
       speed = this.stats.speed * Math.min(1, len) * align * (back ? -0.75 : 1)
     }
+    this.yawRate += (yawWant - this.yawRate) * Math.min(1, dt * 14)
+    this.heading += this.yawRate * dt
     if (this.boosting) speed = this.stats.speed * BASE.boostSpeed * (speed < 0 ? -1 : 1)
-    const f = dirOf(this.heading)
-    const tx = f.x * speed
-    const tz = f.z * speed
-    const k = Math.min(1, dt * (this.boosting ? 10 : 7))
-    const ax = (tx - this.vel.x) * k
-    const az = (tz - this.vel.z) * k
-    this.vel.x += ax
-    this.vel.z += az
-    this.tilt += ((ax * f.x + az * f.z) * -0.06 - this.tilt) * Math.min(1, dt * 8)
+    const g = dirOf(this.heading)
+    const side = this.vel.x * -g.z + this.vel.z * g.x
+    // Tracks brake harder than they pull away; a zoom kicks in quickly.
+    const k = Math.min(1, dt * (this.boosting ? 10 : Math.abs(speed) > Math.abs(fwd) ? 4.5 : 6))
+    const nf = Math.max(-top, Math.min(top, fwd + (speed - fwd) * k))
+    const ns = side * Math.max(0, 1 - dt * 12)
+    this.vel.x = g.x * nf - g.z * ns
+    this.vel.z = g.z * nf + g.x * ns
   }
 
   place(x, z, heading = 0) {
     this.pos.x = x
     this.pos.z = z
     this.vel.x = this.vel.z = 0
+    this.yawRate = 0
     this.heading = heading
+    this.sway.yaw = heading
+    this.sway.fwd = 0
     this.turretYaw = heading
     this.target = { x, z, h: heading, ty: heading, vx: 0, vz: 0, t: performance.now() }
   }
@@ -262,11 +275,42 @@ export class Tank {
     this.turret.rotation.y = this.turretBase + angleDiff(this.heading, this.turretYaw)
   }
 
+  /**
+   * The hull rocks on its springs: it dips back as it pulls away and noses down as it stops, leans out of a
+   * turn and rocks back when it squirts. Worked out from how the tank moves, so tanks driven on other devices
+   * rock the same way. Damped so it settles after one small rock.
+   */
+  suspend(dt) {
+    const w = this.sway
+    if (dt <= 0) return
+    const f = dirOf(this.heading)
+    const fwd = this.vel.x * f.x + this.vel.z * f.z
+    const yawRate = angleDiff(w.yaw, this.heading) / dt
+    w.yaw = this.heading
+    // Smoothed: a tank another device drives changes speed in steps, 20 times a second.
+    const accel = (fwd - w.fwd) / dt
+    w.fwd += (fwd - w.fwd) * Math.min(1, dt * 10)
+    if (this.recoil > w.kick) w.pv += 0.9 // just squirted
+    w.kick = this.recoil
+    if (still.matches) {
+      w.pitch = w.roll = w.pv = w.rv = 0
+      this.body.rotation.x = 0
+      return
+    }
+    const pitchGoal = Math.max(-0.07, Math.min(0.07, accel * 0.006))
+    const rollGoal = Math.max(-0.08, Math.min(0.08, -fwd * yawRate * 0.004))
+    w.pv += ((pitchGoal - w.pitch) * 90 - w.pv * 11) * dt
+    w.rv += ((rollGoal - w.roll) * 90 - w.rv * 11) * dt
+    w.pitch += w.pv * dt
+    w.roll += w.rv * dt
+    this.body.rotation.x = w.pitch
+  }
+
   render(dt, leader) {
     const now = performance.now()
     this.root.visible = this.alive
     this.pose()
-    this.body.rotation.x = this.tilt
+    this.suspend(dt)
     this.recoil = Math.max(0, this.recoil - dt * 5)
     for (const b of this.barrels) {
       b.position.copy(b.userData.rest)
@@ -277,8 +321,8 @@ export class Tank {
     // A splash turns the tank the splasher's colour, and it wears off over a couple of seconds.
     this.paintT = Math.max(0, this.paintT - dt * 0.5)
     this.tintMat.color.copy(this.baseColor).lerp(this.paintColor, Math.min(1, this.paintT * 1.4) * 0.75)
-    // A happy wobble after a splash.
-    this.body.rotation.z = still.matches ? 0 : Math.sin(now / 45) * this.flash * 0.12
+    // A happy wobble after a splash, on top of the lean.
+    this.body.rotation.z = this.sway.roll + (still.matches ? 0 : Math.sin(now / 45) * this.flash * 0.12)
 
     const show = this.alive && !this.firstPerson
     if (this.label.material.sizeAttenuation === view.seat) {
