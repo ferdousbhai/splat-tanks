@@ -648,15 +648,23 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 62
 
-- **A ball wedged between a wall and a rock drummed (design, older):** in about 1 arena in 16 a rock (or tyres, or a tree) stands just short of a ball's width from the end of an L of walls, leaving a V narrower than a ball. A ball pushed into it shuddered, about 7 bonks a second, and the stopped tank showed full speed. The trial along the push slid along the wall into the rock and still seemed to get somewhere. A trial that can't settle anywhere a ball fits now counts as stuck (5 bonks instead of 77 in 2.5 s; the ball rests and the tank stops).
-- **Robots nose-in to an L's corner (design, older):** when every way toward its goal was blocked, a robot drove straight at the goal anyway, and a pickup or a new spot behind the wall kept it there for 14–57 s. Boxed in, a robot now picks somewhere else to go and leaves pickups for 4 s (none stuck in 8 full rounds, against about 4 in 18).
+- **A ball wedged between a wall and a rock drummed (design, older):** in about 1 arena in 16 a rock (or tyres, or a tree) stands just short of a ball's width from the end of an L of walls, leaving a V narrower than a ball. A ball pushed into it shuddered, bonking every frame (about 7 a second heard, the sound being spaced out), and the stopped tank showed full speed. The trial along the push slid along the wall into the rock and still seemed to get somewhere. A trial that can't settle anywhere a ball fits now counts as stuck (5 bonk calls instead of 77 in 2.5 s; the ball rests and the tank stops).
+- **Robots nose-in to an L's corner (design, older):** when every way toward its goal was blocked, a robot drove straight at the goal anyway, and a pickup or a new spot behind the wall kept it there for 14–57 s. Boxed in, a robot now picks somewhere else to go and leaves pickups for 4 s (no robot stuck in 8 full rounds, against about 4 rounds with a stuck robot in 18 before).
+- **A stray bonk when a ball jumps (correctness, plausible):** on a friend's device a ball that jumps to the host's spot (after a stall, or on joining) no longer counts that frame for a bonk.
 - **Tidy (code quality):**
   - How long a tank backs up now travels with its controls: the robots' steering sets `backUp: 0` beside the comment on why, and the driver's seat sets `Infinity`. `control` just passes it on, and `drive` names the seat case.
   - The back-up comments now say it is a child's.
   - The stuck-ball docs list a stuck ball among what can be in the way.
   - The `min` aliases of `REACH` are gone, and a long comment is wrapped.
   - Open items are gathered below.
-- **A stray bonk when a ball jumps (correctness, plausible):** on a friend's device a ball that jumps to the host's spot (after a stall, or on joining) no longer counts that frame for a bonk.
+
+### Fresh audit, round 63
+
+- **Tidy (code quality):**
+  - A friend's ball's jump distance is one constant (`SNAP`), used by the glide, the spin and the bonk, and the bonk reads `jumped`.
+  - `tryRoll`'s comment covers both ways it can be stuck, and the fit check's centimetre is explained.
+  - Robots set `backUp` beside their steering, and skip the pickup loop while boxed in.
+  - Round 62's log gives its bonk counts and stuck robots in one unit each, with its entries in order.
 
 ### Open (Pass 2)
 

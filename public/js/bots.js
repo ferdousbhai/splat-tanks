@@ -46,10 +46,12 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
   // Where to go: a close pickup, else a far-off spot (which is usually still bare floor).
   let goal = null
   // Boxed in a moment ago (below), it leaves pickups for a while: one behind a wall would keep it nose to the wall.
-  for (const p of pickups) {
-    if (!p.kind || now < brain.boxedUntil) continue
-    const d = Math.hypot(p.x - me.x, p.z - me.z)
-    if (d < 14 && (!goal || d < goal.d)) goal = { x: p.x, z: p.z, d }
+  if (now >= brain.boxedUntil) {
+    for (const p of pickups) {
+      if (!p.kind) continue
+      const d = Math.hypot(p.x - me.x, p.z - me.z)
+      if (d < 14 && (!goal || d < goal.d)) goal = { x: p.x, z: p.z, d }
+    }
   }
   brain.wanderT -= dt
   if (!brain.wander || brain.wanderT <= 0 || Math.hypot(brain.wander.x - me.x, brain.wander.z - me.z) < 4) {
@@ -89,6 +91,9 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
   }
   out.mx = mx * cfg.speed
   out.mz = mz * cfg.speed
+  // Never back up: steering round an obstacle (above) can flip the way between ahead and behind, and each flip
+  // would restart a back-up, rocking the robot in place.
+  out.backUp = 0
   if (Math.random() < dt * 0.15) out.boost = true
 
   // Aim: at the chosen tank, or sweep the nozzle across the floor ahead.
@@ -103,9 +108,6 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
     want = yawOf(mx, mz) + Math.sin(brain.sweep) * 0.9
   }
   out.aimYaw = want // the turret swings round to it like everyone's (main.js squirt)
-  // Never back up: steering round an obstacle (above) can flip the way between ahead and behind, and each flip
-  // would restart a back-up, rocking the robot in place.
-  out.backUp = 0
   out.fire = Math.random() < cfg.fireChance
   // Balloons go toward open floor near the middle, where they paint the most.
   if (bot.stats.mega && now > bot.megaReadyAt && Math.hypot(me.x, me.z) < ARENA * 0.8 && Math.random() < dt * 0.5) out.mega = true

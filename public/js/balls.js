@@ -19,6 +19,7 @@ const EDGE = 4 // metres by the outer wall where a ball rolls back into play, as
 const RISE = 2.5 // m/s² it rolls back with: beats rolling's slowing up to about 2 m/s, a brisk walk
 const LEFT_FOR = 500 // ms after a tank was last by it before a still ball against a wall or prop rolls off it
 const ROLL_OFF = 2 // m/s it rolls off with, which carries it about a metre clear
+const SNAP = 6 // metres: further off than this, a friend's ball jumps to the host's spot instead of rolling there
 const TOUCH = 0.05 // metres: this close to a wall or prop, a ball is touching it
 const REACH = BALL_R + TANK_RADIUS // centre to centre, a tank touching a ball
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
@@ -189,7 +190,7 @@ function offWalls(b) {
 /**
  * Tries moving a ball PROBE along (dx, dz) (a unit direction) among the walls and props, as it would roll, from
  * where it sits clear of them: returns how far it got along (dx, dz), and leaves the start in `from` and the end in
- * `pos` (both the start, when another ball stops it). Asking the walls this way, rather than which way they face,
+ * `pos` (both the start when it is stuck: another ball stops it, or nowhere it ends does a ball fit). Asking the walls this way, rather than which way they face,
  * also catches a corner and a gap narrower than the ball.
  */
 function tryRoll(b, dx, dz, chain = balls.length) {
@@ -222,6 +223,7 @@ function tryRoll(b, dx, dz, chain = balls.length) {
   // wall would otherwise get into): it is stuck.
   fit.x = pos.x
   fit.z = pos.z
+  // (More than a centimetre: a settled ball can still be nudged by a hair.)
   if (pushOut(fit, BALL_R) && Math.hypot(fit.x - pos.x, fit.z - pos.z) > 0.01) {
     pos.x = from.x
     pos.z = from.z
@@ -389,7 +391,7 @@ const spin = new THREE.Quaternion()
 export function renderBalls(dt, host, onBump) {
   for (const b of balls) {
     if (!host && b.target) {
-      glideTo(b, b.target, dt, 6, 12)
+      glideTo(b, b.target, dt, SNAP, 12)
       // Carried on by its speed, a ball the host has just bounced off a wall would show inside it for a moment.
       settle(b)
       b.vx = b.target.vx
@@ -398,7 +400,8 @@ export function renderBalls(dt, host, onBump) {
     const dx = b.x - b.mesh.position.x
     const dz = b.z - b.mesh.position.z
     const d = Math.hypot(dx, dz)
-    if (d > 1e-4 && d < 6) {
+    const jumped = d >= SNAP
+    if (d > 1e-4 && !jumped) {
       // Rolling along (dx, dz) turns the ball about the axis up × direction.
       spin.setFromAxisAngle(axis.set(dz / d, 0, -dx / d), d / BALL_R)
       b.mesh.quaternion.premultiply(spin)
@@ -409,11 +412,10 @@ export function renderBalls(dt, host, onBump) {
     // is going, four times a second, which would make a steady drum while dribbling.
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)
     const fast = Math.max(Math.hypot(b.vx, b.vz), Math.hypot(b.seen.vx, b.seen.vz))
-    // (Moving this frame or the last: the frame a ball reaches a wall, it may only cover the last bit to it.)
-    // (Not the frame a ball jumps to where the host says it is, after a stall or on joining: it didn't roll there.)
-    const rolled = d < 6 ? d : 0
-    if (d < 6 && jolt > Math.max(2.5, 0.4 * fast) && Math.max(rolled, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
-    b.seen.d = rolled
+    // (Moving this frame or the last: the frame a ball reaches a wall, it may only cover the last bit to it. Not the
+    // frame a ball jumps SNAP or more to where the host says it is: it didn't roll there.)
+    if (!jumped && jolt > Math.max(2.5, 0.4 * fast) && Math.max(d, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
+    b.seen.d = jumped ? 0 : d
     b.seen.vx = b.vx
     b.seen.vz = b.vz
   }
