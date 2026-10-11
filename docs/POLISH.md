@@ -710,6 +710,8 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 ### Fresh audit, round 68
 
 - **The purr was still a hiss over the music (design, from round 67):** "a touch under the music" held only for raw level. As it sounds (A-weighted) through an iPad's speakers it was about 2 dB over the music, and one lowpass let a soft hiss through, which is most of what a small speaker plays, at full level whenever a child drives. A second lowpass now leaves only the low rumble (the share above 500 Hz falls from about −9 to −25 dB), and its level is lower (0.10 instead of 0.15): about 5 dB under the music as it sounds, on an iPad's speakers or a laptop's.
+- **A joiner's camera still swept in (correctness, from round 67):** a friend joining part way through gets their tank a moment after the round starts, so the camera framed the arena's middle and then swept 40–50 m across to the tank. It now frames our tank the moment it arrives.
+- **The engine kept making calls after stopping (correctness, minor):** a tank easing to a stop never quite reaches 0, so the engine's level stayed a hair above it and its calls ran every frame for minutes. Levels under 1% count as quiet.
 - **Tidy (code quality):**
   - The sky camera's framing is two helpers (`skyTarget`, `skyPos`) used by the camera, the driver's seat and a round's start, so a round starts framed exactly as play goes on (it still swung a little before).
   - `nozzleAhead`'s and `seenSpot`'s comments sit on them, and the bottom margin reads like the others.

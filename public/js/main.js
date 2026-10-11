@@ -738,6 +738,9 @@ function onSpawn(msg) {
   if (!t) return
   t.place(msg.x, msg.z, msg.h)
   t.alive = true
+  // Our own tank arriving (a friend joining is placed a moment after the round's start): the sky camera frames it at
+  // once rather than sweeping across the arena to it.
+  if (t === game.me) skyPos(skyTarget(t, camTarget), camPos)
   // From the driver's seat the camera drops into this tank in the same frame, inside the rings: no burst then.
   if (!(t === game.me && seat.on)) levelBurst(msg.x, msg.z, t.color)
 }

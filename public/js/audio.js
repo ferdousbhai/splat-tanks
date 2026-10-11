@@ -195,6 +195,7 @@ let engine = null // { f, f2, g, lfo, level }, made on first use
  * background.
  */
 export function engineHum(level) {
+  if (level < 0.01) level = 0 // a tank easing to a stop never quite gets there
   if (!ctx || ctx.state !== 'running' || (level === 0 && !engine?.level)) return
   if (!engine) {
     const src = ctx.createBufferSource()
