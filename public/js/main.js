@@ -199,7 +199,7 @@ function handle(msg, from) {
       const owner = game.tanks.get(msg.o)
       if (!owner || owner.local) return
       for (const [sid, x, z, dx, dz] of msg.s) {
-        spawnShell({ sid, owner: msg.o, x, z, dx, dz, speed: msg.v, range: msg.r, splat: msg.d, bounces: msg.b, mega: !!msg.m, color: owner.color })
+        spawnShell({ sid, owner: msg.o, x, z, dx, dz, speed: msg.v, range: msg.r, splat: msg.d, bounces: msg.b, mega: !!msg.m, color: owner.color, bot: owner.bot })
         muzzleFlash(x, 1.1, z, dx, dz, owner.color, !!msg.m)
       }
       owner.recoil = 1
@@ -627,7 +627,8 @@ function bigSplash(x, z, radius, by) {
     const d = Math.hypot(b.x - x, b.z - z)
     if (d < radius + BALL_R) {
       pushBall(b, b.x - x || 1, b.z - z, 7 * (1 - d / (radius + BALL_R)) + 2, 12)
-      if (by) setOwner(b, by.id, by.color)
+      // A robot's burst rolls a ball but never takes it: the balls are the children's.
+      if (by && !by.bot) setOwner(b, by.id, by.color)
     }
   }
   const match = game.match
@@ -895,7 +896,7 @@ function fire(t, mega = false, aim = null) {
   // Measured from the nozzle, which sits further forward on the bigger tiers.
   const reach = aim ? Math.hypot(aim.x - from[0].x, aim.z - from[0].z) : Infinity
   const range = Math.max(3, Math.min(reach, mega ? s.range * 0.8 : s.range))
-  for (const [sid, x, z, dx, dz] of out) spawnShell({ sid, owner: t.id, x, z, dx, dz, speed, range, splat, bounces: mega ? 0 : s.bounces, mega, color: t.color })
+  for (const [sid, x, z, dx, dz] of out) spawnShell({ sid, owner: t.id, x, z, dx, dz, speed, range, splat, bounces: mega ? 0 : s.bounces, mega, color: t.color, bot: t.bot })
   send({ t: 'f', o: t.id, m: mega ? 1 : 0, d: r2(splat), v: r2(speed), r: r2(range), b: mega ? 0 : s.bounces, s: out })
   t.recoil = 1
   const ear = hearing(t.pos.x, t.pos.z, t.id)
@@ -915,11 +916,18 @@ function control(t, c, dt) {
     t.boostReadyAt = n + BASE.boostCooldown * 1000
     if (t === game.me) sound.boost()
   }
-  if (c.mega && t.stats.mega && n >= t.megaReadyAt) {
+  // A squirt or balloon waits until the turret has swung onto the aim, so a click lands where it was made
+  // rather than where the nozzle happened to point. Robots aim as they go.
+  const onAim = c.snap || t.bot || Math.abs(angleDiff(t.turretYaw, c.aimYaw)) < 0.06
+  if (c.mega && t.stats.mega && n >= t.megaReadyAt) t.megaDue = true
+  if (t.megaDue && onAim) {
+    t.megaDue = false
     t.megaReadyAt = n + BASE.megaCooldown * 1000
     fire(t, true, c.aimAt)
   }
-  if (c.fire && n >= t.nextFireAt) {
+  if (c.fire && n >= t.nextFireAt) t.shotDue = true
+  if (t.shotDue && onAim) {
+    t.shotDue = false
     t.nextFireAt = n + t.stats.reload * (n < t.rapidUntil ? 0.45 : 1) * 1000
     fire(t, false, c.aimAt)
   }
@@ -960,7 +968,7 @@ function playerControls(me, dt) {
       c.aimAt = aimPoint
     }
   } else if (input.aimStick.active) {
-    c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, yawOf(input.aimStick.x, input.aimStick.y)) * Math.min(1, dt * 18)
+    c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (control)
   } else if (drivingAlone()) {
     // Little thumbs: with only the drive stick (or the keys) held, squirt paint ahead automatically.
     c.aimYaw = me.turretYaw + angleDiff(me.turretYaw, me.heading) * Math.min(1, dt * 4)
@@ -1280,7 +1288,8 @@ function hostStep(dt, n) {
   const trail = n - game.lastTrail > 120
   if (trail) game.lastTrail = n
   // A rolling ball paints a stripe in the colour of the tank that touched it last.
-  for (const { b, t } of stepBalls(dt, tankList())) setOwner(b, t.id, t.color)
+  // A robot bumping a ball rolls it on but leaves its colour: the balls are the children's.
+  for (const { b, t } of stepBalls(dt, tankList())) if (!t.bot) setOwner(b, t.id, t.color)
   for (const b of balls) {
     const by = b.by && game.tanks.get(b.by)
     if (!by || Math.hypot(b.vx, b.vz) <= 1.2) b.trailAt = null

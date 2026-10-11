@@ -3,7 +3,7 @@
 // fraction. Every device keeps the same paint grid (paint.js), so every device measures the same
 // progress; only the host decides when a part is finished.
 import * as THREE from 'three'
-import { scene, solidAt, freeSpot, colliders, PADS } from './world.js'
+import { scene, solidAt, freeSpot, colliders, PADS, BALLS } from './world.js'
 import { ARENA } from './config.js'
 import { N, CELLS, slotAt, fillCells } from './paint.js'
 
@@ -225,13 +225,14 @@ function drawChalk() {
 
 /**
  * Where a part's chalk label goes: the nearest spot to the part's middle where the whole 7 m label (and a
- * little room around it) lies inside the part with no tower, wall, crate, rock, tree, paint bucket or pickup
- * pad on it.
+ * little room around it) lies inside the part with no tower, wall, crate, rock, tree, paint bucket, pickup
+ * pad or beach ball's starting spot on it.
  */
 const LABEL_ROOM = 5.5 // half the label (3.5 m) and 2 m around it
 function labelSpot(p, x0, z0) {
-  // Round things: rocks and trees, paint buckets, and the pickup pads (their disc and floating icon).
-  const round = [...colliders.circles, ...PADS.map(([x, z]) => ({ x, z, r: 2 }))]
+  // Round things: rocks and trees, paint buckets, the pickup pads (their disc and floating icon) and where the
+  // beach balls start.
+  const round = [...colliders.circles, ...[...PADS, ...BALLS].map(([x, z]) => ({ x, z, r: 2 }))]
   const clear = (x, z, R) => {
     if (Math.max(Math.abs(x), Math.abs(z)) > ARENA - R) return false
     for (const [dx, dz] of [[-R, -R], [R, -R], [-R, R], [R, R]]) if (partAt(x + dx, z + dz) !== p) return false

@@ -119,6 +119,7 @@ export class Tank {
     this.boostReadyAt = 0
     this.megaReadyAt = 0
     this.nextFireAt = 0
+    this.shotDue = this.megaDue = false // a squirt or balloon waiting for the turret to reach the aim
     this.target = null // remote: last network state
     this.flash = 0
     this.recoil = 0

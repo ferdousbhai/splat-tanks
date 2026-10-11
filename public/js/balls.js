@@ -104,8 +104,8 @@ export function blockTank(pos) {
 }
 
 /**
- * Host: rolls the balls. A tank driving into a ball sends it off at about 1.4 times the tank's speed
- * (a tank is far heavier); balls slow down as they roll, bounce off walls and props, and knock each other on.
+ * Host: rolls the balls. A tank driving into a ball sends it off a little faster than the tank (a tank is
+ * far heavier), about 8–10 m from a full-speed bump; balls slow down as they roll, bounce off walls and props, and knock each other on.
  * Returns each ball a tank pushed this step, with that tank, so the host can give it the tank's colour.
  */
 export function stepBalls(dt, tanks) {
@@ -114,7 +114,7 @@ export function stepBalls(dt, tanks) {
     // Rolling slows a ball gently, then brings it to a stop.
     const s = Math.hypot(b.vx, b.vz)
     if (s > 0) {
-      const k = Math.max(0, s - 0.5 * dt) * Math.exp(-0.6 * dt) / s
+      const k = Math.max(0, s - 0.5 * dt) * Math.exp(-1 * dt) / s
       b.vx *= k
       b.vz *= k
     }
@@ -195,9 +195,9 @@ export function stepBalls(dt, tanks) {
           vb = b.vx * nx + b.vz * nz
         }
       }
-      if (vt > 0.3 && vt * 1.4 > vb) {
-        b.vx += nx * (vt * 1.4 - vb)
-        b.vz += nz * (vt * 1.4 - vb)
+      if (vt > 0.3 && vt * 1.15 > vb) {
+        b.vx += nx * (vt * 1.15 - vb)
+        b.vz += nz * (vt * 1.15 - vb)
         // A tank brushing past sideways rolls the ball along a little too.
         const side = (t.vel.x * -nz + t.vel.z * nx) * 0.3
         b.vx += -nz * side

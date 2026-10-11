@@ -17,7 +17,7 @@ const blobMat = (color) => blobMats.get(color) ?? blobMats.set(color, new THREE.
 const shells = new Map()
 
 /**
- * opts: { sid, owner, x, z, dx, dz, speed, range, splat, bounces, mega, color }
+ * opts: { sid, owner, x, z, dx, dz, speed, range, splat, bounces, mega, color, bot }
  */
 export function spawnShell(o) {
   if (shells.has(o.sid)) return
@@ -122,7 +122,8 @@ export function updateShells(dt, tanks, hooks, hearing) {
           break
         }
       }
-      const ball = !done && ballHit(s.x, s.z, s.r)
+      // A robot's blob flies past the beach balls: they are left for the children.
+      const ball = !done && !s.bot && ballHit(s.x, s.z, s.r)
       if (ball) {
         hooks.ball?.(s, ball)
         removeShell(s.sid)
