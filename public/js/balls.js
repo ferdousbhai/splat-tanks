@@ -398,9 +398,12 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
-    // Only a ball that really moves bonks (faster than 0.6 m/s): one held against a wall doesn't drum.
+    // Only a ball that really moves bonks (faster than 0.6 m/s): one held against a wall doesn't drum. And only a
+    // real knock: a tank topping up a ball it is already pushing along changes its speed a little, four times a
+    // second, which would make a steady drum while dribbling.
     const jolt = Math.hypot(b.vx - b.seen.vx, b.vz - b.seen.vz)
-    if (jolt > 2.5 && d > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
+    const fast = Math.max(Math.hypot(b.vx, b.vz), Math.hypot(b.seen.vx, b.seen.vz))
+    if (jolt > Math.max(2.5, 0.4 * fast) && d > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
     b.seen.vx = b.vx
     b.seen.vz = b.vz
   }
