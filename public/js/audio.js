@@ -187,11 +187,12 @@ export const sound = {
 
 // --- Engine ------------------------------------------------------------------------------
 
-let engine = null // { f, g, lfo, level }, made on first use
+let engine = null // { f, f2, g, lfo, level }, made on first use
 /**
  * Your own tank's engine: a soft purr (low rumbling noise with a quick soft wobble, not a tone, so it never fights the
  * music's bass) that grows a little with speed (level 0..1) and dies away when it stops. Only your own, and at full
- * speed a touch under the music's own level (about 0.007 against 0.0086 on average), so it stays in the background.
+ * speed about 5 dB under the music as it sounds (A-weighted, on an iPad's speakers or a laptop's), so it stays in the
+ * background.
  */
 export function engineHum(level) {
   if (!ctx || ctx.state !== 'running' || (level === 0 && !engine?.level)) return
@@ -199,8 +200,11 @@ export function engineHum(level) {
     const src = ctx.createBufferSource()
     src.buffer = noiseBuf
     src.loop = true
+    // Two lowpass filters, so the noise above the rumble (a hiss, and all a small speaker would play) is cut away.
     const f = ctx.createBiquadFilter()
     f.type = 'lowpass'
+    const f2 = ctx.createBiquadFilter()
+    f2.type = 'lowpass'
     // The purr: loudness wobbling softly, nine to twelve times a second, quicker with speed.
     const wob = ctx.createGain()
     wob.gain.value = 0.6
@@ -211,15 +215,15 @@ export function engineHum(level) {
     lfo.connect(amount).connect(wob.gain)
     const g = ctx.createGain()
     g.gain.value = 0
-    src.connect(f).connect(wob).connect(g).connect(sfx)
+    src.connect(f).connect(f2).connect(wob).connect(g).connect(sfx)
     src.start()
     lfo.start()
-    engine = { f, g, lfo, level: 0 }
+    engine = { f, f2, g, lfo, level: 0 }
   }
   engine.level = level
   const t = ctx.currentTime
-  engine.g.gain.setTargetAtTime(0.15 * level, t, 0.15)
-  engine.f.frequency.setTargetAtTime(120 + 70 * level, t, 0.2)
+  engine.g.gain.setTargetAtTime(0.1 * level, t, 0.15)
+  for (const f of [engine.f, engine.f2]) f.frequency.setTargetAtTime(120 + 70 * level, t, 0.2)
   engine.lfo.frequency.setTargetAtTime(9 + 3 * level, t, 0.2)
 }
 
