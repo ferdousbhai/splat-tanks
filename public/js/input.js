@@ -8,6 +8,7 @@ export const input = {
   mouseUsed: false, // the mouse has been pressed, or clearly moved, over the game this round (cleared at each start)
   look: { dx: 0, dy: 0 }, // mouse movement while the pointer is locked (driver's seat view), read and cleared by the game
   firing: false,
+  flicked: false, // the aim stick was pushed out this frame (its press, kept like clicked); cleared by the game
   clicked: false, // a squirt press this frame (the left button, or the aim stick pushed out), kept even if it was let go before the frame (a trackpad tap); cleared by the game
   aimStick: { x: 0, y: 0, active: false },
   boost: false, // edge-triggered, cleared by the game
@@ -213,7 +214,7 @@ export function bindTouch() {
     input.aimStick.active = held && l > 0.2
     const was = input.firing
     input.firing = held && l > 0.45
-    if (input.firing && !was) input.clicked = true
+    if (input.firing && !was) input.clicked = input.flicked = true
   })
   const tap = (el, fn) =>
     el.addEventListener(

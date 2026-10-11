@@ -609,6 +609,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 59
 
+- **A mouse click on a touch laptop took the old stick direction (correctness, from round 58):** the one-frame flick rule tested any press while touch was in use, so a mouse click before moving the mouse aimed where the aim stick last pointed (or straight down). The aim stick now marks its own press (`input.flicked`).
 - **Tidy (code quality):**
   - Comments follow the code after round 58: references to `control` now name `squirt`, "wedged" is now "held", and `blockTank`'s comment describes the wall-in-the-way check.
   - The ball's top speed along a wall is said to be what the push sends it (1.15× the push), and a crawl along a wall resting is noted.

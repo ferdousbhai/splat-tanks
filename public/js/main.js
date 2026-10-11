@@ -1027,7 +1027,7 @@ function playerControls(me, dt) {
       // Paint lobs onto the point under the mouse.
       c.aimAt = aimPoint
     }
-  } else if (input.aimStick.active || (input.touch && input.clicked)) {
+  } else if (input.aimStick.active || input.flicked) {
     // (Or a flick of the aim stick over within a frame: it keeps its direction.)
     c.aimYaw = yawOf(input.aimStick.x, input.aimStick.y) // the turret's swing smooths it (squirt)
   } else if (drivingAlone() && !me.shotDue && !me.megaDue) {
@@ -1212,7 +1212,7 @@ function frame() {
   updatePaint(n)
   updateCamera(dt)
   renderer.render(scene, camera)
-  input.boost = input.mega = input.clicked = false
+  input.boost = input.mega = input.clicked = input.flicked = false
   input.pick = 0
 }
 
