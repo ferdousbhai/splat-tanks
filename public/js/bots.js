@@ -15,7 +15,7 @@ export function botPickUpgrade(options, difficulty) {
 }
 
 export function newBrain() {
-  return { target: null, think: 0, wander: null, wanderT: 0, sweep: Math.random() * Math.PI * 2 }
+  return { target: null, think: 0, wander: null, wanderT: 0, sweep: Math.random() * Math.PI * 2, boxedUntil: 0 }
 }
 
 /**
@@ -45,8 +45,9 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
 
   // Where to go: a close pickup, else a far-off spot (which is usually still bare floor).
   let goal = null
+  // Boxed in a moment ago (below), it leaves pickups for a while: one behind a wall would keep it nose to the wall.
   for (const p of pickups) {
-    if (!p.kind) continue
+    if (!p.kind || now < brain.boxedUntil) continue
     const d = Math.hypot(p.x - me.x, p.z - me.z)
     if (d < 14 && (!goal || d < goal.d)) goal = { x: p.x, z: p.z, d }
   }
@@ -64,6 +65,7 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
   if (l > 0.01) {
     mx /= l
     mz /= l
+    let free = false
     for (const turn of [0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8]) {
       const c = Math.cos(turn)
       const s = Math.sin(turn)
@@ -75,8 +77,14 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
       if (!pushOut(probe, 1.3) && !ball) {
         mx = tx
         mz = tz
+        free = true
         break
       }
+    }
+    // Every way toward the goal is blocked (nose in a corner, the goal behind a wall): pick somewhere else to go.
+    if (!free) {
+      brain.wanderT = 0
+      brain.boxedUntil = now + 4000
     }
   }
   out.mx = mx * cfg.speed

@@ -143,6 +143,7 @@ export function blockTank(p) {
 const pos = { x: 0, z: 0 } // scratch
 const from = { x: 0, z: 0 } // scratch: where tryRoll starts
 const away = { x: 0, z: 0 } // scratch: awayFrom's answer
+const fit = { x: 0, z: 0 } // scratch: tryRoll's check that the ball fits where it ends
 
 /**
  * Pushes a ball-sized point (radius r) clear of walls and props. pushOut leaves each in turn, so in a gap between
@@ -217,6 +218,15 @@ function tryRoll(b, dx, dz, chain = balls.length) {
   pos.x += dx * PROBE
   pos.z += dz * PROBE
   settle(pos)
+  // Nowhere there that a ball fits (a V between a wall and a rock narrower than the ball, which a slide along the
+  // wall would otherwise get into): it is stuck.
+  fit.x = pos.x
+  fit.z = pos.z
+  if (pushOut(fit, BALL_R) && Math.hypot(fit.x - pos.x, fit.z - pos.z) > 0.01) {
+    pos.x = from.x
+    pos.z = from.z
+    return 0
+  }
   return (pos.x - from.x) * dx + (pos.z - from.z) * dz
 }
 

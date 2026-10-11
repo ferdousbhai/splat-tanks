@@ -648,6 +648,8 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 62
 
+- **A ball wedged between a wall and a rock drummed (design, older):** in about 1 arena in 16 a rock (or tyres, or a tree) stands just short of a ball's width from the end of an L of walls, leaving a V narrower than a ball. A ball pushed into it shuddered, about 7 bonks a second, and the stopped tank showed full speed. The trial along the push slid along the wall into the rock and still seemed to get somewhere. A trial that can't settle anywhere a ball fits now counts as stuck (5 bonks instead of 77 in 2.5 s; the ball rests and the tank stops).
+- **Robots nose-in to an L's corner (design, older):** when every way toward its goal was blocked, a robot drove straight at the goal anyway, and a pickup or a new spot behind the wall kept it there for 14–57 s. Boxed in, a robot now picks somewhere else to go and leaves pickups for 4 s (none stuck in 8 full rounds, against about 4 in 18).
 - **Tidy (code quality):**
   - How long a tank backs up now travels with its controls: the robots' steering sets `backUp: 0` beside the comment on why, and the driver's seat sets `Infinity`. `control` just passes it on, and `drive` names the seat case.
   - The back-up comments now say it is a child's.
@@ -658,6 +660,6 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 ### Open (Pass 2)
 
 - **Splat match: a child who just drives ends last (design, older, for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.
-- **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor.
+- **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor. Likewise a friend pushing a ball straight into a wall bonks about twice a second (round 62).
 - Real play by the children on an iPad: how the heavier driving, the turret swing and the beach balls feel in small hands (headless browsers can't show it).
 
