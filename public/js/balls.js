@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { scene, pushOut, BALLS } from './world.js'
 import { ARENA, TANK_RADIUS, r2 } from './config.js'
 import { glideTo } from './tank.js'
-import { nearCamera } from './fx.js'
+import { nearCamera, SEE_THROUGH } from './fx.js'
 
 export const BALL_R = 1.15
 const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
@@ -20,6 +20,7 @@ const EDGE = 4 // metres by the outer wall where a ball rolls back into play, as
 const RISE = 2.5 // m/s² it rolls back with: beats rolling's slowing up to about 2 m/s, a brisk walk
 const LEFT_FOR = 500 // ms after a tank was last by it before a still ball against a wall or prop rolls off it
 const ROLL_OFF = 2 // m/s it rolls off with, which carries it about a metre clear
+const GAP = 150 // ms without word of a rolling ball (three of the host's 50 ms messages missed) is a hiccup
 const SNAP = 6 // metres: further off than this, a friend's ball jumps to the host's spot instead of rolling there
 const TOUCH = 0.05 // metres: this close to a wall or prop, a ball is touching it
 const REACH = BALL_R + TANK_RADIUS // centre to centre, a tank touching a ball
@@ -55,7 +56,7 @@ function makeBall() {
   canvas.height = 128
   const map = new THREE.CanvasTexture(canvas)
   map.colorSpace = THREE.SRGBColorSpace
-  const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.3, metalness: 0, transparent: true })
+  const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.3, metalness: 0 })
   const mesh = new THREE.Mesh(geo, mat)
   mesh.castShadow = true
   scene.add(mesh)
@@ -383,12 +384,14 @@ export const ballsMoving = () => balls.some((b) => b.vx * b.vx + b.vz * b.vz > 0
  * the balls straight there (joining a round) instead of gliding.
  */
 export function takeBallState(a, colorOf, jump = false) {
+  const now = performance.now()
   a.forEach(([x, z, vx, vz, by], i) => {
     const b = balls[i]
     if (!b) return
-    const now = performance.now()
-    // After a gap in the host's word (a network hiccup), the ball's speed catches up all at once: no bonk for that.
-    if (b.target && now - b.target.t > 150) b.quiet = true
+    // After a gap in the host's word about a rolling ball (a network hiccup), its speed catches up all at once: no
+    // bonk for that. (Still balls are only sent once a second, so a gap before a knock from rest is no hiccup.)
+    const t = b.target
+    if (t && (t.vx || t.vz) && now - t.t > GAP) b.quiet = true
     b.target = { x, z, vx, vz, t: now }
     if (jump) placeBall(b, x, z, vx, vz)
     if ((by || null) !== b.by) setOwner(b, by || null, by ? colorOf(by) : null)
@@ -421,11 +424,14 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
-    // Right in front of the driver's seat camera (pushing it along), a ball would fill most of the view: it shows
-    // see-through then, as your own blobs do. (The sky camera is far above, so this is only ever the seat.)
+    // Right in front of the driver's seat camera (pushing it along), a ball would fill a big part of the view: it
+    // shows see-through then, like your own blobs from the seat. (The sky camera is far above, so this is only ever
+    // the seat.) The material changes only when that flips.
     const close = nearCamera(b.x, BALL_R, b.z, BALL_R + 3)
-    b.mat.opacity = close ? 0.35 : 1
-    b.mat.depthWrite = !close
+    if (close !== b.mat.transparent) {
+      Object.assign(b.mat, { transparent: close, opacity: close ? SEE_THROUGH : 1, depthWrite: !close })
+      b.mat.needsUpdate = true
+    }
     // Only a ball that really moves bonks (faster than 0.6 m/s): one held against a wall doesn't drum. And only a
     // real knock: a tank topping up a ball it is already pushing along changes its speed a little for how fast it
     // is going, four times a second, which would make a steady drum while dribbling.

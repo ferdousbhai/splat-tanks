@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { scene, shellObstacle } from './world.js'
 import { TANK_RADIUS } from './config.js'
-import { splash, sparks, shellTrail, nearCamera } from './fx.js'
+import { splash, sparks, shellTrail, nearCamera, SEE_THROUGH } from './fx.js'
 import { sound } from './audio.js'
 import { yawOf, view } from './tank.js'
 import { ballHit } from './balls.js'
@@ -14,7 +14,7 @@ const shineMat = new THREE.MeshBasicMaterial({ color: '#ffffff' })
 const blobMats = new Map() // one material per paint colour, shared by every blob
 const ghostMats = new Map() // see-through, for your own blobs seen from the driver's seat
 const blobMat = (color) => blobMats.get(color) ?? blobMats.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.2 })).get(color)
-const ghostMat = (color) => ghostMats.get(color) ?? ghostMats.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.2, transparent: true, opacity: 0.45, depthWrite: false })).get(color)
+const ghostMat = (color) => ghostMats.get(color) ?? ghostMats.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.2, transparent: true, opacity: SEE_THROUGH, depthWrite: false })).get(color)
 
 const shells = new Map()
 

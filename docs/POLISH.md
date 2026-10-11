@@ -670,7 +670,7 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 ### Fresh audit, round 64
 
 - **A ball filling the driver's seat view (design):** pushed along from the seat, a ball sat just ahead of the nozzle and covered about 40% of the screen. Within about 3 m of the seat camera (from its surface) it now shows see-through, as your own blobs do.
-- **A stray bonk after a network hiccup (correctness, minor):** when a friend's device heard nothing from the host for half a second or more, a fast ball's speed caught up all at once, which counted as a knock. The frame after such a gap is now quiet.
+- **A stray bonk after a network hiccup (correctness, minor):** when a friend's device heard nothing from the host about a rolling ball for half a second or more, its speed caught up all at once, which counted as a knock. The frame after a gap of more than 150 ms about a rolling ball is now quiet.
 - **Small (correctness, plausible):** a robot lets go of a friend who has gone home at once, and a mouse lock refused just after Esc no longer leaves an error in the console.
 - **Tidy (code quality):**
   - Putting a ball somewhere outright (a new round, a friend joining) is one helper (`placeBall`).
@@ -679,10 +679,18 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - The `tryRoll` comment and two README paragraphs are re-wrapped, and a dangling `else` is tidied.
   - Round 63's joining entry is put precisely, and an Open item cites where it was found.
 
+### Fresh audit, round 65
+
+- **Real knocks swallowed after a quiet spell (code quality, from round 64):** the host sends still balls only once a second, so the first knock after everything had been still came after a long gap and was taken for a hiccup: friends never heard it. Only a gap about a ball that was rolling counts now (`GAP`, 150 ms).
+- **Tidy (code quality):**
+  - A ball goes see-through by the seat camera at the same opacity as your own blobs (`SEE_THROUGH`, in `fx.js` beside `nearCamera`, whose comment now names it).
+  - Its material switches to transparent only while it is close, and changes only when that flips.
+  - `takeBallState` reads the clock once per message.
+  - Round 64's gap and the fade's comment say what the code does.
+
 ### Open (Pass 2)
 
 - **Splat match: a child who just drives ends last (design, older, for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.
 - **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor. Likewise a friend pushing a ball straight into a wall bonks about twice a second (found in the round 62 audit).
 - **🤝 Paint together with no robots is slow to its first moment** (round 64): a child alone took about 8 minutes to finish the first quarter (12 for the whole floor), against about a minute with the default 2 robots. Robots paint about twice as fast and all on the part nearest done, while a child spreads paint over every part. A lower finishing mark with few painters, or a gentle pointer to the part nearest done, is for the owner, alongside the open "whether 85% feels right".
 - Real play by the children on an iPad: how the heavier driving, the turret swing and the beach balls feel in small hands (headless browsers can't show it).
-

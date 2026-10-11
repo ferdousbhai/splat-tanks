@@ -7,10 +7,12 @@ export const still = matchMedia('(prefers-reduced-motion: reduce)')
 
 /**
  * True when something would fill the view from within r metres of the camera, which only happens in the
- * driver's seat (the sky camera is 30 m up). Such effects are left out or kept small and low, and blobs are
- * hidden, so the view never flashes. Big splashes pass a bigger r.
+ * driver's seat (the sky camera is 30 m up). Such effects are left out or kept small and low, blobs are hidden,
+ * and a beach ball goes see-through, so the view never flashes or fills up. Big splashes pass a bigger r.
  */
 const at = new THREE.Vector3()
+/** How see-through things close in front of the driver's seat show (your own blobs, a beach ball). */
+export const SEE_THROUGH = 0.45
 export const nearCamera = (x, y, z, r = 6) => camera.position.distanceToSquared(at.set(x, y, z)) < r * r
 
 const particles = []
