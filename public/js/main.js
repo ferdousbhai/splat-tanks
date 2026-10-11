@@ -902,11 +902,17 @@ function fire(t, mega = false, aim = null) {
 function control(t, c, dt) {
   const n = now()
   t.drive(c.mx, c.mz, dt, !c.snap)
-  // Where the turret should point: the aim while squirting is held; after a quick flick of the aim stick, or a
-  // balloon tap, the aim as it was pressed, until that squirt has gone.
+  // Where the turret should point: the aim while squirting is held; after a quick flick of the aim stick, a
+  // quick tap or a balloon press, the aim (and with a mouse, the floor point) as it was pressed, until that
+  // squirt has gone.
   if (c.fire || c.mega) {
     t.dueAim = c.aimYaw
-    t.dueAt = c.aimAt ? Object.assign(t.dueSpot, { x: c.aimAt.x, z: c.aimAt.z }) : null
+    t.dueAt = null
+    if (c.aimAt) {
+      t.dueSpot.x = c.aimAt.x
+      t.dueSpot.z = c.aimAt.z
+      t.dueAt = t.dueSpot
+    }
   }
   const waiting = (t.shotDue || t.megaDue) && !c.fire
   const aim = waiting ? t.dueAim : c.aimYaw
@@ -961,7 +967,7 @@ function control(t, c, dt) {
   const ballDz = t.pos.z - ballZ
   pushOut(t.pos, TANK_RADIUS)
   // Pressed against a wall, a prop or a tank, the tank shows no speed into it (to friends' devices, its dust and
-  // its suspension). Its tracks keep pushing (drive's own speed is untouched), so it slides along as before.
+  // its suspension). Its tracks keep pushing (t.trackVel is untouched), so it slides along at full speed.
   let nx = t.pos.x - wantX - ballDx
   let nz = t.pos.z - wantZ - ballDz
   const l = Math.hypot(nx, nz)
@@ -1209,7 +1215,7 @@ function battleStep(dt, n) {
   // Our tank and (on the host) the bots.
   if (me?.alive && live) control(me, playerControls(me, dt), dt)
   else if (me) {
-    me.vel.x = me.vel.z = 0
+    me.vel.x = me.vel.z = me.trackVel.x = me.trackVel.z = 0
     input.look.dx = input.look.dy = 0 // mouse-look counts only while you drive, so the view can't jump at "Paint!"
   }
   if (isHost() && live) {

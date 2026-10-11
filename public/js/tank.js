@@ -117,7 +117,7 @@ export class Tank {
     this.paintT = 0 // 1 right after a splash, wearing off to 0
     this.pos = { x: 0, z: 0 }
     this.vel = { x: 0, z: 0 } // how the tank is moving, as shown and sent (main.js control takes out what a wall stops)
-    this.drv = { x: 0, z: 0 } // the speed its tracks are pushing with (drive)
+    this.trackVel = { x: 0, z: 0 } // the speed its tracks are pushing with (drive)
     this.heading = 0
     this.turretYaw = 0
     this.boostUntil = 0
@@ -237,7 +237,7 @@ export class Tank {
   drive(mx, mz, dt, turnRound = true) {
     const len = Math.hypot(mx, mz)
     const f = dirOf(this.heading)
-    const fwd = this.drv.x * f.x + this.drv.z * f.z
+    const fwd = this.trackVel.x * f.x + this.trackVel.z * f.z
     const top = this.stats.speed * BASE.boostSpeed
     let speed = 0
     let yawWant = 0
@@ -260,20 +260,20 @@ export class Tank {
     this.heading += this.yawRate * dt
     if (this.boosting) speed = top * (speed < 0 ? -1 : 1)
     const g = dirOf(this.heading)
-    const side = this.drv.x * -g.z + this.drv.z * g.x
+    const side = this.trackVel.x * -g.z + this.trackVel.z * g.x
     // Tracks brake harder than they pull away; a zoom kicks in quickly.
     const pulling = speed * fwd >= 0 && Math.abs(speed) > Math.abs(fwd)
     const k = Math.min(1, dt * (this.boosting ? 10 : pulling ? 4.5 : 6))
     const nf = Math.max(-top, Math.min(top, fwd + (speed - fwd) * k))
     const ns = side * Math.max(0, 1 - dt * 12)
-    this.drv.x = this.vel.x = g.x * nf - g.z * ns
-    this.drv.z = this.vel.z = g.z * nf + g.x * ns
+    this.trackVel.x = this.vel.x = g.x * nf - g.z * ns
+    this.trackVel.z = this.vel.z = g.z * nf + g.x * ns
   }
 
   place(x, z, heading = 0) {
     this.pos.x = x
     this.pos.z = z
-    this.vel.x = this.vel.z = this.drv.x = this.drv.z = 0
+    this.vel.x = this.vel.z = this.trackVel.x = this.trackVel.z = 0
     this.yawRate = 0
     this.heading = heading
     this.sway.yaw = heading

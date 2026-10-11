@@ -539,11 +539,11 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 55
 
-- **Squirts sailed over tanks 8–15 m away (design, from round 54):** without a mouse (stick, keys, the driver's seat, robots) every blob flies its whole 22 m, and from about 4.5 to 15 m out its arc is above a tank. Squirts at a tank there missed every time, at the most natural distance. Tanks and balls are now hit at any height, like paint buckets; only props are flown over (4/4 hits from 3.5 to 21 m).
-- **Balls stuck at the walls (design):** a child chasing the balls drove most of them to the outer wall within a minute or two, and a ball in a corner couldn't be driven or squirted out. With no clock in Paint together, every ball ended up out of play. The floor now rises gently over the last 4 m by the outer wall, so a ball left there rolls back out at a walking pace (from a corner to about 4.5 m out, room for a tank to get behind it).
+- **Squirts sailed over tanks 4.5–15 m away (design, from round 54):** without a mouse (stick, keys, the driver's seat, robots) every blob flies its whole 22 m, and from about 4.5 to 15 m out its arc is above a tank. Squirts at a tank there missed every time, at the most natural distance. Tanks and balls are now hit at any height, like paint buckets; only props are flown over (4/4 hits from 3.5 to 21 m).
+- **Balls stuck at the walls (design):** a child chasing the balls drove most of them to the outer wall within a minute or two, and a ball in a corner couldn't be driven or squirted out. With no clock in Paint together, every ball ended up out of play. Over the last 4 m by the outer wall a ball now rolls back as if the floor rose there, at up to about 2 m/s (from a corner to about 4.5 m out, room for a tank to get behind it).
 - **A quick tap didn't squirt (design, older):** a press and release between two frames, as a trackpad tap often is, gave no squirt (0 of 6). The press is now kept for the frame, like zoom and balloon presses, and the squirt then waits for the turret with the aim it was pressed with (6 of 6).
 - **A waiting click took the mouse's later distance (correctness):** a squirt or balloon waiting for the turret kept the clicked direction but, when it went, took the distance to wherever the mouse had moved by then. Clicked 6 m behind, then moved on, it landed 20 m away. It now keeps the clicked spot too (6 m).
-- **Sticky wall slides (correctness, from round 54):** taking a tank's speed into a wall also fed into its driving, whose grip then killed the sideways part, so a diagonal push slid along at about half speed (4 m/s instead of 7.3 at 45°). The tank now keeps its tracks' own speed (`drv`) apart from the speed it shows and sends (`vel`), and slides as before.
+- **Sticky wall slides (correctness, from round 54):** taking a tank's speed into a wall also fed into its driving, whose grip then killed the sideways part, so a diagonal push slid along at about half speed (4 m/s instead of 7.3 at 45°). The tank now keeps its tracks' own speed (`trackVel`) apart from the speed it shows and sends (`vel`), and slides as before.
 - **Lobs landing inside props (correctness):** a lob coming down onto a crate, rock, wall or tyres was already over it, so it took a side's bounce from inside. Bouncy blobs ping-ponged there and then splatted in the middle, or were thrown 6 m back. A blob coming down from above now lands on top, and a bounce only happens off a side it is flying into.
 - **The reach dot from a swinging nozzle (correctness, plausible):** the dot measured from the nozzle where it was mid-swing, so it could show "out of reach" for a shot that reaches. It now measures as if the turret were already turned to the mouse.
 - **Tidy (code quality):**
@@ -551,6 +551,15 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - Projected points become screen pixels in one place (`toScreen`), and the ring and the reach dot share one marker helper.
   - The driver's seat tank lives in `view.seatTank` beside `view.seat`, instead of a second flag set elsewhere, and it is cleared at the menu.
   - Your own see-through blobs in the seat have no solid shine or shadow.
-  - `TANK_TOP` sits beside `TANK_RADIUS` in `config.js`.
-  - Small tidies: `ballHit`'s height is required, a blob's step start is read before it moves, and the crosshair's CSS is back together.
+  - Small tidies: a blob's step start is read before it moves, and the crosshair's CSS is back together.
+
+### Fresh audit, round 56
+
+- **Tidy (code quality):**
+  - A blob that comes down onto a prop is told by a zero normal, which already stops a bounce, rather than a separate `top` flag. The comment says why `y > 0` tells a blob from a line of sight.
+  - The tracks' own speed is named `trackVel`, and it is zeroed with `vel` when the tank isn't driving.
+  - A waiting squirt's floor point is copied without a new object each frame.
+  - Comments now match the code: the turret-wait comment covers taps and the mouse's spot, the ball-return comment no longer claims a sloping floor, its speed reasoning is right, and the over-tank distance is 4.5–15 m.
+  - Round 55's log no longer lists two tidies that the same round undid.
+  - The README mentions the dot past the mouse's reach.
 

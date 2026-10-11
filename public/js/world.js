@@ -430,10 +430,11 @@ export function pushOut(pos, rad) {
 }
 
 /**
- * Where a moving paint blob hits something this step: { nx, nz, barrel, top } or null. top: it came down onto
- * the thing from above (it was already over it), so it lands there rather than bouncing off a side.
+ * Where a moving paint blob hits something this step: { nx, nz, barrel } or null. A zero normal means it came
+ * down onto the thing from above (it was already over it), so it lands there rather than bouncing off a side.
  * `px,pz` is the previous position, used to tell which side of a box was hit. y: the blob's height, which flies
- * it over anything lower (leave it out to count everything, as a line of sight does).
+ * it over anything lower. Leave it out (0) to count everything, as a line of sight does: a blob never flies
+ * below 0.25 m, so y > 0 also tells a blob from a line of sight.
  */
 export function shellObstacle(x, z, px, pz, rad, y = 0) {
   if (Math.abs(x) > ARENA - rad) return { nx: -Math.sign(x), nz: 0 }
@@ -442,7 +443,7 @@ export function shellObstacle(x, z, px, pz, rad, y = 0) {
     if (Math.abs(x - b.x) > b.hx + rad || Math.abs(z - b.z) > b.hz + rad || y - rad > b.top) continue
     const wasOutX = Math.abs(px - b.x) > b.hx + rad - 1e-3
     const wasOutZ = Math.abs(pz - b.z) > b.hz + rad - 1e-3
-    if (!wasOutX && !wasOutZ && y > 0) return { nx: 0, nz: 0, top: true }
+    if (!wasOutX && !wasOutZ && y > 0) return { nx: 0, nz: 0 }
     if (wasOutX && !wasOutZ) return { nx: Math.sign(px - b.x), nz: 0 }
     if (wasOutZ && !wasOutX) return { nx: 0, nz: Math.sign(pz - b.z) }
     const ox = b.hx + rad - Math.abs(x - b.x)
@@ -456,7 +457,7 @@ export function shellObstacle(x, z, px, pz, rad, y = 0) {
     const dz = z - c.z
     const d = Math.hypot(dx, dz)
     if (d > c.r + rad) continue
-    if (c.barrel === undefined && y > 0 && Math.hypot(px - c.x, pz - c.z) <= c.r + rad) return { nx: 0, nz: 0, top: true }
+    if (c.barrel === undefined && y > 0 && Math.hypot(px - c.x, pz - c.z) <= c.r + rad) return { nx: 0, nz: 0 }
     return { nx: dx / (d || 1), nz: dz / (d || 1), barrel: c.barrel }
   }
   return null

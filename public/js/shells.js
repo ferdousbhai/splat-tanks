@@ -101,7 +101,7 @@ export function updateShells(dt, tanks, hooks, hearing) {
       s.z += s.dz * s.speed * h
       // A lob flies over props lower than it, such as a wall it clears in the middle of its flight. Tanks and balls
       // are hit at any height, like paint buckets: a squirt along the ground (a stick, the keys, the driver's
-      // seat, a robot) always flies its whole range, and would otherwise sail over a tank 8–15 m away.
+      // seat, a robot) always flies its whole range, and would otherwise sail over a tank 4.5–15 m away.
       const y = arcY(s.apex, Math.min(1, (t0 + h * (i + 1)) / s.life))
       const hit = shellObstacle(s.x, s.z, ox, oz, s.r, y)
       if (hit) {
@@ -112,8 +112,8 @@ export function updateShells(dt, tanks, hooks, hearing) {
           break
         }
         const dot = s.dx * hit.nx + s.dz * hit.nz
-        // Bounces off a side it is flying into; one landing on top of something just splats there.
-        if (s.bounces > 0 && !s.mega && !hit.top && dot < 0) {
+        // Bounces off a side it is flying into; one landing on top of something (a zero normal) just splats there.
+        if (s.bounces > 0 && !s.mega && dot < 0) {
           s.bounces--
           s.dx -= 2 * dot * hit.nx
           s.dz -= 2 * dot * hit.nz

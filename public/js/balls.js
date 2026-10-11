@@ -11,8 +11,8 @@ const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
 const TOP = 16 // m/s
 const KICK = 1.15 // a tank sends a ball off this many times its own speed
 const WHITE = '#fbfbf6'
-const EDGE = 4 // metres by the outer wall where the floor rises, so a ball left there rolls back into play
-const RISE = 2.5 // m/s² it rolls back with: just past what rolling loses, so it comes out at a walking pace
+const EDGE = 4 // metres by the outer wall where a ball rolls back into play, as if the floor rose there
+const RISE = 2.5 // m/s² it rolls back with: beats rolling's slowing up to about 2 m/s, a brisk walk
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
 
 /** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz}, trailAt } (trailAt: see main.js trailTo) */
