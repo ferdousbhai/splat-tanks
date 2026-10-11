@@ -14,7 +14,7 @@ import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, 
 import { Tank, yawOf, dirOf, angleDiff, view, RECOIL_KICK } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y } from './shells.js'
 import { updateFx, clearNearCamera, updateFloaters, toScreen, splash, muzzleFlash, floatText, sparks, confetti, dust, boostTrail, levelBurst, emojiTexture, still } from './fx.js'
-import { paint, resetPaint, setSlotColor, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
+import { paint, resetPaint, setSlotColor, usedSlots, encodePaint, decodePaint, updatePaint, cellsOf, byPaint, painted, paintVersion, CELLS } from './paint.js'
 import { botControls, botPickUpgrade, newBrain } from './bots.js'
 import { input, bindMouse, bindTouch, onKey, mouseSurfaces, mouseAims, drivingAlone } from './input.js'
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity, engineHum } from './audio.js'
@@ -286,8 +286,9 @@ function setBarrel(b, alive) {
 
 // --- Match setup -------------------------------------------------------------------------
 
+/** A paint slot no one has used this round: not a player who has left either, or a newcomer would take their paint. */
 function nextSlot() {
-  return Math.max(0, ...tankList().map((t) => t.slot)) + 1
+  return Math.max(0, ...tankList().map((t) => t.slot), ...usedSlots()) + 1
 }
 
 function addTank(e) {

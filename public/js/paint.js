@@ -36,6 +36,9 @@ export function setSlotColor(slot, color) {
   colors.set(slot, color)
 }
 
+/** Every slot with a colour this round, including players who have left (their paint stays theirs). */
+export const usedSlots = () => colors.keys()
+
 /** Paints a round splat. Returns how many cells became this slot's colour. */
 export function paint(x, z, r, slot) {
   const color = colors.get(slot) ?? '#ffffff'
