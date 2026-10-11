@@ -906,7 +906,7 @@ function fire(t, mega = false, aim = null) {
 /** Shared controls for the player and bots: drive, zoom, aim and squirt, then move. */
 function control(t, c, dt) {
   const n = now()
-  t.drive(c.mx, c.mz, dt, !c.snap)
+  t.drive(c.mx, c.mz, dt, c.snap ? Infinity : t.bot ? 0 : undefined)
   if (c.boost && n >= t.boostReadyAt) {
     t.boostUntil = n + BASE.boostTime * 1000
     t.boostReadyAt = n + BASE.boostCooldown * 1000

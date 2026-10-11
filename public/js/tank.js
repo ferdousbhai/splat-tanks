@@ -233,11 +233,12 @@ export class Tank {
   /**
    * Steers toward a move direction (twin-stick style) like a tracked vehicle: the hull swings round at a turn
    * rate that eases in and out (quicker turning on the spot than at full speed), the tank speeds up and slows
-   * down with some weight, and the tracks grip, so sideways sliding dies away quickly. turnRound: a stick held
-   * behind backs up for a moment, then the tank turns round and drives that way (the driver's seat steers its
-   * own hull, so it backs up for as long as it's held).
+   * down with some weight, and the tracks grip, so sideways sliding dies away quickly. backUp: how long a stick
+   * held behind backs up before the tank turns round and drives that way. A moment for a child (BACK_FOR); for as
+   * long as it's held in the driver's seat (Infinity), which steers its own hull; not at all for a robot (0), whose
+   * steering round an obstacle can flip between ahead and behind, and would rock it in place.
    */
-  drive(mx, mz, dt, turnRound = true) {
+  drive(mx, mz, dt, backUp = BACK_FOR) {
     const len = Math.hypot(mx, mz)
     const f = dirOf(this.heading)
     const fwd = this.trackVel.x * f.x + this.trackVel.z * f.z
@@ -250,11 +251,11 @@ export class Tank {
       // Reverse instead of doing a U-turn when the stick points behind: a nudge back, not a long way.
       const behind = Math.abs(diff) > 2.2
       this.backFor = behind ? this.backFor + dt : 0
-      const back = behind && (!turnRound || this.backFor < BACK_FOR)
+      const back = behind && this.backFor < backUp
       let align = 1
       // Backing up for a moment goes straight back along the hull: steering its rear onto the stick first, only
       // to turn round straight after, would be a wasted three-point turn. (The seat steers it along the view.)
-      if (!(back && turnRound)) {
+      if (!(back && backUp !== Infinity)) {
         const d = angleDiff(this.heading, back ? want + Math.PI : want)
         const rate = 6.5 - 2.5 * Math.min(1, Math.abs(fwd) / this.stats.speed)
         yawWant = Math.max(-rate, Math.min(rate, d * 9))
