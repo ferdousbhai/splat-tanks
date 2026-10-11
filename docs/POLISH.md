@@ -627,5 +627,8 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - A still ball rolls off a wall or prop only if it is really touching one, once each time tanks leave it, at `ROLL_OFF` (about a metre clear).
   - The tuning is named (`PROBE`, `STUCK`, `CRAWL`, `LEFT_FOR`, `ROLL_OFF`), and `touchedAt` says what it holds.
   - Guests' balls settle over the same passes as the host's.
+- **Two balls pushed together into a wall shuddered (correctness, older):** the trial roll only asked walls and props, so a ball pushed into another ball resting against a wall counted as free. It was kicked at 11.8 m/s every step and bounced out again, kept both balls "moving" (messages 20 times a second, top speed past the cap), showed the stopped tank at full speed, and on a friend's device made the balls shudder through each other. Another ball now counts as in the way if it is stuck itself, all along a chain. Two or three balls pushed into a wall or corner rest, and the tank stops (1–3 bonks in 10 s, mostly the first touch).
+- **A ball and a parked tank batted it to and fro (correctness, from round 60's rework):** a ball rolling off a wall into a tank parked just out of reach came back to the wall and rolled off again, for ever. Only a real push (or a squirt, or a burst) now lets a ball roll off a wall again.
+- **Roll-off from a ball still moving (correctness):** the roll-off took any ball slower than 0.5 m/s, so one just bouncing gently off a wall was sent off at 2 m/s. It now waits until the ball has come to rest (under 0.05 m/s). A ball that comes to rest against a wall still rolls clear by design.
 - **Docs:** round 59's log no longer names the removed `wallInWay`, and the Pass 2 table mentions the balls rolling back off walls.
 
