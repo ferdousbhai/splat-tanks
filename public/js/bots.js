@@ -95,6 +95,9 @@ export function botControls(bot, brain, tanks, pickups, difficulty, dt, together
     want = yawOf(mx, mz) + Math.sin(brain.sweep) * 0.9
   }
   out.aimYaw = want // the turret swings round to it like everyone's (main.js squirt)
+  // Never back up: steering round an obstacle (above) can flip the way between ahead and behind, and each flip
+  // would restart a back-up, rocking the robot in place.
+  out.backUp = 0
   out.fire = Math.random() < cfg.fireChance
   // Balloons go toward open floor near the middle, where they paint the most.
   if (bot.stats.mega && now > bot.megaReadyAt && Math.hypot(me.x, me.z) < ARENA * 0.8 && Math.random() < dt * 0.5) out.mega = true

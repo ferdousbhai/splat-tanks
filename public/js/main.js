@@ -906,7 +906,7 @@ function fire(t, mega = false, aim = null) {
 /** Shared controls for the player and bots: drive, zoom, aim and squirt, then move. */
 function control(t, c, dt) {
   const n = now()
-  t.drive(c.mx, c.mz, dt, c.snap ? Infinity : t.bot ? 0 : undefined)
+  t.drive(c.mx, c.mz, dt, c.backUp)
   if (c.boost && n >= t.boostReadyAt) {
     t.boostUntil = n + BASE.boostTime * 1000
     t.boostReadyAt = n + BASE.boostCooldown * 1000
@@ -985,7 +985,7 @@ function moveTank(t, dt) {
   const ballZ = t.pos.z
   const held = blockTank(t.pos)
   // A ball's push doesn't count below (the host kicks the ball on with the speed the tank pushes it with), unless
-  // the ball is held against a wall and can't go on: then it stops the tank like the wall.
+  // the ball is held against a wall (or a stuck ball) and can't go on: then it stops the tank like the wall.
   const ballDx = held ? 0 : t.pos.x - ballX
   const ballDz = held ? 0 : t.pos.z - ballZ
   pushOut(t.pos, TANK_RADIUS)
@@ -1112,6 +1112,7 @@ function seatControls(me, c, dt) {
   c.mz = d.z * ahead + d.x * right
   c.aimYaw = seat.yaw
   c.snap = true
+  c.backUp = Infinity // the hull follows the view, so it backs up for as long as it's held
   return c
 }
 

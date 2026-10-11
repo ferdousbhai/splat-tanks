@@ -11,7 +11,7 @@ import { emojiTexture, still } from './fx.js'
  */
 export const view = { seat: false, seatTank: null, levels: true }
 
-/** Seconds a tank backs up with the stick held behind before it turns round. */
+/** Seconds a child's tank backs up with the stick held behind before it turns round (drive's backUp). */
 const BACK_FOR = 0.6
 /** Metres a squirt pulls the barrels back (main.js showReach allows for it). */
 export const RECOIL_KICK = 0.45
@@ -248,14 +248,15 @@ export class Tank {
     if (len > 0.1) {
       const want = yawOf(mx, mz)
       const diff = angleDiff(this.heading, want)
-      // Reverse instead of doing a U-turn when the stick points behind: a nudge back, not a long way.
+      // Reverse instead of doing a U-turn when the stick points behind, for backUp seconds (see above).
       const behind = Math.abs(diff) > 2.2
       this.backFor = behind ? this.backFor + dt : 0
       const back = behind && this.backFor < backUp
       let align = 1
       // Backing up for a moment goes straight back along the hull: steering its rear onto the stick first, only
       // to turn round straight after, would be a wasted three-point turn. (The seat steers it along the view.)
-      if (!(back && backUp !== Infinity)) {
+      const seat = backUp === Infinity
+      if (!back || seat) {
         const d = angleDiff(this.heading, back ? want + Math.PI : want)
         const rate = 6.5 - 2.5 * Math.min(1, Math.abs(fwd) / this.stats.speed)
         yawWant = Math.max(-rate, Math.min(rate, d * 9))

@@ -636,7 +636,6 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 ### Fresh audit, round 61
 
 - **Robots rocked against walls (design, from Pass 2):** a robot steering round something can have its way flip between almost opposite directions every few frames, and each flip restarted the child's brief back-up. So robots sat pressed to a wall, rocking, for 10–35 s at a time (15–169 s a round with 3 robots), and stopped helping. `drive` now takes how long to back up: a moment for a child, as long as it's held in the driver's seat, and not at all for a robot, which turns round straight away. Now 0–50 s a round, the longest 11.5 s, at or below what they did before Pass 2.
-- **Splat match: a child who just drives ends last (design, older, open for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.
 - **A ball beside a stuck ball stopped too (correctness, from round 60):** the chain test counted any ball ahead within reach, including one off to the side that the push would pass by. So a ball pushed past another resting against a post froze in open floor, and stopped the tank with it. Only a ball in the pushed ball's path counts now.
 - **Wall bounces sometimes made no bonk (correctness):** the bonk needed the ball to move a little that frame, and the frame a ball reaches a wall it may cover only the last centimetres, so 5–20% of wall hits were silent. It now looks at this frame's movement or the last one's (20 of 20 at 3–12 m/s). Held balls and chains stay quiet (0–3 bonks in 10 s), and dribbling gives 1–2.
 - **Tidy (code quality):**
@@ -646,4 +645,19 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
   - `settle` is no longer exported.
   - Comments are fixed: the ball's shape lists `rolledOff`, `LEFT_FOR` says "by it", the roll-off comment reads in order, and the top-up comment says "a little for how fast it is going".
   - Round 60's chain bonk count is re-measured (1–4 in 10 s).
+
+### Fresh audit, round 62
+
+- **Tidy (code quality):**
+  - How long a tank backs up now travels with its controls: the robots' steering sets `backUp: 0` beside the comment on why, and the driver's seat sets `Infinity`. `control` just passes it on, and `drive` names the seat case.
+  - The back-up comments now say it is a child's.
+  - The stuck-ball docs list a stuck ball among what can be in the way.
+  - The `min` aliases of `REACH` are gone, and a long comment is wrapped.
+  - Open items are gathered below.
+
+### Open (Pass 2)
+
+- **Splat match: a child who just drives ends last (design, older, for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.
+- **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor.
+- Real play by the children on an iPad: how the heavier driving, the turret swing and the beach balls feel in small hands (headless browsers can't show it).
 

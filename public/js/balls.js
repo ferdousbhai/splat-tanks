@@ -122,8 +122,8 @@ export function ballHit(x, z, r) {
 
 /**
  * Keeps a tank this device drives out of the balls; the host's step then rolls the ball away from it. Returns true
- * if a ball it was kept out of can hardly move on (blocked: a wall, corner or narrow gap beyond it), so for now that
- * ball stops the tank like a wall.
+ * if a ball it was kept out of can hardly move on (blocked: a wall, corner, narrow gap or stuck ball beyond it), so for
+ * now that ball stops the tank like a wall.
  */
 export function blockTank(p) {
   let held = false
@@ -131,10 +131,9 @@ export function blockTank(p) {
     const dx = p.x - b.x
     const dz = p.z - b.z
     const d = Math.hypot(dx, dz)
-    const min = REACH
-    if (d < min && d > 0.001) {
-      p.x = b.x + (dx / d) * min
-      p.z = b.z + (dz / d) * min
+    if (d < REACH && d > 0.001) {
+      p.x = b.x + (dx / d) * REACH
+      p.z = b.z + (dz / d) * REACH
       held ||= blocked(b, -dx / d, -dz / d)
     }
   }
@@ -221,12 +220,13 @@ function tryRoll(b, dx, dz, chain = balls.length) {
   return (pos.x - from.x) * dx + (pos.z - from.z) * dz
 }
 
-/** True if a ball pushed along (dx, dz) is stuck: a wall, a corner or a narrow gap is in its way. */
+/** True if a ball pushed along (dx, dz) is stuck: a wall, a corner, a narrow gap or a stuck ball is in its way. */
 const blocked = (b, dx, dz) => tryRoll(b, dx, dz) < PROBE * STUCK
 
 /**
  * Host: rolls the balls. A tank driving into a ball sends it off a little faster than the tank (a tank is
- * far heavier), about 8–10 m from a full-speed bump; balls slow down as they roll, bounce off walls and props, and knock each other on.
+ * far heavier), about 8–10 m from a full-speed bump; balls slow down as they roll, bounce off walls and props,
+ * and knock each other on.
  * Returns each ball a tank pushed this step, with that tank, so the host can give it the tank's colour.
  */
 export function stepBalls(dt, tanks) {
@@ -293,9 +293,8 @@ export function stepBalls(dt, tanks) {
       const dx = b.x - t.pos.x
       const dz = b.z - t.pos.z
       const d = Math.hypot(dx, dz)
-      const min = REACH
       // A little reach, since a tank another device drives is blocked by the ball where that device sees it.
-      if (d >= min + 0.25 || d < 1e-6) continue
+      if (d >= REACH + 0.25 || d < 1e-6) continue
       const nx = dx / d
       const nz = dz / d
       b.touchedAt = now // a tank by it: it doesn't roll off a wall meanwhile
@@ -305,10 +304,10 @@ export function stepBalls(dt, tanks) {
       const vt = push.x * nx + push.z * nz
       const shown = t.vel.x * nx + t.vel.z * nz
       let vb = b.vx * nx + b.vz * nz
-      if (d < min) {
+      if (d < REACH) {
         // Out of the tank, but at most 0.6 m a step: a friend's tank is placed a little ahead of where it was
         // last heard of, and a big jump could carry the ball through a thin wall.
-        const out = Math.min(min - d, 0.6)
+        const out = Math.min(REACH - d, 0.6)
         b.x += nx * out
         b.z += nz * out
         // A ball rolling into a tank bounces off it (a tank is far heavier).
