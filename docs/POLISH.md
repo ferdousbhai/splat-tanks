@@ -485,7 +485,7 @@ All three reviews came back clean: design (real painting to the end in WebKit an
 | The turret swings round to the aim (about half a second for a half turn) and stays on it while the hull turns. In the driver's seat it is the view, so it follows at once | `main.js` `squirt`, `BASE.turretRate` |
 | Tread marks: each track presses a pattern into the sand, and through paint, which fades over about 30 s. It is only for looks and never counts as paint | `treads.js` |
 | Blobs fly a real arc, higher the farther they go, tipped and stretched along their path. With a mouse they land on the point under the pointer, so the aim ring is where the paint goes | `shells.js`, `main.js` `fire`, `playerControls` |
-| 🏐 Beach balls, one in each quarter. A tank nudges a ball along, and a squirt knocks it (up to a gentle speed). Balls roll to a stop, bounce off walls and each other, and paint a stripe in the colour of whoever touched them last. A balloon or bucket nearby sends them rolling. They show on the minimap. Robots leave them for the children: they steer round them, their blobs fly past them, and their bumps and bursts roll a ball without taking its colour. Knocks make a soft bonk | `balls.js`, `main.js` `hostBall`, `hostStep`, `bigSplash` |
+| 🏐 Beach balls, one in each quarter. A tank nudges a ball along, and a squirt knocks it (up to a gentle speed). Balls roll to a stop, bounce off walls and each other, and paint a stripe in the colour of whoever touched them last (later rounds: they roll back off the outer wall and off any wall or prop they are left against). A balloon or bucket nearby sends them rolling. They show on the minimap. Robots leave them for the children: they steer round them, their blobs fly past them, and their bumps and bursts roll a ball without taking its colour. Knocks make a soft bonk | `balls.js`, `main.js` `hostBall`, `hostStep`, `bigSplash` |
 | Fast trails stay solid: the host fills in splats between trail points when the gap would show, so a zooming tank or a fast ball leaves a stripe rather than dots | `main.js` `trailTo` |
 
 The host rolls the balls and sends them in a `bl` message, `[[x, z, vx, vz, toucher], …]`, 20 times a second while any ball moves and once a second when they are all still. Other devices glide after the host's balls the way they follow tanks. Each device keeps its own tank out of the balls, and the host gives itself a 0.25 m reach, so a friend's tank still nudges the ball. A friend joining part way through gets the balls in the round's snapshot.
@@ -614,10 +614,18 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **A friend's push along a wall is weaker than the host's (design, open):** with the network's lag, the host sees a friend's tank a little behind where it is, so its push along a wall drifts the ball off the wall. It is minor and left as it is.
 - **A mouse click on a touch laptop took the old stick direction (correctness, from round 58):** the one-frame flick rule tested any press while touch was in use, so a mouse click before moving the mouse aimed where the aim stick last pointed (or straight down). The aim stick now marks its own press (`input.flicked`).
 - **Tidy (code quality):**
-  - Comments follow the code after round 58: references to `control` now name `squirt`, "wedged" is now "held", and `blockTank`'s comment describes the wall-in-the-way check.
+  - Comments follow the code after round 58: references to `control` now name `squirt`, and "wedged" is now "held".
   - The ball's top speed along a wall is said to be what the push sends it (1.15× the push), and a crawl along a wall resting is noted.
-  - `wallInWay`'s 60° rule is spelled out.
   - The final wall pass just moves balls back out (its cap did nothing).
-  - `showReach` and `wallInWay` have their comments back on them.
+  - `showReach` has its comment back on it.
   - Round 57's log is as it was.
+
+### Fresh audit, round 60
+
+- **Balls by walls, one test (code quality):** round 59's ball code had grown two "can't go on" tests that disagreed. The tank stopped against a ball pushed up to 33° off straight-in while the ball rolled away along the wall. The redirected kick measured from where a tank had just shoved the ball (sometimes into a wall), so it could send the ball back at a friend's tank. And its roll-off used one wide push, so between two props about 3 m apart it pulled a ball that touched neither into one of them. Now:
+  - A pushed ball is tried `PROBE` along the push from where it sits clear of every wall and prop. Getting less than `STUCK` of the way, it rests and the tank stops, both by that one test. Otherwise it rolls on the way it got, no faster than the push.
+  - A still ball rolls off a wall or prop only if it is really touching one, once each time tanks leave it, at `ROLL_OFF` (about a metre clear).
+  - The tuning is named (`PROBE`, `STUCK`, `CRAWL`, `LEFT_FOR`, `ROLL_OFF`), and `touchedAt` says what it holds.
+  - Guests' balls settle over the same passes as the host's.
+- **Docs:** round 59's log no longer names the removed `wallInWay`, and the Pass 2 table mentions the balls rolling back off walls.
 

@@ -11,13 +11,16 @@ const RAINBOW = ['#ff3b3b', '#ffd60a', '#2f8cff', '#22c55e']
 const TOP = 16 // m/s
 const KICK = 1.15 // a tank sends a ball off this many times its own speed
 const WHITE = '#fbfbf6'
-const WALL_NEAR = 0.3 // metres a ball is tried along a push to see what's in its way (tryRoll)
-const SETTLE = 500 // ms after a tank last pushed it before a still ball against a wall rolls off it
+const PROBE = 0.3 // metres a pushed ball is tried along the push, to see what's in its way (tryRoll)
+const STUCK = 0.3 // getting less than this share of PROBE along a push, it is stuck: it rests and the tank stops
+const CRAWL = 0.5 // m/s: slower than this along a wall, a pushed ball just rests
 const EDGE = 4 // metres by the outer wall where a ball rolls back into play, as if the floor rose there
 const RISE = 2.5 // m/s² it rolls back with: beats rolling's slowing up to about 2 m/s, a brisk walk
+const LEFT_FOR = 500 // ms after a tank last touched it before a still ball against a wall or prop rolls off it
+const ROLL_OFF = 2 // m/s it rolls off with, which carries it about a metre clear
 const geo = new THREE.SphereGeometry(BALL_R, 32, 20)
 
-/** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz}, trailAt, pushedAt } (trailAt: see main.js trailTo; pushedAt: when a tank last pushed it) */
+/** { x, z, vx, vz, by, color, mesh, mat, canvas, target, seen: {vx, vz}, trailAt, touchedAt } (trailAt: see main.js trailTo; touchedAt: when a tank was last within reach of it, host's clock; rolledOff: it has rolled off a wall since) */
 export const balls = []
 
 /** Beach ball gores round the middle, in one colour and white (or the rainbow before anyone has touched it). */
@@ -47,7 +50,7 @@ function makeBall() {
   const mesh = new THREE.Mesh(geo, mat)
   mesh.castShadow = true
   scene.add(mesh)
-  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0 }, trailAt: null, pushedAt: 0 }
+  return { x: 0, z: 0, vx: 0, vz: 0, by: null, color: null, mesh, mat, canvas, target: null, seen: { vx: 0, vz: 0 }, trailAt: null, touchedAt: 0, rolledOff: false }
 }
 
 /** Puts every ball back on its spot, still and in rainbow colours, for a new round. */
@@ -55,7 +58,7 @@ export function resetBalls() {
   while (balls.length < BALLS.length) balls.push(makeBall())
   BALLS.forEach(([x, z], i) => {
     const b = balls[i]
-    Object.assign(b, { x, z, vx: 0, vz: 0, target: null, trailAt: null })
+    Object.assign(b, { x, z, vx: 0, vz: 0, target: null, trailAt: null, touchedAt: 0, rolledOff: false })
     b.seen.vx = b.seen.vz = 0
     setOwner(b, null, null)
     b.mesh.position.set(x, BALL_R, z)
@@ -134,33 +137,44 @@ export function blockTank(p) {
 }
 
 const pos = { x: 0, z: 0 } // scratch
+const from = { x: 0, z: 0 } // scratch: where tryRoll starts
+const away = { x: 0, z: 0 } // scratch: awayFrom's answer
 
 /**
- * Pushes a ball-sized point clear of walls and props. pushOut leaves each in turn, so in a gap between two, leaving
- * one can put it into the other: a few passes settle it. Returns true if it touched any.
+ * Pushes a ball-sized point (radius r) clear of walls and props. pushOut leaves each in turn, so in a gap between
+ * two, leaving one can put it into the other: a few passes settle it. Returns true if it touched any.
  */
-function settle(p) {
+export function settle(p, r = BALL_R) {
   let hit = false
-  for (let i = 0; i < 4 && pushOut(p, BALL_R); i++) hit = true
+  for (let i = 0; i < 4 && pushOut(p, r); i++) hit = true
   return hit
+}
+
+/**
+ * If a ball (taken as radius r) overlaps a wall or prop, the way out of it: a unit direction (in `away`), with the
+ * settled spot in `pos`. Otherwise null.
+ */
+function awayFrom(b, r = BALL_R) {
+  pos.x = b.x
+  pos.z = b.z
+  if (!settle(pos, r)) return null
+  const ox = pos.x - b.x
+  const oz = pos.z - b.z
+  const l = Math.hypot(ox, oz)
+  if (l < 1e-6) return null
+  away.x = ox / l
+  away.z = oz / l
+  return away
 }
 
 /** Moves a ball out of walls and props, bouncing off what it was rolling into. Returns true if it touched one. */
 function offWalls(b) {
-  pos.x = b.x
-  pos.z = b.z
-  if (!settle(pos)) return false
-  let nx = pos.x - b.x
-  let nz = pos.z - b.z
-  const l = Math.hypot(nx, nz)
-  if (l > 1e-6) {
-    nx /= l
-    nz /= l
-    const vn = b.vx * nx + b.vz * nz
-    if (vn < 0) {
-      b.vx -= 1.6 * vn * nx
-      b.vz -= 1.6 * vn * nz
-    }
+  const n = awayFrom(b)
+  if (!n) return false
+  const vn = b.vx * n.x + b.vz * n.z
+  if (vn < 0) {
+    b.vx -= 1.6 * vn * n.x
+    b.vz -= 1.6 * vn * n.z
   }
   b.x = pos.x
   b.z = pos.z
@@ -168,19 +182,23 @@ function offWalls(b) {
 }
 
 /**
- * Tries moving a ball WALL_NEAR along (dx, dz) (a unit direction) among the walls and props, as it would roll:
- * leaves where it ends up in `pos` and returns how far it got along (dx, dz). Asking the walls this way, rather than
- * which way they face, also catches a gap narrower than the ball, and a corner.
+ * Tries moving a ball PROBE along (dx, dz) (a unit direction) among the walls and props, as it would roll, from
+ * where it sits clear of them: leaves the start in `from` and the end in `pos`, and returns how far it got along
+ * (dx, dz). Asking the walls this way, rather than which way they face, also catches a corner and a gap narrower
+ * than the ball.
  */
 function tryRoll(b, dx, dz) {
-  pos.x = b.x + dx * WALL_NEAR
-  pos.z = b.z + dz * WALL_NEAR
+  from.x = b.x
+  from.z = b.z
+  settle(from)
+  pos.x = from.x + dx * PROBE
+  pos.z = from.z + dz * PROBE
   settle(pos)
-  return (pos.x - b.x) * dx + (pos.z - b.z) * dz
+  return (pos.x - from.x) * dx + (pos.z - from.z) * dz
 }
 
-/** True if a ball pushed along (dx, dz) can hardly move on (a wall, a corner or a narrow gap is in its way). */
-const blocked = (b, dx, dz) => tryRoll(b, dx, dz) < WALL_NEAR * 0.3
+/** True if a ball pushed along (dx, dz) is stuck: a wall, a corner or a narrow gap is in its way. */
+const blocked = (b, dx, dz) => tryRoll(b, dx, dz) < PROBE * STUCK
 
 /**
  * Host: rolls the balls. A tank driving into a ball sends it off a little faster than the tank (a tank is
@@ -188,6 +206,7 @@ const blocked = (b, dx, dz) => tryRoll(b, dx, dz) < WALL_NEAR * 0.3
  * Returns each ball a tank pushed this step, with that tank, so the host can give it the tank's colour.
  */
 export function stepBalls(dt, tanks) {
+  const now = performance.now()
   for (const b of balls) {
     // Rolling slows a ball gently, then brings it to a stop.
     const s = Math.hypot(b.vx, b.vz)
@@ -198,19 +217,16 @@ export function stepBalls(dt, tanks) {
     }
     if (Math.abs(b.x) > ARENA - EDGE) b.vx -= Math.sign(b.x) * RISE * dt
     if (Math.abs(b.z) > ARENA - EDGE) b.vz -= Math.sign(b.z) * RISE * dt
-    // Left still against a wall, a prop, or in a corner or a gap, a ball rolls gently off it (over the first metre,
-    // the way the walls face), so none is stuck for good where a tank can't push it out.
-    if (s < 0.3 && performance.now() - b.pushedAt > SETTLE) {
-      pos.x = b.x
-      pos.z = b.z
-      if (pushOut(pos, BALL_R + 1)) {
-        const ox = pos.x - b.x
-        const oz = pos.z - b.z
-        const l = Math.hypot(ox, oz)
-        if (l > 1e-6) {
-          b.vx += (ox / l) * RISE * dt
-          b.vz += (oz / l) * RISE * dt
-        }
+    // Left still against a wall or prop (or in a corner or a gap) once tanks have gone, a ball rolls gently off it
+    // about a metre, so none is stuck for good where a tank can't push it out. (Only a ball really touching one:
+    // the way out of a near miss between two props can point back at either.)
+    // Once each time tanks leave it, so between two props it doesn't roll to and fro.
+    if (!b.rolledOff && s < CRAWL && now - b.touchedAt > LEFT_FOR) {
+      const n = awayFrom(b, BALL_R + 0.05)
+      if (n) {
+        b.vx = n.x * ROLL_OFF
+        b.vz = n.z * ROLL_OFF
+        b.rolledOff = true
       }
     }
     b.x += b.vx * dt
@@ -258,7 +274,8 @@ export function stepBalls(dt, tanks) {
       if (d >= min + 0.25 || d < 1e-6) continue
       const nx = dx / d
       const nz = dz / d
-      b.pushedAt = performance.now() // a tank against it: it doesn't roll off a wall meanwhile
+      b.touchedAt = now // a tank by it: it doesn't roll off a wall meanwhile
+      b.rolledOff = false
       // A tank this device drives pushes with its tracks (it shows no speed into a ball held against a wall); a
       // friend's tank with the speed it was sent.
       const push = t.local ? t.trackVel : t.vel
@@ -287,18 +304,18 @@ export function stepBalls(dt, tanks) {
         b.vx += -nz * side
         b.vz += nx * side
         // Pushed into a wall or prop, a ball can only roll on the way it is free to (along the wall), and no faster
-        // than the push sends it. Pushed straight in, into a corner or into a gap narrower than itself, that
-        // leaves nothing, and it rests there, held, until the tank backs off or comes from the side; a crawl just
-        // rests too. (The tank stops against it meanwhile: blockTank.)
+        // than the push sends it. Stuck (pushed straight in, into a corner or into a gap narrower than itself), it
+        // rests there, held, until the tank backs off or comes from the side, and the tank stops against it
+        // meanwhile (blockTank, by the same test); a crawl along a wall just rests too.
         const sp = Math.hypot(b.vx, b.vz)
         if (sp > 1e-6) {
           const got = tryRoll(b, b.vx / sp, b.vz / sp)
-          if (got < WALL_NEAR - 1e-3) {
-            const free = Math.hypot(pos.x - b.x, pos.z - b.z)
-            const k = free < WALL_NEAR * 0.1 ? 0 : Math.min(kick, sp * (free / WALL_NEAR)) / free
-            b.vx = (pos.x - b.x) * k
-            b.vz = (pos.z - b.z) * k
-            if (Math.hypot(b.vx, b.vz) < 0.5) b.vx = b.vz = 0
+          if (got < PROBE - 1e-3) {
+            const free = Math.hypot(pos.x - from.x, pos.z - from.z)
+            const k = got < PROBE * STUCK ? 0 : Math.min(kick, (sp * free) / PROBE) / free
+            b.vx = (pos.x - from.x) * k
+            b.vz = (pos.z - from.z) * k
+            if (Math.hypot(b.vx, b.vz) < CRAWL) b.vx = b.vz = 0
           }
         }
         cap(b)
@@ -341,7 +358,7 @@ export function renderBalls(dt, host, onBump) {
     if (!host && b.target) {
       glideTo(b, b.target, dt, 6, 12)
       // Carried on by its speed, a ball the host has just bounced off a wall would show inside it for a moment.
-      pushOut(b, BALL_R)
+      settle(b)
       b.vx = b.target.vx
       b.vz = b.target.vz
     }
