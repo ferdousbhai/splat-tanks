@@ -20,6 +20,7 @@ const EDGE = 4 // metres by the outer wall where a ball rolls back into play, as
 const RISE = 2.5 // m/s² it rolls back with: beats rolling's slowing up to about 2 m/s, a brisk walk
 const LEFT_FOR = 500 // ms after a tank was last by it before a still ball against a wall or prop rolls off it
 const ROLL_OFF = 2 // m/s it rolls off with, which carries it about a metre clear
+const BONK_MOVING = 0.6 // m/s a ball must be rolling at (this frame or the last) to bonk
 const GAP = 150 // ms without word of a rolling ball (three of the host's 50 ms messages missed) is a hiccup
 const SNAP = 6 // metres: further off than this, a friend's ball jumps to the host's spot instead of rolling there
 const TOUCH = 0.05 // metres: this close to a wall or prop, a ball is touching it
@@ -56,7 +57,8 @@ function makeBall() {
   canvas.height = 128
   const map = new THREE.CanvasTexture(canvas)
   map.colorSpace = THREE.SRGBColorSpace
-  const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.3, metalness: 0 })
+  // Transparent from the start, so going see-through by the seat camera needs no new shader (fadeNearCamera).
+  const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.3, metalness: 0, transparent: true })
   const mesh = new THREE.Mesh(geo, mat)
   mesh.castShadow = true
   scene.add(mesh)
@@ -389,13 +391,29 @@ export function takeBallState(a, colorOf, jump = false) {
     const b = balls[i]
     if (!b) return
     // After a gap in the host's word about a rolling ball (a network hiccup), its speed catches up all at once: no
-    // bonk for that. (Still balls are only sent once a second, so a gap before a knock from rest is no hiccup.)
+    // bonk for that. (A ball last heard of rolling slower than a bonk needs is all but still, and still balls are
+    // only sent once a second, so a gap before a knock from rest is no hiccup.)
     const t = b.target
-    if (t && (t.vx || t.vz) && now - t.t > GAP) b.quiet = true
+    if (t && Math.hypot(t.vx, t.vz) > BONK_MOVING && now - t.t > GAP) b.quiet = true
     b.target = { x, z, vx, vz, t: now }
     if (jump) placeBall(b, x, z, vx, vz)
     if ((by || null) !== b.by) setOwner(b, by || null, by ? colorOf(by) : null)
   })
+}
+
+/**
+ * Right in front of the driver's seat camera (pushing it along), a ball would fill a big part of the view: it shows
+ * see-through then, like your own blobs from the seat, and over the floor's marks. (The sky camera is far above, so
+ * this is only ever the seat.) Called once the camera has moved for the frame.
+ */
+export function fadeNearCamera() {
+  for (const b of balls) {
+    const close = nearCamera(b.x, BALL_R, b.z, BALL_R + 3)
+    if (close === b.mat.depthWrite) {
+      Object.assign(b.mat, { opacity: close ? SEE_THROUGH : 1, depthWrite: !close })
+      b.mesh.renderOrder = close ? 4 : 0 // after the treads (1), chalk (2) and fraction labels (3)
+    }
+  }
 }
 
 const axis = new THREE.Vector3()
@@ -424,14 +442,6 @@ export function renderBalls(dt, host, onBump) {
       b.mesh.quaternion.premultiply(spin)
     }
     b.mesh.position.set(b.x, BALL_R, b.z)
-    // Right in front of the driver's seat camera (pushing it along), a ball would fill a big part of the view: it
-    // shows see-through then, like your own blobs from the seat. (The sky camera is far above, so this is only ever
-    // the seat.) The material changes only when that flips.
-    const close = nearCamera(b.x, BALL_R, b.z, BALL_R + 3)
-    if (close !== b.mat.transparent) {
-      Object.assign(b.mat, { transparent: close, opacity: close ? SEE_THROUGH : 1, depthWrite: !close })
-      b.mat.needsUpdate = true
-    }
     // Only a ball that really moves bonks (faster than 0.6 m/s): one held against a wall doesn't drum. And only a
     // real knock: a tank topping up a ball it is already pushing along changes its speed a little for how fast it
     // is going, four times a second, which would make a steady drum while dribbling.
@@ -439,7 +449,7 @@ export function renderBalls(dt, host, onBump) {
     const fast = Math.max(Math.hypot(b.vx, b.vz), Math.hypot(b.seen.vx, b.seen.vz))
     // (Moving this frame or the last: the frame a ball reaches a wall, it may only cover the last bit to it. Not the
     // frame a ball jumps SNAP or more to where the host says it is: it didn't roll there.)
-    if (!jumped && !b.quiet && jolt > Math.max(2.5, 0.4 * fast) && Math.max(d, b.seen.d) > 0.6 * dt) onBump?.(b, Math.min(1, jolt / 10))
+    if (!jumped && !b.quiet && jolt > Math.max(2.5, 0.4 * fast) && Math.max(d, b.seen.d) > BONK_MOVING * dt) onBump?.(b, Math.min(1, jolt / 10))
     b.seen.d = jumped ? 0 : d
     b.quiet = false
     b.seen.vx = b.vx

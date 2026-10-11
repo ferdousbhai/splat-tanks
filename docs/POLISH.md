@@ -681,10 +681,10 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 
 ### Fresh audit, round 65
 
-- **Real knocks swallowed after a quiet spell (code quality, from round 64):** the host sends still balls only once a second, so the first knock after everything had been still came after a long gap and was taken for a hiccup: friends never heard it. Only a gap about a ball that was rolling counts now (`GAP`, 150 ms).
+- **Real knocks swallowed after a quiet spell (code quality and correctness, from round 64):** the host sends still balls only once a second, so the first knock after everything had been still came after a long gap and was taken for a hiccup: friends heard 1 of 12. A ball rolling slowly to a stop and knocked again within a second was missed the same way (9 of 12). Now only a gap about a ball last heard rolling fast enough to bonk counts (`GAP`, 150 ms; `BONK_MOVING`), and the host sends the balls once more as they come to rest.
 - **Tidy (code quality):**
   - A ball goes see-through by the seat camera at the same opacity as your own blobs (`SEE_THROUGH`, in `fx.js` beside `nearCamera`, whose comment now names it).
-  - Its material switches to transparent only while it is close, and changes only when that flips.
+  - It fades once the camera has moved for the frame (it was a frame late going in and out of the seat), draws over the floor's marks while faded, and is transparent from the start, so fading needs no new shader on an iPad.
   - `takeBallState` reads the clock once per message.
   - Round 64's gap and the fade's comment say what the code does.
 
@@ -693,4 +693,5 @@ Test scripts are in the session scratchpad (`ball.mjs`, `duo.mjs`, `modes.mjs`).
 - **Splat match: a child who just drives ends last (design, older, for the owner):** with the default 2 🐢 robots, a child driving and squirting ahead paints 8–25% against the robots' 40–48%. That is the same before Pass 2, and the child's tank driven by the robots' own brain paints about as much as them, so it is what the robots do that a small child doesn't: sweep the nozzle, grab pickups, throw balloons and zoom. Making 🐢 robots leave pickups and balloons alone and squirt less is a change to the match the children know, so it is left for the owner.
 - **A friend's push along a wall is weaker than the host's** (round 59): network lag; minor. Likewise a friend pushing a ball straight into a wall bonks about twice a second (found in the round 62 audit).
 - **🤝 Paint together with no robots is slow to its first moment** (round 64): a child alone took about 8 minutes to finish the first quarter (12 for the whole floor), against about a minute with the default 2 robots. Robots paint about twice as fast and all on the part nearest done, while a child spreads paint over every part. A lower finishing mark with few painters, or a gentle pointer to the part nearest done, is for the owner, alongside the open "whether 85% feels right".
+- **A close tank's name tag floats high in the driver's seat** (round 65, cosmetic, older): a tank a few metres ahead has its tag drawn well above it, near the fraction strip. Placing it just above the hull in the seat, or hiding it close up, would tidy it.
 - Real play by the children on an iPad: how the heavier driving, the turret swing and the beach balls feel in small hands (headless browsers can't show it).

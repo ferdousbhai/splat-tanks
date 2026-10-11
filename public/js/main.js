@@ -20,7 +20,7 @@ import { input, bindMouse, bindTouch, onKey, mouseSurfaces, mouseAims, drivingAl
 import { unlockAudio, sound, voice, toggleMusic, musicIntensity } from './audio.js'
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import { updateTreads, clearTreads } from './treads.js'
-import { balls, resetBalls, stepBalls, squirtBall, burstBalls, setOwner, blockTank, ballState, ballsMoving, takeBallState, renderBalls } from './balls.js'
+import { balls, resetBalls, stepBalls, squirtBall, burstBalls, setOwner, blockTank, ballState, ballsMoving, takeBallState, renderBalls, fadeNearCamera } from './balls.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
@@ -59,6 +59,7 @@ const game = {
   lastPaintSend: 0,
   lastTrail: 0,
   lastBalls: 0,
+  ballsRolled: false, // host: some ball was rolling at the last network tick
   myName: randomName(),
   myColor: COLORS[Math.floor(Math.random() * COLORS.length)],
   arenaSeed: 0,
@@ -1213,6 +1214,7 @@ function frame() {
   updateFloaters(dt)
   updatePaint(n)
   updateCamera(dt)
+  fadeNearCamera() // after the camera has moved this frame
   renderer.render(scene, camera)
   input.boost = input.mega = input.clicked = input.flicked = false
   input.pick = 0
@@ -1299,11 +1301,14 @@ function battleStep(dt, n) {
     game.lastNet = n
     const a = tanks.filter((t) => t.alive && (t === me || (t.bot && isHost()))).map(poseOf)
     if (a.length) sendFast({ t: 'pb', a })
-    // The balls while they roll, and now and then when they're still (for a friend who just joined).
-    if (isHost() && (ballsMoving() || n - game.lastBalls > 1000)) {
+    // The balls while they roll, once more as they come to rest (so friends' last word of them is "still"), and
+    // now and then when they're still (for a friend who just joined).
+    const rolling = isHost() && ballsMoving()
+    if (isHost() && (rolling || game.ballsRolled || n - game.lastBalls > 1000)) {
       game.lastBalls = n
       sendFast({ t: 'bl', a: ballState() })
     }
+    game.ballsRolled = rolling
   }
   if (isHost() && ((game.statsDirty && n - game.lastStats > 150) || n - game.lastStats > 1000)) sendStats()
 
