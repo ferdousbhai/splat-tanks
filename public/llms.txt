@@ -1,0 +1,19 @@
+# Splat Tanks
+
+> A calm multiplayer paint game for children aged 4 to 8, played in the browser through BitGames. Toy tanks squirt paint to cover the floor; up to 8 players on separate devices, plus robot friends. Keyboard and mouse, or twin-stick touch on tablets and phones.
+
+Two ways to play, chosen on the menu by the host (the device that opened the room):
+
+- Paint together (the default): chalk lines cut the floor into halves, thirds or quarters. Everyone paints together with no clock, and each finished part is named as a fraction ("Two quarters make one half!").
+- Splat match: a 2, 3 or 5 minute round where each tank paints its own colour, levels up and picks upgrades. There is no health and no game over.
+
+For agents: the page registers WebMCP tools (`document.modelContext`) so a grown-up's assistant can set up and start a game for a child: `get_game_state` (read only), `set_up_game` (mode, parts, robots, robot speed, minutes, colour), `start_game` and `back_to_menu` (ends the round for everyone, so ask first). Only the host can change the game or start it. Driving and painting stay with the child.
+
+## Play
+
+- [Splat Tanks on BitGames](https://bitgames.store/game/tank-clash): the store page, where the game is played (game id `tank-clash`)
+- [BitGames](https://bitgames.store/): the store of browser games for children it is published in
+
+## Source
+
+- [GitHub repository](https://github.com/ferdousbhai/splat-tanks): three.js game in plain JavaScript, Blender model sources, MIT licence

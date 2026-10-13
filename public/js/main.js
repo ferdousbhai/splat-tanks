@@ -9,7 +9,7 @@
 // levels, pickups, paint buckets and the bots, and tells everyone what happened.
 import * as THREE from 'three'
 import { joinRoom } from 'https://bitgames.store/vendor/bitgames/multiplayer-1.js'
-import { ARENA, TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, emptyLoadout, xpToNext, randomName, safeName, safeColor, r2 } from './config.js'
+import { ARENA, TANK_RADIUS, MAX_LEVEL, MATCH, BASE, UPGRADES, PICKUPS, XP, COLORS, COLOR_NAMES, TIERS, tierFor, emptyLoadout, xpToNext, randomName, safeName, safeColor, r2 } from './config.js'
 import { renderer, scene, camera, sun, sunDir, loadModels, buildArena, pushOut, lineOfSight, barrels, PADS, SPAWNS } from './world.js'
 import { Tank, yawOf, dirOf, angleDiff, view, RECOIL_KICK } from './tank.js'
 import { spawnShell, removeShell, updateShells, clearShells, hideNearCamera, LAND_Y } from './shells.js'
@@ -21,6 +21,7 @@ import { unlockAudio, sound, voice, toggleMusic, musicIntensity, engineHum } fro
 import { layout, setupParts, clearParts, partProgress, finishPart, partsDone, partAt, doneWords, doneTitle, halfWords, introWords, goalWords, fractionWords, cap, DONE, turnLabels } from './parts.js'
 import { updateTreads, clearTreads } from './treads.js'
 import { balls, resetBalls, stepBalls, squirtBall, burstBalls, setOwner, blockTank, ballState, ballsMoving, takeBallState, renderBalls, fadeNearCamera } from './balls.js'
+import { registerAgentTools } from './agent-tools.js'
 import * as hud from './hud.js'
 import { $ } from './hud.js'
 
@@ -1709,6 +1710,66 @@ function setupMenu() {
   for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) addEventListener(ev, wake, { capture: true, passive: true })
 }
 
+// --- Agent tools (WebMCP, agent-tools.js) ------------------------------------------------
+
+const SPEEDS = { slow: 'easy', medium: 'normal', fast: 'hard' }
+const colourName = (c) => COLOR_NAMES[COLORS.indexOf(c)] ?? c
+const menuValues = (key) => [...document.querySelectorAll(`.seg[data-opt="${key}"] button`)].map((b) => b.dataset.v)
+const refuse = (error) => ({ ok: false, error, state: agentState() })
+
+/** What the screen shows, in words an agent can read back to a grown-up. */
+function agentState() {
+  const m = game.phase === 'menu' || game.phase === 'loading' ? null : game.match
+  const people = [[game.selfId, { name: game.myName, color: game.myColor }], ...game.humans]
+  const o = game.opts
+  return {
+    screen: game.phase,
+    host: isHost(),
+    players: people.map(([id, h]) => ({ name: h.name, colour: colourName(h.color), host: id === game.hostId, you: id === game.selfId })),
+    choices: { mode: o.mode, parts: o.parts, robots: o.bots, robotSpeed: Object.keys(SPEEDS).find((k) => SPEEDS[k] === o.difficulty), minutes: MATCH.minutes[o.length] },
+    round: m && {
+      mode: m.mode,
+      secondsLeft: m.mode === 'match' ? Math.max(0, Math.ceil((m.endsAt - now()) / 1000)) : null,
+      // Painting together: each part's painted share, as the fraction strip shows it.
+      partsPercent: m.mode === 'together' ? game.progress.map((v) => Math.round(v * 100)) : null,
+      tanks: tankList().map((t) => ({ name: t.name, colour: colourName(t.color), robot: t.bot, you: t === game.me, tier: tierFor(t.level).name, floorPercent: Math.round((cellsOf(t.slot) / CELLS) * 100) })),
+    },
+  }
+}
+
+/** The menu's choices from an agent: checked whole first, then set the way the buttons set them. */
+function agentSetUp({ colour, mode, parts, robots, robotSpeed, minutes }) {
+  if (game.phase !== 'menu') return refuse('The game can only be set up on the menu.')
+  const want = { mode, parts, bots: robots, difficulty: robotSpeed === undefined ? undefined : SPEEDS[robotSpeed] ?? robotSpeed, length: minutes === undefined ? undefined : MATCH.minutes.indexOf(minutes) }
+  const opts = Object.entries(want).filter(([, v]) => v !== undefined)
+  if (opts.length && !isHost()) return refuse('Only the host can change the game; this device can only pick its colour.')
+  const bad = opts.find(([key, v]) => !menuValues(key).includes(String(v)))
+  const asked = { mode, parts, bots: robots, difficulty: robotSpeed, length: minutes }
+  const words = { bots: 'robots', difficulty: 'robotSpeed', length: 'minutes' }
+  if (bad) return refuse(`The menu has no ${words[bad[0]] ?? bad[0]} choice ${JSON.stringify(asked[bad[0]])}.`)
+  const k = colour === undefined ? -1 : COLOR_NAMES.indexOf(colour)
+  if (colour !== undefined && k < 0) return refuse(`There is no colour ${JSON.stringify(colour)}.`)
+  for (const [key, v] of opts) setOpt(key, v)
+  if (opts.length) showHostOptions()
+  if (k >= 0) game.myColor = COLORS[k]
+  if (k >= 0 || opts.length) menuChanged() // tells the room about a new colour; the game choices travel with the start
+  return { ok: true, state: agentState() }
+}
+
+function agentStart() {
+  if (!isHost()) return refuse('Only the host can start the game.')
+  if (game.phase !== 'menu' && game.phase !== 'end') return refuse('A round is already on; go back to the menu first.')
+  hostStartMatch()
+  return { ok: true, state: agentState() }
+}
+
+function agentToMenu() {
+  if (!isHost()) return refuse('Only the host can go back to the menu.')
+  if (game.phase === 'menu' || game.phase === 'loading') return refuse('Already on the menu.')
+  broadcast({ t: 'menu' })
+  return { ok: true, state: agentState() }
+}
+
 // --- Boot --------------------------------------------------------------------------------
 
 async function boot() {
@@ -1743,6 +1804,12 @@ async function boot() {
   show('menu')
   if (!isHost()) voice.say('Waiting for the host to start.')
   if (params.has('autostart')) hostStartMatch()
+  // Registered once the menu answers; the page lives as long as the game, so nothing unregisters them.
+  registerAgentTools({ state: agentState, setUp: agentSetUp, start: agentStart, toMenu: agentToMenu }, {
+    colours: COLOR_NAMES,
+    robots: menuValues('bots').map(Number),
+    minutes: MATCH.minutes,
+  })
   if (params.has('debug')) window.__tank = { game, hud, input, camera, addXp, setLevel, step: () => frame(), renderer, layout, partProgress, broadcast, voice, balls }
 }
 
